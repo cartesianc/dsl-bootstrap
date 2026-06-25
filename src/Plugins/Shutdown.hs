@@ -1,19 +1,19 @@
-module Shutdown
+module Plugins.Shutdown
   ( ShutdownModule
   , shutdownModule
   ) where
 
 import Blueprint
 
-type ShutdownModule = Callback
+type ShutdownModule = Wait
 
 -- plugin: shutdownModule
 shutdownModule :: ShutdownModule
 shutdownModule =
-  callback
+  wait
     [ ReportGeneratedFact
     ]
     ( parallel ShutdownFlow
-        [ middleware ShutdownMiddleware (effect [AppFinishedFact])
+        [ middleware ShutdownMiddleware (fact [AppFinishedFact])
         ]
     )

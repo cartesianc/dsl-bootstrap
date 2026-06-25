@@ -1,4 +1,4 @@
-module Report
+module Plugins.Report
   ( ReportModule
   , reportModule
   , calculationReport
@@ -8,7 +8,7 @@ import Blueprint
 
 type ReportModule = Parallel
 
-type CalculationReport = Callback
+type CalculationReport = Wait
 
 -- plugin: reportModule
 reportModule :: ReportModule
@@ -20,19 +20,19 @@ reportModule =
 -- plugin: calculationReport
 calculationReport :: CalculationReport
 calculationReport =
-  callback
+  wait
     [ UserKnownFact
     ]
     ( middleware
         ReportMiddleware
         ( chain CalculationReportFlow
-            [ effect [CalculationSectionOpenedFact]
+            [ fact [CalculationSectionOpenedFact]
             , parallel CalculationsFlow
-                [ effect [AddCalculatedFact]
-                , effect [FactorialCalculatedFact]
-                , effect [SquaresCalculatedFact]
+                [ fact [AddCalculatedFact]
+                , fact [FactorialCalculatedFact]
+                , fact [SquaresCalculatedFact]
                 ]
-            , effect [ReportGeneratedFact]
+            , fact [ReportGeneratedFact]
             ]
         )
     )

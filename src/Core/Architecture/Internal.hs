@@ -1,4 +1,4 @@
-module Architecture.Internal
+module Core.Architecture.Internal
   ( FreeMonad (..)
   , FreeApplicative (..)
   , FreeMonoid (..)
@@ -14,6 +14,7 @@ module Architecture.Internal
   , requirementEffect
   , fmapFreeMonad
   , fmapFreeApplicative
+  , fmapFreeMonoid
   , fmapFreeAlternative
   , fmapFreeChoice
   , foldFreeMonadState
@@ -91,6 +92,10 @@ fmapFreeMonad transform steps =
 fmapFreeApplicative :: (branch -> nextBranch) -> FreeApplicative branch -> FreeApplicative nextBranch
 fmapFreeApplicative transform branches =
   FreeApplicative (map transform (freeApplicativeBranches branches))
+
+fmapFreeMonoid :: (item -> nextItem) -> FreeMonoid item -> FreeMonoid nextItem
+fmapFreeMonoid transform items =
+  FreeMonoid (map transform (freeMonoidItems items))
 
 fmapFreeAlternative :: (branch -> nextBranch) -> FreeAlternative branch -> FreeAlternative nextBranch
 fmapFreeAlternative transform branches =

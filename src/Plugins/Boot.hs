@@ -1,20 +1,20 @@
-module Boot
+module Plugins.Boot
   ( BootModule
   , bootModule
   ) where
 
 import Blueprint
 
-type BootModule = Callback
+type BootModule = Wait
 
 -- plugin: bootModule
 bootModule :: BootModule
 bootModule =
-  callback
+  wait
     [ AppConfiguredFact
     ]
     ( parallel BootPreparation
-        [ middleware BootMiddleware (effect [AppStartedFact])
-        , middleware RuntimeMiddleware (effect [RuntimePreparedFact])
+        [ middleware BootMiddleware (fact [AppStartedFact])
+        , middleware RuntimeMiddleware (fact [RuntimePreparedFact])
         ]
     )

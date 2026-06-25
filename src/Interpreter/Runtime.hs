@@ -4,11 +4,11 @@ module Interpreter.Runtime
   , runAppWith
   ) where
 
-import AppBlueprint
+import AST.AppBlueprint
   ( App
   )
-import Interpreter.Core
-  ( interpret
+import Core.Architecture.Cata
+  ( cataWorkflow
   )
 import Interpreter.Runtime.Algebra
   ( runtimeAlgebra
@@ -24,5 +24,5 @@ runApp =
 
 runAppWith :: Runtime -> App -> IO ()
 runAppWith runtime appArchitecture = do
-  _ <- interpret runtimeAlgebra appArchitecture runtime
+  _ <- cataWorkflow runtimeAlgebra appArchitecture runtime
   pure ()

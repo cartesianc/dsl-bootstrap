@@ -2,9 +2,11 @@ module Main
   ( main
   ) where
 
-import AppBlueprint
-import qualified Interpreter.View as Interpreter
+import AST.AppBlueprint
+import Interpreter
+  ( interpreter
+  )
 
 main :: IO ()
 main =
-  Interpreter.interpret app
+  interpreter blueprint

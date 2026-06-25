@@ -12,7 +12,8 @@ import Data.List
   )
 import Distribution.Simple
 import System.Directory
-  ( doesDirectoryExist
+  ( createDirectoryIfMissing
+  , doesDirectoryExist
   , listDirectory
   )
 import System.Exit
@@ -20,6 +21,7 @@ import System.Exit
   )
 import System.FilePath
   ( (</>)
+  , takeDirectory
   , takeExtension
   )
 import System.IO
@@ -35,6 +37,10 @@ data PluginExport = PluginExport
   , pluginValue :: String
   }
 
+pluginRegistryPath :: FilePath
+pluginRegistryPath =
+  "src" </> "Core" </> "Plugins.hs"
+
 main :: IO ()
 main =
   defaultMainWithHooks
@@ -49,8 +55,9 @@ generatePlugins = do
   sourceFiles <- haskellFiles "src"
   pluginExports <- fmap concat (mapM pluginExportsFromFile sourceFiles)
   case duplicateValues pluginExports of
-    [] ->
-      writeFile ("src" </> "Plugins.hs") (renderPlugins pluginExports)
+    [] -> do
+      createDirectoryIfMissing True (takeDirectory pluginRegistryPath)
+      writeFile pluginRegistryPath (renderPlugins pluginExports)
     duplicates ->
       die ("Duplicate plugin exports: " ++ intercalate ", " duplicates)
 

@@ -1,4 +1,4 @@
-module Handle
+module Plugins.Handle
   ( UserModule
   , userModule
   , onboarding
@@ -8,7 +8,7 @@ import Blueprint
 
 type UserModule = Parallel
 
-type Onboarding = Callback
+type Onboarding = Wait
 
 -- plugin: userModule
 userModule :: UserModule
@@ -20,15 +20,15 @@ userModule =
 -- plugin: onboarding
 onboarding :: Onboarding
 onboarding =
-  callback
+  wait
     [ RuntimePreparedFact
     ]
     ( middleware
         UserFlowMiddleware
         ( chain OnboardingFlow
-            [ effect [UserNameAskedFact]
-            , effect [UserGreetedFact]
-            , effect [UserKnownFact]
+            [ fact [UserNameAskedFact]
+            , fact [UserGreetedFact]
+            , fact [UserKnownFact]
             ]
         )
     )

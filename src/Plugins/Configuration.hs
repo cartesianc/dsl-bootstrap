@@ -1,4 +1,4 @@
-module Configuration
+module Plugins.Configuration
   ( ConfigModule
   , configurationModule
   ) where
@@ -11,5 +11,5 @@ type ConfigModule = Parallel
 configurationModule :: ConfigModule
 configurationModule =
   parallel ConfigurationFlow
-    [ middleware ConfigurationMiddleware (effect [AppConfiguredFact])
+    [ middleware ConfigurationMiddleware (fact [AppConfiguredFact])
     ]

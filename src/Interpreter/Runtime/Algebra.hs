@@ -7,9 +7,10 @@ import Control.Exception
   , try
   )
 
-import Architecture
-import Architecture.Cata
-import Architecture.Internal
+import AST.Vocabulary
+import Core.Architecture
+import Core.Architecture.Cata
+import Core.Architecture.Internal
   ( ChoiceBranch (..)
   , FreeAlternative (..)
   , FreeChoice (..)
@@ -17,25 +18,24 @@ import Architecture.Internal
   , foldFreeMonadState
   , foldRequirementEffectState
   )
-import AST.Vocabulary
 import Interpreter.Runtime.Types
 
 runtimeAlgebra :: WorkflowAlgebra WorkflowFact Interceptor WorkflowProgram
 runtimeAlgebra =
   WorkflowAlgebra
-    { onEffect = effectProgram
+    { onFact = factProgram
     , onChain = chainProgram
     , onParallel = parallelProgram
     , onFallback = fallbackProgram
     , onRace = raceProgram
     , onChoice = choiceProgram
-    , onCallback = callbackProgram
+    , onWait = waitProgram
     , onMiddleware = middlewareProgram
     }
 
-effectProgram :: Effect WorkflowFact -> WorkflowProgram
-effectProgram currentEffect runtime =
-  recordEffectFacts runtime currentEffect
+factProgram :: Fact WorkflowFact -> WorkflowProgram
+factProgram currentFact runtime =
+  recordFact runtime currentFact
 
 chainProgram :: WorkflowName -> Chain WorkflowProgram -> WorkflowProgram
 chainProgram _ steps runtime =
@@ -57,9 +57,8 @@ choiceProgram :: ChoiceKey -> Choice WorkflowProgram -> WorkflowProgram
 choiceProgram selectedKey branches runtime =
   runChoiceWorkflow runtime selectedKey (freeChoiceBranches (choiceBranches branches))
 
-callbackProgram :: Callback WorkflowFact -> WorkflowProgram -> WorkflowProgram
-callbackProgram facts body runtime = do
-  enterCallbackScope runtime facts
+waitProgram :: Wait WorkflowFact -> WorkflowProgram -> WorkflowProgram
+waitProgram _ body runtime =
   body runtime
 
 middlewareProgram :: Middleware Interceptor -> WorkflowProgram -> WorkflowProgram
@@ -72,40 +71,33 @@ runProgram :: Runtime -> WorkflowProgram -> IO Runtime
 runProgram runtime program =
   program runtime
 
-recordEffectFacts :: Runtime -> Effect WorkflowFact -> IO Runtime
-recordEffectFacts runtime currentEffect = do
-  newFacts <- collectRequirements (effectFacts currentEffect)
+recordFact :: Runtime -> Fact WorkflowFact -> IO Runtime
+recordFact runtime currentFact = do
+  newFacts <- collectFactExpr (factExpression currentFact)
   pure runtime {availableFacts = mergeFacts (availableFacts runtime) newFacts}
 
-enterCallbackScope :: Runtime -> Callback WorkflowFact -> IO ()
-enterCallbackScope runtime facts = do
-  neededFacts <- collectRequirements (callbackFacts facts)
-  case missingFacts (availableFacts runtime) neededFacts of
-    [] -> pure ()
-    missing ->
-      ioError $
-        userError $
-          "Missing required workflow facts: "
-            ++ joinWith ", " (map renderWorkflowFact missing)
+collectFactExpr :: FactExpr WorkflowFact -> IO [WorkflowFact]
+collectFactExpr (FactItems currentFacts) =
+  collectFacts currentFacts
+collectFactExpr (FactAll currentFacts) =
+  concat <$> mapM collectFactExpr currentFacts
+collectFactExpr (FactAny currentFacts) =
+  concat <$> mapM collectFactExpr currentFacts
 
-collectRequirements :: Requirement WorkflowFact -> IO [WorkflowFact]
-collectRequirements =
-  foldRequirementEffectState collectRequirement [] . requirementFacts
+collectFacts :: Requirement WorkflowFact -> IO [WorkflowFact]
+collectFacts =
+  foldRequirementEffectState collectFact [] . requirementFacts
   where
-    collectRequirement facts fact =
-      pure (fact : facts)
-
-missingFacts :: Registry -> [WorkflowFact] -> [WorkflowFact]
-missingFacts registry =
-  filter (`notElem` registry)
+    collectFact facts currentFact =
+      pure (currentFact : facts)
 
 mergeFacts :: [WorkflowFact] -> [WorkflowFact] -> [WorkflowFact]
 mergeFacts =
   foldl addFact
   where
-    addFact facts fact
-      | fact `elem` facts = facts
-      | otherwise = fact : facts
+    addFact facts currentFact
+      | currentFact `elem` facts = facts
+      | otherwise = currentFact : facts
 
 runFallbackWorkflow ::
   Runtime ->
@@ -170,18 +162,6 @@ renderLogEvent AppFinished = "应用结束"
 renderLogEvent UserRemembered = "用户输入"
 renderLogEvent ReportFinished = "计算报告完成"
 
-renderWorkflowFact :: WorkflowFact -> String
-renderWorkflowFact =
-  show
-
 renderChoiceKey :: ChoiceKey -> String
 renderChoiceKey (ChoiceKey value) =
   value
-
-joinWith :: String -> [String] -> String
-joinWith _ [] =
-  ""
-joinWith _ [item] =
-  item
-joinWith separator (item : rest) =
-  item ++ separator ++ joinWith separator rest
