@@ -1,0 +1,79 @@
+cabal-version:       2.2
+
+name:                mytest
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/githubuser/mytest#readme
+license:             BSD-3-Clause
+license-file:        LICENSE
+author:              Author name here
+maintainer:          example@example.com
+copyright:           2026 Author name here
+category:            Web
+build-type:          Custom
+extra-source-files:  README.md
+                     CHANGELOG.md
+
+custom-setup
+  setup-depends:      base >= 4.7 && < 5
+                    , Cabal >= 2.2
+                    , directory
+                    , filepath
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     AST.Facts
+                     , AST.Interceptors
+                     , AST.Names
+                     , AST.Vocabulary
+                     , Architecture
+                     , Architecture.Cata
+                     , Architecture.Internal
+                     , AppBlueprint
+                     , Blueprint
+                     , Boot
+                     , Configuration
+                     , Handle
+                     , Interpreter
+                     , Interpreter.Core
+                     , Interpreter.Runtime
+                     , Interpreter.Runtime.Algebra
+                     , Interpreter.Runtime.Types
+                     , Interpreter.View
+                     , Interpreter.View.Algebra
+                     , Lifecycle
+                     , Plugins
+                     , Report
+                     , Shutdown
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable mytest
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , mytest
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+source-repository head
+  type:     git
+  location: https://github.com/githubuser/mytest

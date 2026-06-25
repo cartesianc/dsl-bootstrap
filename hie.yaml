@@ -1,0 +1,6 @@
+cradle:
+  stack:
+    - path: "./src"
+      component: "mytest:lib"
+    - path: "./app"
+      component: "mytest:exe:mytest"

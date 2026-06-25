@@ -1,0 +1,9 @@
+packages: .
+
+-- Build with the GHC WebAssembly/WASI toolchain.
+--
+-- Expected tools on PATH:
+--   wasm32-wasi-ghc
+--   wasm32-wasi-ghc-pkg
+with-compiler: wasm32-wasi-ghc
+with-hc-pkg: wasm32-wasi-ghc-pkg

@@ -1,0 +1,10 @@
+.stack-work/
+.hls.log
+.hls-probe.log
+Setup.hie
+*.hi
+*.o
+*.dyn_hi
+*.dyn_o
+dist/
+dist-newstyle/
