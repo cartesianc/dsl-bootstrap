@@ -8,6 +8,7 @@ module Core.Architecture
   , Callback (..)
   , Wait (..)
   , Suspense (..)
+  , Loop (..)
   , FactExpr (..)
   , Hanging (..)
   , HangingAction (..)
@@ -37,6 +38,7 @@ module Core.Architecture
   , wait
   , hanging
   , suspense
+  , loop
   , fact
   ) where
 
@@ -94,13 +96,19 @@ data Suspense fact workflow = Suspense
   , suspenseTarget :: workflow
   }
 
+newtype Loop workflow = Loop
+  { loopBody :: workflow
+  }
+
 newtype Hanging action = Hanging
   { hangingActions :: FreeMonoid action
   }
 
-data HangingAction fact workflow
+data HangingAction fact hook workflow
   = HangingCallback (Callback fact workflow)
   | HangingSuspense (Suspense fact workflow)
+  | HangingLoop (Loop workflow)
+  | HangingMiddleware (Middleware hook) workflow
 
 newtype ChoiceKey = ChoiceKey String
   deriving (Eq)
@@ -121,7 +129,6 @@ data Workflow fact hook
   | RaceWorkflow (Race (Workflow fact hook))
   | ChoiceWorkflow ChoiceKey (Choice (Workflow fact hook))
   | WaitWorkflow (Wait fact) (Workflow fact hook)
-  | MiddlewareWorkflow (Middleware hook) (Workflow fact hook)
 
 freeChain :: [step] -> Chain step
 freeChain =
@@ -202,24 +209,33 @@ wait :: FactExpr fact -> Workflow fact hook -> Workflow fact hook
 wait currentFacts =
   WaitWorkflow (freeWait currentFacts)
 
-hanging :: [HangingAction fact workflow] -> Hanging (HangingAction fact workflow)
+hanging :: [HangingAction fact hook workflow] -> Hanging (HangingAction fact hook workflow)
 hanging =
   freeHanging
 
 callback ::
   FactExpr fact ->
   workflow ->
-  HangingAction fact workflow
+  HangingAction fact hook workflow
 callback currentFacts body =
   HangingCallback (Callback currentFacts body)
 
 suspense ::
   FactExpr fact ->
   workflow ->
-  HangingAction fact workflow
+  HangingAction fact hook workflow
 suspense currentFacts target =
   HangingSuspense (Suspense currentFacts target)
 
-middleware :: hook -> Workflow fact hook -> Workflow fact hook
-middleware currentMiddleware =
-  MiddlewareWorkflow (Middleware currentMiddleware)
+loop ::
+  workflow ->
+  HangingAction fact hook workflow
+loop body =
+  HangingLoop (Loop body)
+
+middleware ::
+  hook ->
+  workflow ->
+  HangingAction fact hook workflow
+middleware currentMiddleware body =
+  HangingMiddleware (Middleware currentMiddleware) body

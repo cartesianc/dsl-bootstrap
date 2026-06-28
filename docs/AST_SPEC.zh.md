@@ -28,14 +28,16 @@ app =
     ]
 ```
 
-`hooks` 只写 hanging hook：
+`hooks` 只写 hanging 外挂逻辑：
 
 ```haskell
 hooks :: AppHanging
 hooks =
   hanging
-    [ callback [UserKnownFact] reportModule
+    [ middleware ReportMiddleware reportModule
+    , callback [UserKnownFact] reportModule
     , suspense [ReportGeneratedFact] reportModule
+    , loop reportModule
     ]
 ```
 
@@ -50,7 +52,6 @@ hooks =
 ```haskell
 chain
 parallel
-middleware
 fact
 wait
 fallback
@@ -89,11 +90,13 @@ anyOf [UserKnownFact, ReportGeneratedFact]
 可用节点：
 
 ```haskell
+middleware
 callback
 suspense
+loop
 ```
 
-`callback` 和 `suspense` 不是 workflow 节点，不能写进 `chain`、`parallel`、`fallback`。
+`middleware`、`callback`、`suspense` 和 `loop` 不是 workflow 节点，不能写进 `chain`、`parallel`、`fallback`。
 
 ## 3. 各节点怎么看
 
@@ -121,13 +124,15 @@ parallel SomeFlow
 
 ### Middleware
 
+只属于 `hanging`。
+
 效果叠加结构，表达 interceptor / middleware 视角：
 
 ```haskell
 middleware SomeMiddleware body
 ```
 
-`middleware` 会把 `body` 这整个 workflow 包起来。也就是说，`body` 里面的所有子组件都会处在这一层 middleware 效果之下。
+`middleware` 接收一个 workflow body，但它本身挂在 `hanging` 里。读法是：`body` 这整个 workflow 都被叠加了这一层 middleware 效果。
 
 ```haskell
 middleware ReportMiddleware
@@ -178,7 +183,7 @@ wait
 fallback [primaryWorkflow, backupWorkflow]
 ```
 
-`fallback` 只能接收 workflow，不能接收 `callback`、`suspense` 或 fact 条件。
+`fallback` 只能接收 workflow，不能接收 `middleware`、`callback`、`suspense` 或 fact 条件。
 
 ### Race
 
@@ -220,6 +225,16 @@ suspense [SomeFact] runningComponent
 
 语义：当 fact 条件满足时，如果 `runningComponent` 正在运行，后续 runtime interpreter 可以 suspend 或 kill 它。
 
+### Loop
+
+只属于 `hanging`。
+
+```haskell
+loop workflowComponent
+```
+
+语义：`forever` 后面接一个 workflow component，并重复执行这个 workflow。retry、压测、次数控制等能力不属于 `loop` 节点本身，由 `fallback`、`middleware`、profile、测试 runner 或后续 scheduler 表达。
+
 ## 4. 新增插件流程
 
 以下以新增 `Payment` 组件为例。
@@ -235,10 +250,9 @@ src/Plugins/Payment.hs
 ### 第二步：声明模块导出
 
 ```haskell
-module Plugins.Payment
-  ( PaymentModule
-  , paymentModule
-  ) where
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
+
+module Plugins.Payment where
 
 import Blueprint
 ```
@@ -253,24 +267,34 @@ import Blueprint
 type PaymentModule = Wait
 ```
 
+如果这个组件还要叠加 middleware，就再写一个 hanging hook 类型：
+
+```haskell
+type PaymentHook = Middleware
+```
+
 完整示例：
 
 ```haskell
 type PaymentModule = Wait
+
+type PaymentHook = Middleware
 
 -- plugin: paymentModule
 paymentModule :: PaymentModule
 paymentModule =
   wait
     [ PaymentConfirmedFact ]
-    ( middleware
-        PaymentMiddleware
-        ( chain PaymentFlow
-            [ fact [PaymentCheckedFact]
-            , fact [PaymentFinishedFact]
-            ]
-        )
+    ( chain PaymentFlow
+        [ fact [PaymentCheckedFact]
+        , fact [PaymentFinishedFact]
+        ]
     )
+
+-- plugin: paymentHook
+paymentHook :: PaymentHook
+paymentHook =
+  middleware PaymentMiddleware paymentModule
 ```
 
 这个组件读法是：
@@ -279,13 +303,16 @@ paymentModule =
 - 它等待 `PaymentConfirmedFact`。
 - fact 满足后进入 `PaymentFlow`。
 - `PaymentFlow` 里声明两个 fact。
+- `paymentHook` 是 hanging component。
+- 它声明 `paymentModule` 整体叠加 `PaymentMiddleware`。
 
 ### 第四步：注册插件出口
 
-在组件上方写：
+分别在组件上方写：
 
 ```haskell
 -- plugin: paymentModule
+-- plugin: paymentHook
 ```
 
 构建时 `Setup.hs` 会扫描这个声明，并生成统一出口：
@@ -326,6 +353,12 @@ app =
     , paymentModule
     , reportModule
     , lifecycleEnd
+    ]
+
+hooks :: AppHanging
+hooks =
+  hanging
+    [ paymentHook
     ]
 ```
 

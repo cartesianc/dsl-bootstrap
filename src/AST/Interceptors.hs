@@ -7,6 +7,7 @@ data Interceptor
   = ConfigurationMiddleware
   | BootMiddleware
   | RuntimeMiddleware
+  | LoggingMiddleware
   | UserFlowMiddleware
   | ReportMiddleware
   | ShutdownMiddleware

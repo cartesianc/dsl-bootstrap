@@ -1,15 +1,21 @@
-module Plugins.Configuration
-  ( ConfigModule
-  , configurationModule
-  ) where
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
+
+module Plugins.Configuration where
 
 import Blueprint
 
 type ConfigModule = Parallel
 
+type ConfigHook = Middleware
+
 -- plugin: configurationModule
 configurationModule :: ConfigModule
 configurationModule =
   parallel ConfigurationFlow
-    [ middleware ConfigurationMiddleware (fact [AppConfiguredFact])
+    [ fact [AppConfiguredFact]
     ]
+
+-- plugin: configurationHook
+configurationHook :: ConfigHook
+configurationHook =
+  middleware ConfigurationMiddleware configurationModule

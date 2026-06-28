@@ -12,6 +12,7 @@ copyright:           2026 onetime
 category:            Language
 build-type:          Custom
 extra-source-files:  README.md
+                     TODO.md
                      CHANGELOG.md
 
 custom-setup
@@ -33,17 +34,42 @@ library
                      , Core.Architecture.Cata
                      , Core.Architecture.Internal
                      , Interpreter
+                     , Interpreter.Contextware
+                     , Interpreter.EffectAlgebra
+                     , Interpreter.FAlgebra
+                     , Interpreter.RecursionModel
                      , Interpreter.Runtime
                      , Interpreter.Runtime.Algebra
+                     , Interpreter.Runtime.Facts
+                     , Interpreter.Runtime.Hanging.FreeMonoid
+                     , Interpreter.Runtime.Smoke
+                     , Interpreter.Runtime.Trace
                      , Interpreter.Runtime.Types
+                     , Interpreter.Runtime.WorkflowRunReport
+                     , Interpreter.Runtime.Workflow.Choice
+                     , Interpreter.Runtime.Workflow.FreeAlternative
+                     , Interpreter.Runtime.Workflow.FreeApplicative
+                     , Interpreter.Runtime.Workflow.FreeMonad
+                     , Interpreter.Runtime.Workflow.Wait
+                     , Interpreter.Types
                      , Interpreter.View.Algebra
+                     , Interpreter.View.Hanging.FreeMonoid
+                     , Interpreter.View.Program
+                     , Interpreter.View.Workflow.Choice
+                     , Interpreter.View.Workflow.FreeAlternative
+                     , Interpreter.View.Workflow.FreeApplicative
+                     , Interpreter.View.Workflow.FreeMonad
+                     , Interpreter.View.Workflow.Wait
+                     , Interpreter.WorkflowAlgebra
                      , Plugins
                      , Plugins.Boot
                      , Plugins.Configuration
                      , Plugins.Handle
                      , Plugins.Lifecycle
+                     , Plugins.Logging
                      , Plugins.Report
                      , Plugins.Shutdown
+  other-modules:       Core.Validation
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
   ghc-options:         -Wall
@@ -59,6 +85,8 @@ library
 executable mytest
   hs-source-dirs:      app
   main-is:             Main.hs
+  other-modules:       CurrentAst
+                     , InterpretConfig
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , mytest

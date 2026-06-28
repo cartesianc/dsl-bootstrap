@@ -41,6 +41,20 @@ pluginRegistryPath :: FilePath
 pluginRegistryPath =
   "src" </> "Core" </> "Plugins.hs"
 
+data PluginSource = PluginSource
+  { sourcePath :: FilePath
+  , sourceModuleName :: String
+  , sourceContent :: String
+  }
+
+generatedImportStart :: String
+generatedImportStart =
+  "-- plugin imports: begin"
+
+generatedImportEnd :: String
+generatedImportEnd =
+  "-- plugin imports: end"
+
 main :: IO ()
 main =
   defaultMainWithHooks
@@ -56,10 +70,170 @@ generatePlugins = do
   pluginExports <- fmap concat (mapM pluginExportsFromFile sourceFiles)
   case duplicateValues pluginExports of
     [] -> do
+      updatePluginImports sourceFiles pluginExports
       createDirectoryIfMissing True (takeDirectory pluginRegistryPath)
       writeFile pluginRegistryPath (renderPlugins pluginExports)
     duplicates ->
       die ("Duplicate plugin exports: " ++ intercalate ", " duplicates)
+
+updatePluginImports :: [FilePath] -> [PluginExport] -> IO ()
+updatePluginImports sourceFiles pluginExports = do
+  pluginSources <- fmap concat (mapM pluginSourceFromFile sourceFiles)
+  mapM_ (writePluginImports pluginExports) pluginSources
+
+pluginSourceFromFile :: FilePath -> IO [PluginSource]
+pluginSourceFromFile path = do
+  source <- readSource path
+  case moduleName source of
+    Just currentModule
+      | isPluginModule currentModule && not (null (pluginMarkers source)) ->
+          pure [PluginSource path currentModule source]
+    _ ->
+      pure []
+
+isPluginModule :: String -> Bool
+isPluginModule currentModule =
+  case stripPrefixText "Plugins." currentModule of
+    Just suffix ->
+      not (generatedPluginModule suffix)
+    Nothing ->
+      False
+
+generatedPluginModule :: String -> Bool
+generatedPluginModule suffix =
+  hasGeneratedPrefix "Dependencies." suffix || hasGeneratedPrefix "Scope." suffix
+
+referencedPluginExports :: [PluginExport] -> PluginSource -> [PluginExport]
+referencedPluginExports pluginExports pluginSource =
+  sortPluginExports
+    [ pluginExport
+    | pluginExport <- pluginExports
+    , pluginModule pluginExport /= sourceModuleName pluginSource
+    , pluginValue pluginExport `elem` identifiersIn (sourceContent pluginSource)
+    ]
+
+writePluginImports :: [PluginExport] -> PluginSource -> IO ()
+writePluginImports pluginExports pluginSource = do
+  let referencedModules =
+        sort (nub (map pluginModule (referencedPluginExports pluginExports pluginSource)))
+      updatedSource =
+        insertGeneratedImports
+          referencedModules
+          (removeGeneratedImports (sourceContent pluginSource))
+  if updatedSource == sourceContent pluginSource
+    then pure ()
+    else writeFile (sourcePath pluginSource) updatedSource
+
+insertGeneratedImports :: [String] -> String -> String
+insertGeneratedImports modules source
+  | null modules =
+      source
+  | otherwise =
+      unlines (before ++ renderGeneratedImports modules ++ after)
+  where
+    sourceLines =
+      lines source
+    (before, after) =
+      splitAt (importInsertionIndex sourceLines) sourceLines
+
+renderGeneratedImports :: [String] -> [String]
+renderGeneratedImports modules =
+  [ generatedImportStart ]
+    ++ map ("import " ++) modules
+    ++ [ generatedImportEnd ]
+
+removeGeneratedImports :: String -> String
+removeGeneratedImports =
+  unlines . removeDependencyImports . removeGeneratedImportBlock . lines
+
+removeGeneratedImportBlock :: [String] -> [String]
+removeGeneratedImportBlock [] =
+  []
+removeGeneratedImportBlock (line : rest)
+  | trimLeft line == generatedImportStart =
+      removeGeneratedImportBlock (dropGeneratedImportBlock rest)
+  | otherwise =
+      line : removeGeneratedImportBlock rest
+
+dropGeneratedImportBlock :: [String] -> [String]
+dropGeneratedImportBlock [] =
+  []
+dropGeneratedImportBlock (line : rest)
+  | trimLeft line == generatedImportEnd =
+      rest
+  | otherwise =
+      dropGeneratedImportBlock rest
+
+removeDependencyImports :: [String] -> [String]
+removeDependencyImports =
+  filter (not . generatedDependencyImportLine)
+
+generatedDependencyImportLine :: String -> Bool
+generatedDependencyImportLine line =
+  case words (trimLeft line) of
+    ("import" : "qualified" : moduleNameValue : _) ->
+      isGeneratedDependencyModule moduleNameValue
+    ("import" : moduleNameValue : _) ->
+      isGeneratedDependencyModule moduleNameValue
+    _ ->
+      False
+
+isGeneratedDependencyModule :: String -> Bool
+isGeneratedDependencyModule moduleNameValue =
+  hasGeneratedPrefix "Plugins.Dependencies." moduleNameValue
+    || hasGeneratedPrefix "Plugins.Scope." moduleNameValue
+
+importInsertionIndex :: [String] -> Int
+importInsertionIndex sourceLines =
+  case lastImportLine sourceLines of
+    Just index ->
+      index + 1
+    Nothing ->
+      case moduleHeaderLine sourceLines of
+        Just index -> index + 1
+        Nothing -> 0
+
+lastImportLine :: [String] -> Maybe Int
+lastImportLine =
+  lastMatchingLine importLine
+
+moduleHeaderLine :: [String] -> Maybe Int
+moduleHeaderLine =
+  firstMatchingLine moduleLine
+
+lastMatchingLine :: (String -> Bool) -> [String] -> Maybe Int
+lastMatchingLine predicate =
+  foldl rememberMatch Nothing . zip [0 ..]
+  where
+    rememberMatch current (index, line)
+      | predicate line = Just index
+      | otherwise = current
+
+firstMatchingLine :: (String -> Bool) -> [String] -> Maybe Int
+firstMatchingLine predicate =
+  firstJust . map matchLine . zip [0 ..]
+  where
+    matchLine (index, line)
+      | predicate line = Just index
+      | otherwise = Nothing
+
+importLine :: String -> Bool
+importLine line =
+  case words (trimLeft line) of
+    ("import" : _) -> True
+    _ -> False
+
+moduleLine :: String -> Bool
+moduleLine line =
+  case words (trimLeft line) of
+    ("module" : _) -> True
+    _ -> False
+
+hasGeneratedPrefix :: String -> String -> Bool
+hasGeneratedPrefix prefix text =
+  case stripPrefixText prefix text of
+    Just _ -> True
+    Nothing -> False
 
 haskellFiles :: FilePath -> IO [FilePath]
 haskellFiles root = do
@@ -176,6 +350,16 @@ wordsByPluginSeparator text =
       let valueName = takeWhile isIdentifierChar rest
           remaining = dropWhile isIdentifierChar rest
        in valueName : wordsByPluginSeparator remaining
+
+identifiersIn :: String -> [String]
+identifiersIn text =
+  case dropWhile (not . isIdentifierStart) text of
+    [] ->
+      []
+    rest ->
+      let identifier = takeWhile isIdentifierChar rest
+          remaining = dropWhile isIdentifierChar rest
+       in identifier : identifiersIn remaining
 
 isIdentifierStart :: Char -> Bool
 isIdentifierStart char =

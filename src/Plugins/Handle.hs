@@ -1,12 +1,12 @@
-module Plugins.Handle
-  ( UserModule
-  , userModule
-  , onboarding
-  ) where
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
+
+module Plugins.Handle where
 
 import Blueprint
 
 type UserModule = Parallel
+
+type UserHook = Middleware
 
 type Onboarding = Wait
 
@@ -23,12 +23,14 @@ onboarding =
   wait
     [ RuntimePreparedFact
     ]
-    ( middleware
-        UserFlowMiddleware
-        ( chain OnboardingFlow
-            [ fact [UserNameAskedFact]
-            , fact [UserGreetedFact]
-            , fact [UserKnownFact]
-            ]
-        )
+    ( chain OnboardingFlow
+        [ fact [UserNameAskedFact]
+        , fact [UserGreetedFact]
+        , fact [UserKnownFact]
+        ]
     )
+
+-- plugin: userHook
+userHook :: UserHook
+userHook =
+  middleware UserFlowMiddleware onboarding

@@ -1,11 +1,12 @@
-module Plugins.Boot
-  ( BootModule
-  , bootModule
-  ) where
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
+
+module Plugins.Boot where
 
 import Blueprint
 
 type BootModule = Wait
+
+type BootHook = Middleware
 
 -- plugin: bootModule
 bootModule :: BootModule
@@ -14,7 +15,17 @@ bootModule =
     [ AppConfiguredFact
     ]
     ( parallel BootPreparation
-        [ middleware BootMiddleware (fact [AppStartedFact])
-        , middleware RuntimeMiddleware (fact [RuntimePreparedFact])
+        [ fact [AppStartedFact]
+        , fact [RuntimePreparedFact]
         ]
     )
+
+-- plugin: bootHook
+bootHook :: BootHook
+bootHook =
+  middleware BootMiddleware bootModule
+
+-- plugin: runtimeHook
+runtimeHook :: BootHook
+runtimeHook =
+  middleware RuntimeMiddleware bootModule

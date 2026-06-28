@@ -1,11 +1,12 @@
-module Plugins.Shutdown
-  ( ShutdownModule
-  , shutdownModule
-  ) where
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
+
+module Plugins.Shutdown where
 
 import Blueprint
 
 type ShutdownModule = Wait
+
+type ShutdownHook = Middleware
 
 -- plugin: shutdownModule
 shutdownModule :: ShutdownModule
@@ -14,6 +15,11 @@ shutdownModule =
     [ ReportGeneratedFact
     ]
     ( parallel ShutdownFlow
-        [ middleware ShutdownMiddleware (fact [AppFinishedFact])
+        [ fact [AppFinishedFact]
         ]
     )
+
+-- plugin: shutdownHook
+shutdownHook :: ShutdownHook
+shutdownHook =
+  middleware ShutdownMiddleware shutdownModule

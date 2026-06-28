@@ -61,23 +61,21 @@ foo2 =
     , fact [SquaresCalculatedFact]
     ]
 
-foo3 :: Middleware
+foo3 :: Parallel
 foo3 =
-  middleware ReportMiddleware
-    (parallel Foo3
-      [ fact [AddCalculatedFact]
-      , fact [FactorialCalculatedFact]
-      ])
+  parallel Foo3
+    [ fact [AddCalculatedFact]
+    , fact [FactorialCalculatedFact]
+    ]
 
 foo4 :: Wait
 foo4 =
   wait
     (allOf [UserKnownFact, RuntimePreparedFact])
-    (middleware ReportMiddleware
-      (chain Foo4
-        [ fact [CalculationSectionOpenedFact]
-        , fact [ReportGeneratedFact]
-        ]))
+    (chain Foo4
+      [ fact [CalculationSectionOpenedFact]
+      , fact [ReportGeneratedFact]
+      ])
 
 foo5 :: Fact
 foo5 =
@@ -94,9 +92,27 @@ foo8 =
 hooks :: AppHanging
 hooks =
   hanging
-    [ foo7
+    [ configurationHook
+    , bootHook
+    , runtimeHook
+    , loggingHook
+    , userHook
+    , reportHook
+    , shutdownHook
+    , foo3Hook
+    , foo4Hook
+    , foo7
     , foo9
+    , reportLoop
     ]
+
+foo3Hook :: Middleware
+foo3Hook =
+  middleware ReportMiddleware foo3
+
+foo4Hook :: Middleware
+foo4Hook =
+  middleware ReportMiddleware foo4
 
 foo7 :: HangingComponent
 foo7 =

@@ -1,12 +1,13 @@
-module Plugins.Lifecycle
-  ( lifecycleStart
-  , lifecycleEnd
-  ) where
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
+
+module Plugins.Lifecycle where
 
 import Blueprint
+-- plugin imports: begin
 import Plugins.Boot
 import Plugins.Configuration
 import Plugins.Shutdown
+-- plugin imports: end
 
 -- plugin: lifecycleStart
 lifecycleStart :: Chain

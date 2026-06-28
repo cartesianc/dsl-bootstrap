@@ -13,7 +13,7 @@ import Core.Architecture.Internal
   , fmapFreeMonoid
   )
 
-data WorkflowAlgebra fact hook result = WorkflowAlgebra
+data WorkflowAlgebra fact result = WorkflowAlgebra
   { onFact :: Fact fact -> result
   , onChain :: WorkflowName -> Chain result -> result
   , onParallel :: WorkflowName -> Parallel result -> result
@@ -21,11 +21,10 @@ data WorkflowAlgebra fact hook result = WorkflowAlgebra
   , onRace :: Race result -> result
   , onChoice :: ChoiceKey -> Choice result -> result
   , onWait :: Wait fact -> result -> result
-  , onMiddleware :: Middleware hook -> result -> result
   }
 
 cataWorkflow ::
-  WorkflowAlgebra fact hook result ->
+  WorkflowAlgebra fact result ->
   Workflow fact hook ->
   result
 cataWorkflow algebra (FactWorkflow currentFact) =
@@ -42,13 +41,11 @@ cataWorkflow algebra (ChoiceWorkflow selectedKey branches) =
   onChoice algebra selectedKey (mapChoice (cataWorkflow algebra) branches)
 cataWorkflow algebra (WaitWorkflow facts body) =
   onWait algebra facts (cataWorkflow algebra body)
-cataWorkflow algebra (MiddlewareWorkflow currentMiddleware body) =
-  onMiddleware algebra currentMiddleware (cataWorkflow algebra body)
 
 cataHanging ::
-  WorkflowAlgebra fact hook result ->
-  Hanging (HangingAction fact (Workflow fact hook)) ->
-  Hanging (HangingAction fact result)
+  WorkflowAlgebra fact result ->
+  Hanging (HangingAction fact hook (Workflow fact hook)) ->
+  Hanging (HangingAction fact hook result)
 cataHanging algebra =
   mapHanging (cataWorkflow algebra)
 
@@ -74,19 +71,23 @@ mapChoice transform branches =
 
 mapHanging ::
   (workflow -> nextWorkflow) ->
-  Hanging (HangingAction fact workflow) ->
-  Hanging (HangingAction fact nextWorkflow)
+  Hanging (HangingAction fact hook workflow) ->
+  Hanging (HangingAction fact hook nextWorkflow)
 mapHanging transform actions =
   Hanging (fmapFreeMonoid (mapHangingAction transform) (hangingActions actions))
 
 mapHangingAction ::
   (workflow -> nextWorkflow) ->
-  HangingAction fact workflow ->
-  HangingAction fact nextWorkflow
+  HangingAction fact hook workflow ->
+  HangingAction fact hook nextWorkflow
 mapHangingAction transform (HangingCallback currentCallback) =
   HangingCallback (mapCallback transform currentCallback)
 mapHangingAction transform (HangingSuspense currentSuspense) =
   HangingSuspense (mapSuspense transform currentSuspense)
+mapHangingAction transform (HangingLoop currentLoop) =
+  HangingLoop (mapLoop transform currentLoop)
+mapHangingAction transform (HangingMiddleware currentMiddleware body) =
+  HangingMiddleware currentMiddleware (transform body)
 
 mapCallback ::
   (workflow -> nextWorkflow) ->
@@ -106,4 +107,13 @@ mapSuspense transform currentSuspense =
   Suspense
     { suspenseFacts = suspenseFacts currentSuspense
     , suspenseTarget = transform (suspenseTarget currentSuspense)
+    }
+
+mapLoop ::
+  (workflow -> nextWorkflow) ->
+  Loop workflow ->
+  Loop nextWorkflow
+mapLoop transform currentLoop =
+  Loop
+    { loopBody = transform (loopBody currentLoop)
     }

@@ -2,11 +2,13 @@ module Main
   ( main
   ) where
 
-import AST.AppBlueprint
-import Interpreter
-  ( interpreter
+import CurrentAst
+  ( currentAst
+  )
+import InterpretConfig
+  ( currentInterpreter
   )
 
 main :: IO ()
 main =
-  interpreter blueprint
+  currentInterpreter currentAst

@@ -20,4 +20,4 @@ data WorkflowName
   | Foo4
   | Foo5
   | Foo6
-  deriving (Show)
+  deriving (Eq, Show)

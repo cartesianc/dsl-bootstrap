@@ -3,37 +3,30 @@ module Interpreter
   , interpreter
   , runApp
   , runAppWith
+  , runBlueprint
+  , runBlueprintWith
   ) where
 
 import AST.AppBlueprint
-  ( AppBlueprint (..)
+  ( AppBlueprint
   )
-import AST.Vocabulary
-  ( Interceptor
-  , WorkflowFact
+import Interpreter.Contextware
+  ( contextware
   )
-import Core.Architecture.Cata
-  ( WorkflowAlgebra
-  , cataHanging
-  , cataWorkflow
+import Interpreter.FAlgebra
+  ( fAlgebra
+  )
+import Interpreter.RecursionModel
+  ( cataModel
   )
 import Interpreter.Runtime
   ( Runtime (..)
   , runApp
   , runAppWith
-  )
-import Interpreter.View.Algebra
-  ( Program
-  , algebra
   , runBlueprint
+  , runBlueprintWith
   )
 
 interpreter :: AppBlueprint -> IO ()
 interpreter ast =
-  cata algebra ast
-
-cata :: WorkflowAlgebra WorkflowFact Interceptor Program -> AppBlueprint -> IO ()
-cata currentAlgebra ast =
-  runBlueprint
-    (cataWorkflow currentAlgebra (blueprintApp ast))
-    (cataHanging currentAlgebra (blueprintHanging ast))
+  cataModel (contextware fAlgebra) ast

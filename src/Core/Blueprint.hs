@@ -22,6 +22,7 @@ module Blueprint
   , wait
   , callback
   , suspense
+  , loop
   , allOf
   , anyOf
   , hanging
@@ -43,13 +44,13 @@ type WorkflowComponent = Workflow WorkflowFact Interceptor
 
 type FactComponent = Architecture.FactExpr WorkflowFact
 
-type HangingComponent = Architecture.HangingAction WorkflowFact WorkflowComponent
+type HangingComponent = Architecture.HangingAction WorkflowFact Interceptor WorkflowComponent
 
 type Chain = WorkflowComponent
 
 type Parallel = WorkflowComponent
 
-type Middleware = WorkflowComponent
+type Middleware = HangingComponent
 
 type Fact = WorkflowComponent
 
@@ -105,6 +106,10 @@ callback currentFacts =
 suspense :: FactDsl currentFacts => currentFacts -> WorkflowComponent -> HangingComponent
 suspense currentFacts =
   Architecture.suspense (facts currentFacts)
+
+loop :: WorkflowComponent -> HangingComponent
+loop =
+  Architecture.loop
 
 allOf :: FactDsl currentFact => [currentFact] -> FactComponent
 allOf =
