@@ -14,6 +14,7 @@ build-type:          Custom
 extra-source-files:  README.md
                      TODO.md
                      CHANGELOG.md
+                     docs/PACKAGE_BOUNDARY.zh.md
 
 custom-setup
   setup-depends:      base >= 4.7 && < 5
@@ -30,13 +31,19 @@ library
                      , AST.Names
                      , AST.Vocabulary
                      , Blueprint
+                     , Core.Bootstrap
+                     , Core.Boundary.Frontend
                      , Core.Architecture
                      , Core.Architecture.Cata
                      , Core.Architecture.Cata.Types
                      , Core.Architecture.Recursion
+                     , Core.Effect.Constraint
+                     , Core.Effect.Constraint.SMT
                      , Core.Effect.Semantics
                      , Core.Architecture.Internal
                      , Core.App
+                     , Core.App.Ana
+                     , Core.App.Boundary
                      , Core.Workflow.Eff
                      , Core.Workflow.Semantics
                      , Core.Workflow.Semantics.Render
@@ -48,6 +55,10 @@ library
                      , Effects.System
                      , Effects.Theory
                      , Effects.User
+                     , Framework.Background
+                     , Framework.Effect
+                     , Framework.Hylo
+                     , Framework.Workflow
                      , Interpreter
                      , Interpreter.Contextware
                      , Interpreter.EffectAlgebra
@@ -59,6 +70,9 @@ library
                      , Interpreter.Runtime.Ensure
                      , Interpreter.Runtime.Facts
                      , Interpreter.Runtime.Hanging.FreeMonoid
+                     , Interpreter.Runtime.Handlers
+                     , Interpreter.Runtime.Middleware
+                     , Interpreter.Runtime.Monad
                      , Interpreter.Runtime.RecursionModel
                      , Interpreter.Runtime.Smoke
                      , Interpreter.Runtime.Trace
@@ -90,6 +104,8 @@ library
   other-modules:       Core.Validation
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
+                     , directory
+                     , filepath
   ghc-options:         -Wall
                        -Wcompat
                        -Widentities
@@ -106,6 +122,54 @@ executable mytest
   other-modules:       CurrentAst
                      , CurrentEffects
                      , InterpretConfig
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , mytest
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable runtime-smoke
+  hs-source-dirs:      app
+  main-is:             RuntimeSmoke.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , mytest
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable frontend-boundary-smoke
+  hs-source-dirs:      app
+  main-is:             FrontendBoundarySmoke.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , mytest
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable core-boundary-smoke
+  hs-source-dirs:      app
+  main-is:             CoreBoundarySmoke.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , mytest

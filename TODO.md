@@ -100,7 +100,7 @@ onFact :: Fact -> carrier FactResult
 produceFact :: Fact -> carrier FactResult
 ```
 
-这一步只抽象 workflow 叶子节点，不实现完整 effect system。
+范围：抽象 workflow 叶子节点；完整 effect system 另行定义。
 
 ### 边界规则
 
@@ -372,7 +372,7 @@ data UserEffect a where
   SaveUser    :: User -> UserEffect ()
 ```
 
-这一步只描述出站能力签名：
+出站能力签名：
 
 ```text
 externalMake boundary = 输入类型 -> 输出类型
@@ -400,7 +400,7 @@ producer UserKnownFact
   ]
 ```
 
-这一步回答：
+FactProducer 需要回答：
 
 ```text
 谁生产 UserKnownFact？
@@ -625,13 +625,13 @@ onFact = produceFactWith currentEffectTheory currentProfile
 
 ### 当前结论
 
-现在先不直接接 SMT solver。下一步更适合先把 `AppPlan`、`EffectTheory`、take/make rule、profile implementation 和 wait gate 抽成一层纯 Haskell 的约束事实。
+先抽取纯 Haskell 约束事实，再接 SMT solver。输入包括 `AppPlan`、`EffectTheory`、take/make rule、profile implementation 和 wait gate。
 
 这层约束事实先服务于解释、检查和错误报告；等 effect system 语义稳定后，再选择是否把它翻译成 SBV、Z3 或其他 solver 后端。
 
 ### 目标
 
-定义一个不依赖 runtime handler 的 `Core.Effect.Constraint`。它只描述当前 app 中有哪些 fact、rule、externalMake、externalTake、implementation 和 wait 条件，不执行 IO，也不调用具体 handler。
+定义不依赖 runtime handler 的 `Core.Effect.Constraint`。内容包括当前 app 的 fact、rule、externalMake、externalTake、implementation 和 wait 条件；不执行 IO，不调用具体 handler。
 
 示例形状：
 
@@ -665,15 +665,15 @@ data ConstraintFact
 
 ### 直接收益
 
-- app 构建阶段可以给出更清楚的缺失依赖解释。
-- profile 完备性可以从约束事实中统一检查。
-- runtime 不需要先跑起来，也能解释“为什么这个 fact 能产生”。
-- mock / benchmark 可以自动计算最小 externalMake implementation 集合。
-- 未来接 JSON、RPC、插件注册表或 ana coalgebra 时，可以复用同一套检查。
+- app 构建阶段输出缺失依赖解释。
+- profile 完备性从约束事实中统一检查。
+- runtime 执行前解释 fact 产生路径。
+- mock / benchmark 自动计算最小 externalMake implementation 集合。
+- JSON、RPC、插件注册表或 ana coalgebra 复用同一套检查。
 
 ### 后续 SMT 用途
 
-当普通 Haskell 检查不够表达时，再把 `ConstraintFact` 翻译给 solver：
+solver 输入：
 
 - fact reachability：某个目标 fact 是否一定可达。
 - counterexample：如果不可达，给出缺失的最短依赖链。

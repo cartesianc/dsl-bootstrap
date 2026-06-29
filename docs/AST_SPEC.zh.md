@@ -1,8 +1,8 @@
 # AST DSL 使用说明
 
-这份文档说明前台 AST 的写法。free 结构、cata 和 runtime 实现放在 core/interpreter 文档里。
+前台 AST 写法规格。free 结构、cata 和 runtime 实现属于 core/interpreter。
 
-## 1. 先看最终形状
+## 1. 蓝图形状
 
 主蓝图由 `app` 和 `hooks` 组成：
 
@@ -15,7 +15,7 @@ blueprint =
     }
 ```
 
-`app` 只写 workflow：
+`app` 写 workflow：
 
 ```haskell
 app :: App
@@ -63,19 +63,19 @@ choice
 
 `FactComponent` 表示 fact 条件。
 
-最简单的写法是一个 fact 或一组 fact：
+基本写法：
 
 ```haskell
 [UserKnownFact]
 ```
 
-可以用 `allOf` 表示“全部满足”：
+`allOf` 表示全部满足：
 
 ```haskell
 allOf [UserKnownFact, RuntimePreparedFact]
 ```
 
-可以用 `anyOf` 表示“任意满足”：
+`anyOf` 表示任意满足：
 
 ```haskell
 anyOf [UserKnownFact, ReportGeneratedFact]
@@ -98,7 +98,7 @@ loop
 
 `middleware`、`callback`、`suspense` 和 `loop` 属于 `hanging`，不能写进 `chain`、`parallel`、`fallback`。
 
-## 3. 各节点怎么看
+## 3. 节点语义
 
 ### Chain
 
@@ -124,15 +124,15 @@ parallel SomeFlow
 
 ### Middleware
 
-只属于 `hanging`。
+作用域：`hanging`。
 
-效果叠加结构，表达 interceptor / middleware 视角：
+结构：
 
 ```haskell
 middleware SomeMiddleware body
 ```
 
-`middleware` 接收一个 workflow body，本身挂在 `hanging` 里。含义是：`body` 整体叠加这一层 middleware。
+语义：给 workflow body 叠加 middleware。
 
 ```haskell
 middleware ReportMiddleware
@@ -144,10 +144,12 @@ middleware ReportMiddleware
 
 组合规则：
 
-- 多层 middleware 可以继续叠加。
-- 空 middleware 可以看成 identity。
+- 多层 middleware 支持叠加。
+- 空 middleware 为 identity。
 - 叠加满足结合律。
-- 当前 interpreter 把 middleware 解释为顺序无关的效果集合。
+- runtime 在执行 body 前把 middleware 放入 active stack，body 结束后退出。
+- middleware enter/exit 留下结构化 runtime event；target 失败时也退出 stack。
+- middleware 只包住声明中的 body。主 workflow component identity 改写由 scheduler/registry 处理。
 - `FreeMonoid` 提供组合结构，顺序语义由 interpreter 决定。
 
 ### Fact
@@ -206,7 +208,7 @@ choice
 
 ### Callback
 
-只属于 `hanging`。
+作用域：`hanging`。
 
 ```haskell
 callback [SomeFact] body
@@ -216,7 +218,7 @@ callback [SomeFact] body
 
 ### Suspense
 
-只属于 `hanging`。
+作用域：`hanging`。
 
 ```haskell
 suspense [SomeFact] runningComponent
@@ -226,7 +228,7 @@ suspense [SomeFact] runningComponent
 
 ### Loop
 
-只属于 `hanging`。
+作用域：`hanging`。
 
 ```haskell
 loop workflowComponent
@@ -236,7 +238,7 @@ loop workflowComponent
 
 ## 4. 新增插件流程
 
-以下以新增 `Payment` 组件为例。
+示例：新增 `Payment` 组件。
 
 ### 第一步：新建插件文件
 
@@ -258,15 +260,15 @@ import Blueprint
 
 ### 第三步：写组件形状
 
-组件类型说明这个组件最外层是什么节点。
+组件类型标记最外层节点。
 
-如果最外层是 `wait`：
+最外层为 `wait`：
 
 ```haskell
 type PaymentModule = Wait
 ```
 
-需要 middleware 时，额外声明一个 hanging hook：
+middleware hook：
 
 ```haskell
 type PaymentHook = Middleware

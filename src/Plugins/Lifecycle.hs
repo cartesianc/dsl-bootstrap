@@ -2,7 +2,7 @@
 
 module Plugins.Lifecycle where
 
-import Blueprint
+import Framework.Workflow
 -- plugin imports: begin
 import Plugins.Boot
 import Plugins.Configuration

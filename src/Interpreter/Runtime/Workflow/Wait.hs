@@ -11,19 +11,27 @@ import Core.Architecture
 import Interpreter.Runtime.Facts
   ( factExprAvailable
   )
+import Interpreter.Runtime.Monad
+  ( getRuntimeState
+  , throwRuntimeError
+  , traceRuntimeM
+  )
 import Interpreter.Runtime.Trace
   ( renderFactExpr
-  , traceRuntime
   )
 import Interpreter.Runtime.Types
-  ( WorkflowProgram
+  ( RuntimeError (..)
+  , WorkflowProgram
   )
 
 waitForFacts :: Wait WorkflowFact -> WorkflowProgram -> WorkflowProgram
-waitForFacts currentWait body runtime
-  | factExprAvailable runtime (waitFacts currentWait) = do
-      traceRuntime ("wait ok " ++ renderFactExpr (waitFacts currentWait))
-      body runtime
-  | otherwise = do
-      traceRuntime ("wait blocked " ++ renderFactExpr (waitFacts currentWait))
-      ioError (userError "Wait workflow is missing required facts")
+waitForFacts currentWait body = do
+  runtime <- getRuntimeState
+  if factExprAvailable runtime (waitFacts currentWait)
+    then do
+      traceRuntimeM ("wait ok " ++ renderFactExpr (waitFacts currentWait))
+      body
+    else do
+      let facts = renderFactExpr (waitFacts currentWait)
+      traceRuntimeM ("wait blocked " ++ facts)
+      throwRuntimeError (RuntimeWaitBlocked facts)

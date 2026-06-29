@@ -2,7 +2,7 @@ module Effects.Logging
   ( loggingEffect
   ) where
 
-import Effects.EffectTheory
+import Framework.Effect
 
 -- effect: loggingEffect
 loggingEffect :: EffectUnit

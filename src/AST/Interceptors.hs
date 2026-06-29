@@ -11,7 +11,7 @@ data Interceptor
   | UserFlowMiddleware
   | ReportMiddleware
   | ShutdownMiddleware
-  deriving (Show)
+  deriving (Eq, Show)
 
 data LogEvent
   = AppStarted

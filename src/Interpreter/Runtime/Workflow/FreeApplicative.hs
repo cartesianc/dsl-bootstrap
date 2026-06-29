@@ -11,7 +11,6 @@ import Control.Concurrent
   )
 import Control.Exception
   ( SomeException
-  , throwIO
   , try
   )
 
@@ -25,43 +24,83 @@ import Core.Architecture.Internal
 import Interpreter.Runtime.Facts
   ( mergeRuntime
   )
-import Interpreter.Runtime.Types
-  ( Runtime
-  , WorkflowProgram
+import Interpreter.Runtime.Monad
+  ( askRuntimeEnv
+  , getRuntimeState
+  , liftRuntimeIO
+  , modifyRuntimeState
+  , runRuntimeM
+  , throwRuntimeError
+  , traceRuntimeM
   )
-import Interpreter.Runtime.Trace
-  ( traceRuntime
+import Interpreter.Runtime.Types
+  ( Runtime (..)
+  , RuntimeEnv
+  , RuntimeError (..)
+  , WorkflowProgram
+  , RuntimeResult (..)
   )
 
 freeApplicativeParallel :: WorkflowName -> Parallel WorkflowProgram -> WorkflowProgram
-freeApplicativeParallel label branches runtime = do
+freeApplicativeParallel label branches = do
   let branchPrograms = freeApplicativeBranches (parallelBranches branches)
-  traceRuntime ("parallel " ++ show label ++ " fork " ++ show (length branchPrograms))
-  results <- runParallelBranches runtime branchPrograms
-  traceRuntime ("parallel " ++ show label ++ " done")
-  pure (foldl mergeRuntime runtime results)
+  environment <- askRuntimeEnv
+  runtime <- getRuntimeState
+  traceRuntimeM ("parallel " ++ show label ++ " fork " ++ show (length branchPrograms))
+  results <- liftRuntimeIO (runParallelBranches environment runtime branchPrograms)
+  mergeParallelResults results
+  traceRuntimeM ("parallel " ++ show label ++ " done")
 
-runParallelBranches :: Runtime -> [WorkflowProgram] -> IO [Runtime]
-runParallelBranches runtime branches = do
-  resultBoxes <- mapM (forkBranch runtime) branches
+runParallelBranches :: RuntimeEnv -> Runtime -> [WorkflowProgram] -> IO [RuntimeResult ()]
+runParallelBranches environment runtime branches = do
+  resultBoxes <- mapM (forkBranch environment runtime) branches
   mapM takeBranchResult resultBoxes
 
 forkBranch ::
+  RuntimeEnv ->
   Runtime ->
   WorkflowProgram ->
-  IO (MVar (Either SomeException Runtime))
-forkBranch runtime branch = do
+  IO (MVar (Either SomeException (RuntimeResult ())))
+forkBranch environment runtime branch = do
   resultBox <- newEmptyMVar
-  _ <- forkIO (try (branch runtime) >>= putMVar resultBox)
+  _ <- forkIO (try (runRuntimeM environment (branchRuntime runtime) branch) >>= putMVar resultBox)
   pure resultBox
 
 takeBranchResult ::
-  MVar (Either SomeException Runtime) ->
-  IO Runtime
+  MVar (Either SomeException (RuntimeResult ())) ->
+  IO (RuntimeResult ())
 takeBranchResult resultBox = do
   result <- takeMVar resultBox
   case result of
-    Right runtime ->
-      pure runtime
+    Right runtimeResult ->
+      pure runtimeResult
     Left exception ->
-      throwIO exception
+      pure (RuntimeFailed (RuntimeIoException (show exception)) emptyBranchRuntime)
+
+mergeParallelResults :: [RuntimeResult ()] -> WorkflowProgram
+mergeParallelResults [] =
+  pure ()
+mergeParallelResults (currentResult : rest) =
+  case currentResult of
+    RuntimeSucceeded _ runtime -> do
+      modifyRuntimeState (`mergeRuntime` runtime)
+      mergeParallelResults rest
+    RuntimeFailed errorReport runtime -> do
+      modifyRuntimeState (`mergeRuntime` runtime)
+      throwRuntimeError errorReport
+
+branchRuntime :: Runtime -> Runtime
+branchRuntime runtime =
+  runtime
+    { runtimeTrace = []
+    , runtimeMiddlewareEvents = []
+    }
+
+emptyBranchRuntime :: Runtime
+emptyBranchRuntime =
+  Runtime
+    { availableFacts = []
+    , runtimeTrace = []
+    , runtimeMiddlewareStack = []
+    , runtimeMiddlewareEvents = []
+    }

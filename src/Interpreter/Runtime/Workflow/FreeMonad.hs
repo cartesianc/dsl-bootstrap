@@ -7,21 +7,16 @@ import Core.Architecture
   , WorkflowName
   )
 import Core.Architecture.Internal
-  ( foldFreeMonadState
+  ( FreeMonad (..)
+  )
+import Interpreter.Runtime.Monad
+  ( traceRuntimeM
   )
 import Interpreter.Runtime.Types
-  ( Runtime
-  , WorkflowProgram
-  )
-import Interpreter.Runtime.Trace
-  ( traceRuntime
+  ( WorkflowProgram
   )
 
 freeMonadChain :: WorkflowName -> Chain WorkflowProgram -> WorkflowProgram
-freeMonadChain label steps runtime = do
-  traceRuntime ("chain " ++ show label)
-  foldFreeMonadState runStep runtime (chainSteps steps)
-
-runStep :: Runtime -> WorkflowProgram -> IO Runtime
-runStep runtime program =
-  program runtime
+freeMonadChain label steps = do
+  traceRuntimeM ("chain " ++ show label)
+  mapM_ id (freeMonadSteps (chainSteps steps))

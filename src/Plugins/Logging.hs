@@ -2,7 +2,7 @@
 
 module Plugins.Logging where
 
-import Blueprint
+import Framework.Workflow
 -- plugin imports: begin
 import Plugins.Report
 -- plugin imports: end

@@ -10,31 +10,31 @@ import Core.Architecture.Internal
   ( ChoiceBranch (..)
   , FreeChoice (..)
   )
-import Interpreter.Runtime.Types
-  ( Runtime
-  , WorkflowProgram
+import Interpreter.Runtime.Monad
+  ( throwRuntimeError
+  , traceRuntimeM
   )
-import Interpreter.Runtime.Trace
-  ( traceRuntime
+import Interpreter.Runtime.Types
+  ( RuntimeError (..)
+  , WorkflowProgram
   )
 
 choiceByKey :: ChoiceKey -> Choice WorkflowProgram -> WorkflowProgram
-choiceByKey selectedKey branches runtime = do
-  traceRuntime ("choice " ++ renderChoiceKey selectedKey)
-  runChoice runtime selectedKey (freeChoiceBranches (choiceBranches branches))
+choiceByKey selectedKey branches = do
+  traceRuntimeM ("choice " ++ renderChoiceKey selectedKey)
+  runChoice selectedKey (freeChoiceBranches (choiceBranches branches))
 
 runChoice ::
-  Runtime ->
   ChoiceKey ->
   [ChoiceBranch ChoiceKey WorkflowProgram] ->
-  IO Runtime
-runChoice _ selectedKey [] =
-  ioError (userError ("Choice workflow has no branch for " ++ renderChoiceKey selectedKey))
-runChoice runtime selectedKey (ChoiceBranch branchKey branch : rest)
+  WorkflowProgram
+runChoice selectedKey [] =
+  throwRuntimeError (RuntimeChoiceMissingBranch (renderChoiceKey selectedKey))
+runChoice selectedKey (ChoiceBranch branchKey branch : rest)
   | selectedKey == branchKey =
-      branch runtime
+      branch
   | otherwise =
-      runChoice runtime selectedKey rest
+      runChoice selectedKey rest
 
 renderChoiceKey :: ChoiceKey -> String
 renderChoiceKey (ChoiceKey value) =

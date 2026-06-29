@@ -2,7 +2,7 @@ module Effects.User
   ( userEffect
   ) where
 
-import Effects.EffectTheory
+import Framework.Effect
 
 -- effect: userEffect
 userEffect :: EffectUnit

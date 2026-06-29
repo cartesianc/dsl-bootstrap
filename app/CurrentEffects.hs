@@ -2,7 +2,7 @@ module CurrentEffects
   ( currentEffects
   ) where
 
-import Effects.EffectTheory
+import Framework.Effect
   ( EffectTheory
   )
 import Effects.Theory

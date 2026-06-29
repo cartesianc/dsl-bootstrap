@@ -2,7 +2,7 @@ module Effects.System
   ( systemEffect
   ) where
 
-import Effects.EffectTheory
+import Framework.Effect
 
 -- effect: systemEffect
 systemEffect :: EffectUnit

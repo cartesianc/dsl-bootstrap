@@ -2,7 +2,7 @@
 
 module Plugins.Handle where
 
-import Blueprint
+import Framework.Workflow
 
 type UserModule = Parallel
 

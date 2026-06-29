@@ -2,7 +2,7 @@
 
 module Plugins.Report where
 
-import Blueprint
+import Framework.Workflow
 
 type ReportModule = Parallel
 

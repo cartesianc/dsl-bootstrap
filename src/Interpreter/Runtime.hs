@@ -29,17 +29,30 @@ import Effects.EffectTheory
 import Effects.Names
   ( ProfileName (Production)
   )
+import Core.Effect.Semantics
+  ( effectSemantics
+  )
 import Interpreter.Runtime.Algebra
   ( runtimeAlgebra
   )
 import Interpreter.Runtime.Contextware
-  ( contextware
+  ( contextwareWithEffectEnvironment
+  )
+import Interpreter.Runtime.Handlers
+  ( defaultHandlerRegistry
+  , runtimeEffectEnvironment
   )
 import Interpreter.Runtime.Hanging.FreeMonoid
   ( runHanging
   )
+import Interpreter.Runtime.Monad
+  ( defaultRuntimeEnv
+  , runRuntimeMOrThrow
+  , runtimeEnv
+  )
 import Interpreter.Runtime.Types
   ( Runtime (..)
+  , RuntimeEnv
   , RuntimeFAlgebra
   , emptyRuntime
   )
@@ -53,7 +66,11 @@ runApp =
 
 runAppWith :: Runtime -> App -> IO ()
 runAppWith runtime appArchitecture = do
-  _ <- gpreproWorkflow compileWorkflowEff interpretWorkflowEff runtimeAlgebra appArchitecture runtime
+  _ <-
+    runRuntimeMOrThrow
+      defaultRuntimeEnv
+      runtime
+      (gpreproWorkflow compileWorkflowEff interpretWorkflowEff runtimeAlgebra appArchitecture)
   pure ()
 
 runBlueprint :: AppBlueprint -> IO ()
@@ -65,9 +82,21 @@ runBlueprintWith =
   runBlueprintWithAlgebra runtimeAlgebra
 
 runBlueprintWithAlgebra :: RuntimeFAlgebra -> Runtime -> AppBlueprint -> IO ()
-runBlueprintWithAlgebra currentAlgebra runtime blueprint = do
-  appRuntime <- gpreproWorkflow compileWorkflowEff interpretWorkflowEff currentAlgebra (blueprintApp blueprint) runtime
-  _ <- runHanging (gpreproHanging compileHangingEff interpretHangingEff currentAlgebra (blueprintHanging blueprint)) appRuntime
+runBlueprintWithAlgebra =
+  runBlueprintWithAlgebraInEnv defaultRuntimeEnv
+
+runBlueprintWithAlgebraInEnv :: RuntimeEnv -> RuntimeFAlgebra -> Runtime -> AppBlueprint -> IO ()
+runBlueprintWithAlgebraInEnv environment currentAlgebra runtime blueprint = do
+  appRuntime <-
+    runRuntimeMOrThrow
+      environment
+      runtime
+      (gpreproWorkflow compileWorkflowEff interpretWorkflowEff currentAlgebra (blueprintApp blueprint))
+  _ <-
+    runRuntimeMOrThrow
+      environment
+      appRuntime
+      (runHanging (gpreproHanging compileHangingEff interpretHangingEff currentAlgebra (blueprintHanging blueprint)))
   pure ()
 
 runBlueprintWithEffects :: EffectTheory -> AppBlueprint -> IO ()
@@ -76,6 +105,10 @@ runBlueprintWithEffects effects blueprint =
     Left errorReport ->
       traceRuntime ("app build failed: " ++ App.renderAppError errorReport)
     Right appPlan -> do
+      let currentEffectEnvironment =
+            runtimeEffectEnvironment (App.appPlanProfile appPlan) defaultHandlerRegistry
+      let currentRuntimeEnv =
+            runtimeEnv currentEffectEnvironment (effectSemantics (App.appPlanEffects appPlan))
       traceRuntime ("effect theory loaded " ++ show (length (theoryUnits effects)) ++ " units")
       traceRuntime
         ( "app built with "
@@ -84,4 +117,12 @@ runBlueprintWithEffects effects blueprint =
             ++ show (length (App.appPlanSendBoundaries appPlan))
             ++ " send boundaries"
         )
-      runBlueprintWithAlgebra (contextware (App.appPlanEffects appPlan) runtimeAlgebra) emptyRuntime (App.appPlanBlueprint appPlan)
+      runBlueprintWithAlgebraInEnv
+        currentRuntimeEnv
+        ( contextwareWithEffectEnvironment
+            currentEffectEnvironment
+            (App.appPlanEffects appPlan)
+            runtimeAlgebra
+        )
+        emptyRuntime
+        (App.appPlanBlueprint appPlan)

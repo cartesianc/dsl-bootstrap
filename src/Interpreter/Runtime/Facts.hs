@@ -15,20 +15,30 @@ import Core.Architecture
 import Core.Architecture.Internal
   ( RequirementEffect (..)
   )
+import Interpreter.Runtime.Monad
+  ( modifyRuntimeState
+  , runtimeSleepM
+  , traceRuntimeM
+  )
 import Interpreter.Runtime.Types
   ( Runtime (..)
+  , WorkflowProgram
   )
 import Interpreter.Runtime.Trace
   ( renderFactExpr
-  , runtimeSleep
-  , traceRuntime
   )
 
-recordFact :: Fact WorkflowFact -> Runtime -> IO Runtime
-recordFact currentFact runtime = do
-  traceRuntime ("fact " ++ renderFactExpr (factExpression currentFact))
-  runtimeSleep
-  pure runtime {availableFacts = mergeFacts (availableFacts runtime) (collectFactExpr (factExpression currentFact))}
+recordFact :: Fact WorkflowFact -> WorkflowProgram
+recordFact currentFact = do
+  traceRuntimeM ("fact " ++ renderFactExpr (factExpression currentFact))
+  runtimeSleepM
+  modifyRuntimeState
+    ( \runtime ->
+        runtime
+          { availableFacts =
+              mergeFacts (availableFacts runtime) (collectFactExpr (factExpression currentFact))
+          }
+    )
 
 factExprAvailable :: Runtime -> FactExpr WorkflowFact -> Bool
 factExprAvailable runtime (FactItems currentFacts) =
@@ -40,7 +50,11 @@ factExprAvailable runtime (FactAny currentFacts) =
 
 mergeRuntime :: Runtime -> Runtime -> Runtime
 mergeRuntime left right =
-  left {availableFacts = mergeFacts (availableFacts left) (availableFacts right)}
+  left
+    { availableFacts = mergeFacts (availableFacts left) (availableFacts right)
+    , runtimeTrace = runtimeTrace left <> runtimeTrace right
+    , runtimeMiddlewareEvents = runtimeMiddlewareEvents left <> runtimeMiddlewareEvents right
+    }
 
 collectFactExpr :: FactExpr WorkflowFact -> [WorkflowFact]
 collectFactExpr (FactItems currentFacts) =

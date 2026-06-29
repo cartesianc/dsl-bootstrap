@@ -2,7 +2,7 @@
 
 module Plugins.Boot where
 
-import Blueprint
+import Framework.Workflow
 
 type BootModule = Wait
 

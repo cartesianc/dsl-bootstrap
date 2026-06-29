@@ -2,7 +2,7 @@
 
 module Plugins.Configuration where
 
-import Blueprint
+import Framework.Workflow
 
 type ConfigModule = Parallel
 

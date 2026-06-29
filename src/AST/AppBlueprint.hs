@@ -7,7 +7,7 @@ module AST.AppBlueprint
   , hooks
   ) where
 
-import Blueprint
+import Framework.Workflow
 import Plugins
 
 data AppBlueprint = AppBlueprint

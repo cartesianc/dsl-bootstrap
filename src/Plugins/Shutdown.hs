@@ -2,7 +2,7 @@
 
 module Plugins.Shutdown where
 
-import Blueprint
+import Framework.Workflow
 
 type ShutdownModule = Wait
 

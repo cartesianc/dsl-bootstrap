@@ -15,86 +15,155 @@ import Core.Architecture.Internal
   ( RequirementEffect (..)
   )
 import Core.Effect.Semantics
-  ( EffectSemantics
+  ( HandlerContract (..)
   , TakeMakeRule (..)
   , TakeMakeSource (..)
+  , handlerContractFor
   , takeMakeRuleFor
   )
 import Effects.EffectTheory
-  ( SendName
+  ( ImplementationBinding (..)
+  , SendName
   )
-import Interpreter.Runtime.Trace
-  ( runtimeSleep
-  , traceRuntime
+import Interpreter.Runtime.Handlers
+  ( runHandler
+  )
+import Interpreter.Runtime.Monad
+  ( askRuntimeEnv
+  , getRuntimeState
+  , liftRuntimeIO
+  , runtimeSleepM
+  , throwRuntimeError
+  , traceRuntimeM
   )
 import Interpreter.Runtime.Types
-  ( Runtime (..)
+  ( HandlerResult (..)
+  , Runtime (..)
+  , RuntimeEnv (..)
+  , RuntimeError (..)
+  , RuntimeEffectEnvironment (..)
+  , RuntimeM
   , WorkflowProgram
   )
 
 ensureFact ::
-  EffectSemantics ->
   (Fact WorkflowFact -> WorkflowProgram) ->
   Fact WorkflowFact ->
   WorkflowProgram
-ensureFact semantics makeFact currentFact =
-  ensureFacts semantics makeFact [] (collectFactExpr (factExpression currentFact))
+ensureFact makeFact currentFact =
+  ensureFacts makeFact [] (collectFactExpr (factExpression currentFact))
 
 ensureFacts ::
-  EffectSemantics ->
   (Fact WorkflowFact -> WorkflowProgram) ->
   [WorkflowFact] ->
   [WorkflowFact] ->
   WorkflowProgram
-ensureFacts _ _ _ [] runtime =
-  pure runtime
-ensureFacts semantics makeFact stack (currentFact : rest) runtime = do
-  nextRuntime <- ensureOneFact semantics makeFact stack currentFact runtime
-  ensureFacts semantics makeFact stack rest nextRuntime
+ensureFacts _ _ [] =
+  pure ()
+ensureFacts makeFact stack (currentFact : rest) = do
+  ensureOneFact makeFact stack currentFact
+  ensureFacts makeFact stack rest
 
 ensureOneFact ::
-  EffectSemantics ->
   (Fact WorkflowFact -> WorkflowProgram) ->
   [WorkflowFact] ->
   WorkflowFact ->
   WorkflowProgram
-ensureOneFact semantics makeFact stack currentFact runtime
-  | currentFact `elem` availableFacts runtime =
-      pure runtime
-  | currentFact `elem` stack =
-      ioError (userError ("fact dependency cycle while ensuring " ++ show currentFact))
-  | otherwise =
-      case takeMakeRuleFor semantics currentFact of
-        Nothing ->
-          ioError (userError ("missing take/make rule for fact " ++ show currentFact))
-        Just currentRule ->
-          ensureByRule semantics makeFact stack currentRule runtime
+ensureOneFact makeFact stack currentFact = do
+  runtime <- getRuntimeState
+  environment <- askRuntimeEnv
+  let semantics = runtimeEnvEffectSemantics environment
+  if currentFact `elem` availableFacts runtime
+    then pure ()
+    else
+      if currentFact `elem` stack
+        then throwRuntimeError (RuntimeFactDependencyCycle currentFact)
+        else
+          case takeMakeRuleFor semantics currentFact of
+            Nothing ->
+              throwRuntimeError (RuntimeMissingFactRule currentFact)
+            Just currentRule ->
+              ensureByRule makeFact stack currentRule
 
 ensureByRule ::
-  EffectSemantics ->
   (Fact WorkflowFact -> WorkflowProgram) ->
   [WorkflowFact] ->
   TakeMakeRule ->
   WorkflowProgram
-ensureByRule semantics makeFact stack currentRule runtime =
+ensureByRule makeFact stack currentRule =
   case takeMakeSource currentRule of
     ExternalTake ->
-      ioError (userError ("cannot auto-make externalTake fact " ++ show (takeMakeRuleFact currentRule)))
+      throwRuntimeError (RuntimeExternalTakeAutoMake (takeMakeRuleFact currentRule))
     InternalMake -> do
-      traceRuntime ("ensure " ++ show (takeMakeRuleFact currentRule))
-      runtimeAfterTakes <-
-        ensureFacts semantics makeFact (takeMakeRuleFact currentRule : stack) (takeFacts currentRule) runtime
-      runtimeAfterExternalMakes <- runExternalMakes (externalMakeNames currentRule) runtimeAfterTakes
-      makeFact (Fact (factItems (makeFacts currentRule))) runtimeAfterExternalMakes
+      traceRuntimeM ("ensure " ++ show (takeMakeRuleFact currentRule))
+      ensureFacts makeFact (takeMakeRuleFact currentRule : stack) (takeFacts currentRule)
+      externalMakeResult <- runExternalMakes (externalMakeNames currentRule)
+      case externalMakeResult of
+        ExternalMakesSucceeded ->
+          makeFact (Fact (factItems (makeFacts currentRule)))
+        ExternalMakeFailed currentExternalMake errorReport ->
+          handleExternalMakeFailure makeFact currentRule currentExternalMake errorReport
 
-runExternalMakes :: [SendName] -> WorkflowProgram
-runExternalMakes [] runtime =
-  pure runtime
-runExternalMakes (currentExternalMake : rest) runtime = do
-  traceRuntime ("externalMake " ++ show currentExternalMake)
-  runtimeSleep
-  runExternalMakes rest runtime
+data ExternalMakeResult
+  = ExternalMakesSucceeded
+  | ExternalMakeFailed SendName RuntimeError
 
+handleExternalMakeFailure ::
+  (Fact WorkflowFact -> WorkflowProgram) ->
+  TakeMakeRule ->
+  SendName ->
+  RuntimeError ->
+  WorkflowProgram
+handleExternalMakeFailure makeFact currentRule currentExternalMake errorReport
+  | null (failureMakeFacts currentRule) =
+      throwRuntimeError errorReport
+  | otherwise = do
+      traceRuntimeM
+        ( "externalMake "
+            ++ show currentExternalMake
+            ++ " failed, make failure facts "
+            ++ show (failureMakeFacts currentRule)
+        )
+      makeFact (Fact (factItems (failureMakeFacts currentRule)))
+
+runExternalMakes ::
+  [SendName] ->
+  RuntimeM ExternalMakeResult
+runExternalMakes [] =
+  pure ExternalMakesSucceeded
+runExternalMakes (currentExternalMake : rest) = do
+  environment <- askRuntimeEnv
+  runtime <- getRuntimeState
+  let effectEnvironment = runtimeEnvEffectEnvironment environment
+  let semantics = runtimeEnvEffectSemantics environment
+  case handlerContractFor semantics (runtimeEffectProfile effectEnvironment) currentExternalMake of
+    Nothing ->
+      pure
+        ( ExternalMakeFailed
+            currentExternalMake
+            (RuntimeMissingImplementation (runtimeEffectProfile effectEnvironment) currentExternalMake)
+        )
+    Just currentContract -> do
+      let currentImplementation =
+            implementationName (handlerContractImplementation currentContract)
+      traceRuntimeM
+        ( "externalMake "
+            ++ show currentExternalMake
+            ++ " using "
+            ++ show currentImplementation
+        )
+      runtimeSleepM
+      handlerResult <- liftRuntimeIO $
+        runHandler
+          (runtimeEffectHandlers effectEnvironment)
+          currentImplementation
+          currentExternalMake
+          runtime
+      case handlerResult of
+        HandlerSucceeded ->
+          runExternalMakes rest
+        HandlerFailed message ->
+          pure (ExternalMakeFailed currentExternalMake (RuntimeHandlerFailed currentExternalMake message))
 collectFactExpr :: FactExpr WorkflowFact -> [WorkflowFact]
 collectFactExpr (FactItems currentFacts) =
   collectFacts currentFacts

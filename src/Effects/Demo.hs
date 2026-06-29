@@ -2,7 +2,7 @@ module Effects.Demo
   ( demoEffect
   ) where
 
-import Effects.EffectTheory
+import Framework.Effect
 
 -- effect: demoEffect
 demoEffect :: EffectUnit

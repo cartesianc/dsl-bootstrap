@@ -51,10 +51,9 @@ algebra =
   runtimeAlgebra
 
 thenProgram :: WorkflowProgram -> WorkflowProgram -> WorkflowProgram
-thenProgram left right runtime = do
-  nextRuntime <- left runtime
-  right nextRuntime
+thenProgram left right =
+  left >> right
 
 pureProgram :: WorkflowProgram
-pureProgram runtime =
-  pure runtime
+pureProgram =
+  pure ()

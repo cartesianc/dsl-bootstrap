@@ -2,7 +2,7 @@ module Effects.Report
   ( reportEffect
   ) where
 
-import Effects.EffectTheory
+import Framework.Effect
 
 -- effect: reportEffect
 reportEffect :: EffectUnit

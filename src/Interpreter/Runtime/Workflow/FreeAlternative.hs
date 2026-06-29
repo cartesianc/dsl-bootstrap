@@ -22,72 +22,94 @@ import Core.Architecture
 import Core.Architecture.Internal
   ( FreeAlternative (..)
   )
-import Interpreter.Runtime.Types
-  ( Runtime
-  , WorkflowProgram
+import Interpreter.Runtime.Monad
+  ( askRuntimeEnv
+  , getRuntimeState
+  , liftRuntimeIO
+  , putRuntimeState
+  , runRuntimeM
+  , throwRuntimeError
+  , traceRuntimeM
   )
-import Interpreter.Runtime.Trace
-  ( traceRuntime
+import Interpreter.Runtime.Types
+  ( Runtime (..)
+  , RuntimeEnv
+  , RuntimeError (..)
+  , RuntimeResult (..)
+  , WorkflowProgram
   )
 
 freeAlternativeFallback :: Fallback WorkflowProgram -> WorkflowProgram
-freeAlternativeFallback branches runtime = do
-  traceRuntime "fallback start"
-  runFallback runtime (freeAlternativeBranches (fallbackBranches branches))
+freeAlternativeFallback branches = do
+  traceRuntimeM "fallback start"
+  runFallback (freeAlternativeBranches (fallbackBranches branches))
 
 freeAlternativeRace :: Race WorkflowProgram -> WorkflowProgram
-freeAlternativeRace branches runtime = do
-  traceRuntime "race start"
-  runRace runtime (freeAlternativeBranches (raceBranches branches))
+freeAlternativeRace branches = do
+  traceRuntimeM "race start"
+  runRace (freeAlternativeBranches (raceBranches branches))
 
 runFallback ::
-  Runtime ->
   [WorkflowProgram] ->
-  IO Runtime
-runFallback _ [] =
-  ioError (userError "Fallback workflow has no successful branch")
-runFallback runtime (branch : rest) = do
-  branchResult <- try (branch runtime)
-  case (branchResult :: Either SomeException Runtime) of
-    Right nextRuntime -> do
-      traceRuntime "fallback branch ok"
-      pure nextRuntime
-    Left _ -> do
-      traceRuntime "fallback branch failed"
-      runFallback runtime rest
+  WorkflowProgram
+runFallback [] =
+  throwRuntimeError RuntimeFallbackExhausted
+runFallback (branch : rest) = do
+  environment <- askRuntimeEnv
+  runtime <- getRuntimeState
+  branchResult <- liftRuntimeIO (runRuntimeM environment runtime branch)
+  case branchResult of
+    RuntimeSucceeded _ nextRuntime -> do
+      putRuntimeState nextRuntime
+      traceRuntimeM "fallback branch ok"
+    RuntimeFailed _ _ -> do
+      traceRuntimeM "fallback branch failed"
+      runFallback rest
 
 runRace ::
-  Runtime ->
   [WorkflowProgram] ->
-  IO Runtime
-runRace _ [] =
-  ioError (userError "Race workflow has no branches")
-runRace runtime branches = do
-  resultBox <- newEmptyMVar
-  mapM_ (forkRaceBranch resultBox runtime) branches
+  WorkflowProgram
+runRace [] =
+  throwRuntimeError RuntimeRaceEmpty
+runRace branches = do
+  environment <- askRuntimeEnv
+  runtime <- getRuntimeState
+  resultBox <- liftRuntimeIO newEmptyMVar
+  liftRuntimeIO (mapM_ (forkRaceBranch resultBox environment runtime) branches)
   takeFirstSuccessfulBranch (length branches) resultBox
 
 forkRaceBranch ::
-  MVar (Either SomeException Runtime) ->
+  MVar (Either SomeException (RuntimeResult ())) ->
+  RuntimeEnv ->
   Runtime ->
   WorkflowProgram ->
   IO ()
-forkRaceBranch resultBox runtime branch = do
-  _ <- forkIO (try (branch runtime) >>= putMVar resultBox)
+forkRaceBranch resultBox environment runtime branch = do
+  _ <- forkIO (try (runRuntimeM environment (branchRuntime runtime) branch) >>= putMVar resultBox)
   pure ()
 
 takeFirstSuccessfulBranch ::
   Int ->
-  MVar (Either SomeException Runtime) ->
-  IO Runtime
+  MVar (Either SomeException (RuntimeResult ())) ->
+  WorkflowProgram
 takeFirstSuccessfulBranch 0 _ =
-  ioError (userError "Race workflow has no successful branch")
+  throwRuntimeError RuntimeRaceExhausted
 takeFirstSuccessfulBranch remaining resultBox = do
-  result <- takeMVar resultBox
+  result <- liftRuntimeIO (takeMVar resultBox)
   case result of
-    Right runtime -> do
-      traceRuntime "race branch won"
-      pure runtime
-    Left _ -> do
-      traceRuntime "race branch failed"
+    Right (RuntimeSucceeded _ runtime) -> do
+      putRuntimeState runtime
+      traceRuntimeM "race branch won"
+    Right (RuntimeFailed _ _) -> do
+      traceRuntimeM "race branch failed"
       takeFirstSuccessfulBranch (remaining - 1) resultBox
+    Left exception -> do
+      traceRuntimeM ("race branch failed with " ++ show (exception :: SomeException))
+      takeFirstSuccessfulBranch (remaining - 1) resultBox
+
+branchRuntime :: Runtime -> Runtime
+branchRuntime runtime =
+  runtime
+    { runtimeTrace = []
+    , runtimeMiddlewareEvents = []
+    }
