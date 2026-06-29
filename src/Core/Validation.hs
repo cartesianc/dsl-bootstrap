@@ -1,12 +1,14 @@
 module Core.Validation
   ( AstError (..)
+  , renderAstError
   , validateAst
-  , checkedAst
-  , reportAstError
   ) where
 
 import AST.AppBlueprint
   ( AppBlueprint (..)
+  )
+import Control.Monad
+  ( foldM
   )
 import Core.Architecture
 import Core.Architecture.Internal
@@ -20,97 +22,114 @@ import Core.Architecture.Internal
 
 data AstError
   = WorkflowSelfReference WorkflowName [WorkflowName]
+  | WorkflowNameOverlap WorkflowName [WorkflowName] [WorkflowName]
   deriving (Show)
 
+type SeenWorkflowName = (WorkflowName, [WorkflowName])
+
 validateAst :: AppBlueprint -> Either AstError AppBlueprint
-validateAst ast = do
-  validateWorkflow [] (blueprintApp ast)
-  validateHanging (blueprintHanging ast)
-  pure ast
+validateAst blueprint = do
+  _ <- validateWorkflow [] [] (blueprintApp blueprint)
+  validateHanging (blueprintHanging blueprint)
+  pure blueprint
 
-checkedAst :: (AppBlueprint -> IO ()) -> AppBlueprint -> IO ()
-checkedAst continue ast =
-  case validateAst ast of
-    Left errorReport ->
-      reportAstError errorReport
-
-    Right astAfterCheck ->
-      continue astAfterCheck
-
-reportAstError :: AstError -> IO ()
-reportAstError errorReport =
-  putStrLn ("Invalid AST: " ++ renderAstError errorReport)
-
-validateWorkflow :: [WorkflowName] -> Workflow fact hook -> Either AstError ()
-validateWorkflow ancestors currentWorkflow =
+validateWorkflow ::
+  [SeenWorkflowName] ->
+  [WorkflowName] ->
+  Workflow fact hook ->
+  Either AstError [SeenWorkflowName]
+validateWorkflow seen ancestors currentWorkflow =
   case currentWorkflow of
     FactWorkflow _ ->
-      pure ()
+      pure seen
 
     ChainWorkflow label steps -> do
-      nextAncestors <- enterNamedWorkflow label ancestors
-      validateChain nextAncestors steps
+      (nextSeen, nextAncestors) <- enterNamedWorkflow seen label ancestors
+      validateChain nextSeen nextAncestors steps
 
     ParallelWorkflow label branches -> do
-      nextAncestors <- enterNamedWorkflow label ancestors
-      validateParallel nextAncestors branches
+      (nextSeen, nextAncestors) <- enterNamedWorkflow seen label ancestors
+      validateParallel nextSeen nextAncestors branches
 
     FallbackWorkflow branches ->
-      validateFallback ancestors branches
+      validateFallback seen ancestors branches
 
     RaceWorkflow branches ->
-      validateRace ancestors branches
+      validateRace seen ancestors branches
 
     ChoiceWorkflow _ branches ->
-      validateChoice ancestors branches
+      validateChoice seen ancestors branches
 
     WaitWorkflow _ body ->
-      validateWorkflow ancestors body
+      validateWorkflow seen ancestors body
 
 enterNamedWorkflow ::
+  [SeenWorkflowName] ->
   WorkflowName ->
   [WorkflowName] ->
-  Either AstError [WorkflowName]
-enterNamedWorkflow label ancestors
+  Either AstError ([SeenWorkflowName], [WorkflowName])
+enterNamedWorkflow seen label ancestors
   | label `elem` ancestors =
-      Left (WorkflowSelfReference label (reverse (label : ancestors)))
+      Left (WorkflowSelfReference label currentPath)
   | otherwise =
-      Right (label : ancestors)
+      case lookup label seen of
+        Just firstPath ->
+          Left (WorkflowNameOverlap label firstPath currentPath)
+        Nothing ->
+          Right ((label, currentPath) : seen, label : ancestors)
+  where
+    currentPath = reverse (label : ancestors)
 
-validateChain :: [WorkflowName] -> Chain (Workflow fact hook) -> Either AstError ()
-validateChain ancestors steps =
-  mapM_ (validateWorkflow ancestors) (freeMonadSteps (chainSteps steps))
+validateChain ::
+  [SeenWorkflowName] ->
+  [WorkflowName] ->
+  Chain (Workflow fact hook) ->
+  Either AstError [SeenWorkflowName]
+validateChain seen ancestors steps =
+  validateWorkflows seen ancestors (freeMonadSteps (chainSteps steps))
 
 validateParallel ::
+  [SeenWorkflowName] ->
   [WorkflowName] ->
   Parallel (Workflow fact hook) ->
-  Either AstError ()
-validateParallel ancestors branches =
-  mapM_ (validateWorkflow ancestors) (freeApplicativeBranches (parallelBranches branches))
+  Either AstError [SeenWorkflowName]
+validateParallel seen ancestors branches =
+  validateWorkflows seen ancestors (freeApplicativeBranches (parallelBranches branches))
 
 validateFallback ::
+  [SeenWorkflowName] ->
   [WorkflowName] ->
   Fallback (Workflow fact hook) ->
-  Either AstError ()
-validateFallback ancestors branches =
-  mapM_ (validateWorkflow ancestors) (freeAlternativeBranches (fallbackBranches branches))
+  Either AstError [SeenWorkflowName]
+validateFallback seen ancestors branches =
+  validateWorkflows seen ancestors (freeAlternativeBranches (fallbackBranches branches))
 
 validateRace ::
+  [SeenWorkflowName] ->
   [WorkflowName] ->
   Race (Workflow fact hook) ->
-  Either AstError ()
-validateRace ancestors branches =
-  mapM_ (validateWorkflow ancestors) (freeAlternativeBranches (raceBranches branches))
+  Either AstError [SeenWorkflowName]
+validateRace seen ancestors branches =
+  validateWorkflows seen ancestors (freeAlternativeBranches (raceBranches branches))
 
 validateChoice ::
+  [SeenWorkflowName] ->
   [WorkflowName] ->
   Choice (Workflow fact hook) ->
-  Either AstError ()
-validateChoice ancestors branches =
-  mapM_ validateChoiceBranch (freeChoiceBranches (choiceBranches branches))
+  Either AstError [SeenWorkflowName]
+validateChoice seen ancestors branches =
+  foldM validateChoiceBranch seen (freeChoiceBranches (choiceBranches branches))
   where
-    validateChoiceBranch (ChoiceBranch _ branch) =
-      validateWorkflow ancestors branch
+    validateChoiceBranch currentSeen (ChoiceBranch _ branch) =
+      validateWorkflow currentSeen ancestors branch
+
+validateWorkflows ::
+  [SeenWorkflowName] ->
+  [WorkflowName] ->
+  [Workflow fact hook] ->
+  Either AstError [SeenWorkflowName]
+validateWorkflows seen ancestors =
+  foldM (`validateWorkflow` ancestors) seen
 
 validateHanging ::
   Hanging (HangingAction fact hook (Workflow fact hook)) ->
@@ -123,17 +142,21 @@ validateHangingAction ::
   Either AstError ()
 validateHangingAction currentAction =
   case currentAction of
-    HangingCallback currentCallback ->
-      validateWorkflow [] (callbackBody currentCallback)
+    HangingCallback currentCallback -> do
+      _ <- validateWorkflow [] [] (callbackBody currentCallback)
+      pure ()
 
-    HangingSuspense currentSuspense ->
-      validateWorkflow [] (suspenseTarget currentSuspense)
+    HangingSuspense currentSuspense -> do
+      _ <- validateWorkflow [] [] (suspenseTarget currentSuspense)
+      pure ()
 
-    HangingLoop currentLoop ->
-      validateWorkflow [] (loopBody currentLoop)
+    HangingLoop currentLoop -> do
+      _ <- validateWorkflow [] [] (loopBody currentLoop)
+      pure ()
 
-    HangingMiddleware _ body ->
-      validateWorkflow [] body
+    HangingMiddleware _ body -> do
+      _ <- validateWorkflow [] [] body
+      pure ()
 
 renderAstError :: AstError -> String
 renderAstError (WorkflowSelfReference label path) =
@@ -142,6 +165,14 @@ renderAstError (WorkflowSelfReference label path) =
     ++ " repeats "
     ++ show label
     ++ ". Use hanging loop when repetition is intentional."
+renderAstError (WorkflowNameOverlap label firstPath secondPath) =
+  "workflow name overlap is not allowed in app workflow: "
+    ++ show label
+    ++ " appears at "
+    ++ renderPath firstPath
+    ++ " and "
+    ++ renderPath secondPath
+    ++ ". Move intentional reuse to hanging."
 
 renderPath :: [WorkflowName] -> String
 renderPath =

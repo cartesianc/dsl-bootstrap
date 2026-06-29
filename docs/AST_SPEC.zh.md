@@ -1,6 +1,6 @@
 # AST DSL 使用说明
 
-这份文档只说明前台 AST 怎么写，不解释背后的 free 结构、cata 或 runtime 实现。
+这份文档说明前台 AST 的写法。free 结构、cata 和 runtime 实现放在 core/interpreter 文档里。
 
 ## 1. 先看最终形状
 
@@ -28,7 +28,7 @@ app =
     ]
 ```
 
-`hooks` 只写 hanging 外挂逻辑：
+`hooks` 写 hanging 外挂逻辑：
 
 ```haskell
 hooks :: AppHanging
@@ -45,7 +45,7 @@ hooks =
 
 ### WorkflowComponent
 
-主执行流里的节点都属于 `WorkflowComponent`。
+主执行流节点属于 `WorkflowComponent`。
 
 可用节点：
 
@@ -96,7 +96,7 @@ suspense
 loop
 ```
 
-`middleware`、`callback`、`suspense` 和 `loop` 不是 workflow 节点，不能写进 `chain`、`parallel`、`fallback`。
+`middleware`、`callback`、`suspense` 和 `loop` 属于 `hanging`，不能写进 `chain`、`parallel`、`fallback`。
 
 ## 3. 各节点怎么看
 
@@ -132,7 +132,7 @@ parallel SomeFlow
 middleware SomeMiddleware body
 ```
 
-`middleware` 接收一个 workflow body，但它本身挂在 `hanging` 里。读法是：`body` 这整个 workflow 都被叠加了这一层 middleware 效果。
+`middleware` 接收一个 workflow body，本身挂在 `hanging` 里。含义是：`body` 整体叠加这一层 middleware。
 
 ```haskell
 middleware ReportMiddleware
@@ -142,14 +142,13 @@ middleware ReportMiddleware
     ])
 ```
 
-这个节点可以按 monoid 来理解：
+组合规则：
 
 - 多层 middleware 可以继续叠加。
 - 空 middleware 可以看成 identity。
-- 叠加满足结合律，所以可以稳定组合。
-- 当前 DSL 约定 middleware 是顺序无关的效果集合。
-- 开发者只声明 body 叠加了哪些 middleware 效果，不依赖 middleware 的书写顺序。
-- 底层 `FreeMonoid` 提供可组合的叠加骨架；顺序无关是 middleware interpreter 的语义约定。
+- 叠加满足结合律。
+- 当前 interpreter 把 middleware 解释为顺序无关的效果集合。
+- `FreeMonoid` 提供组合结构，顺序语义由 interpreter 决定。
 
 ### Fact
 
@@ -213,7 +212,7 @@ choice
 callback [SomeFact] body
 ```
 
-语义：当 fact 条件满足时，`body` 作为新的并行分支启动。
+语义：fact 条件满足时，`body` 作为新的并行分支启动。
 
 ### Suspense
 
@@ -223,7 +222,7 @@ callback [SomeFact] body
 suspense [SomeFact] runningComponent
 ```
 
-语义：当 fact 条件满足时，如果 `runningComponent` 正在运行，后续 runtime interpreter 可以 suspend 或 kill 它。
+语义：fact 条件满足时，请求暂停或终止正在运行的 `runningComponent`。精确匹配需要 component registry。
 
 ### Loop
 
@@ -233,7 +232,7 @@ suspense [SomeFact] runningComponent
 loop workflowComponent
 ```
 
-语义：`forever` 后面接一个 workflow component，并重复执行这个 workflow。retry、压测、次数控制等能力不属于 `loop` 节点本身，由 `fallback`、`middleware`、profile、测试 runner 或后续 scheduler 表达。
+语义：按 `forever` 重复执行一个 workflow component。retry、压测、次数控制由其他组件或 scheduler 表达。
 
 ## 4. 新增插件流程
 
@@ -267,7 +266,7 @@ import Blueprint
 type PaymentModule = Wait
 ```
 
-如果这个组件还要叠加 middleware，就再写一个 hanging hook 类型：
+需要 middleware 时，额外声明一个 hanging hook：
 
 ```haskell
 type PaymentHook = Middleware
@@ -297,18 +296,17 @@ paymentHook =
   middleware PaymentMiddleware paymentModule
 ```
 
-这个组件读法是：
+结构说明：
 
 - `paymentModule` 是一个 `Wait` workflow component。
 - 它等待 `PaymentConfirmedFact`。
 - fact 满足后进入 `PaymentFlow`。
 - `PaymentFlow` 里声明两个 fact。
-- `paymentHook` 是 hanging component。
-- 它声明 `paymentModule` 整体叠加 `PaymentMiddleware`。
+- `paymentHook` 是 hanging component，声明 `paymentModule` 整体叠加 `PaymentMiddleware`。
 
 ### 第四步：注册插件出口
 
-分别在组件上方写：
+在需要导出的定义上方写：
 
 ```haskell
 -- plugin: paymentModule
@@ -321,7 +319,7 @@ paymentHook =
 src/Core/Plugins.hs
 ```
 
-如果新增了 `src/Plugins/Payment.hs` 文件，还需要把模块名加入 `mytest.cabal` 的 `exposed-modules`：
+新增 `src/Plugins/Payment.hs` 后，把模块名加入 `mytest.cabal` 的 `exposed-modules`：
 
 ```cabal
                      , Plugins.Payment
@@ -335,14 +333,14 @@ src/Core/Plugins.hs
 src/AST/AppBlueprint.hs
 ```
 
-文件头保持统一入口：
+文件头导入统一入口：
 
 ```haskell
 import Blueprint
 import Plugins
 ```
 
-然后直接插入：
+插入 workflow 和 hook：
 
 ```haskell
 app :: App
@@ -362,21 +360,19 @@ hooks =
     ]
 ```
 
-`AST.AppBlueprint` 不需要单独导入 `Plugins.Payment`，因为 `Plugins` 已经统一导出注册过的插件。
+`AST.AppBlueprint` 通过 `Plugins` 统一出口引用插件。
 
-## 5. 不要在 AST 里写实现
+## 5. AST 只写结构
 
-AST 只描述结构，不写执行实现。
-
-不要在组件里写：
+组件里不写：
 
 - IO
 - 数据库查询
 - HTTP 请求
 - 文件读写
 - 真实日志逻辑
-- handler 查找
+- implementation 查找
 - service 注入
 - runtime state 修改
 
-这些以后交给 interpreter。
+这些由 interpreter 或后续 effect system 处理。

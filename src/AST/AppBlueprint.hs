@@ -40,7 +40,6 @@ app =
     , foo4
     , foo5
     , foo6
-    , foo8
     ]
 
 abc :: Chain
@@ -84,10 +83,6 @@ foo5 =
 foo6 :: Fact
 foo6 =
   fact [Foo6Fact]
-
-foo8 :: Wait
-foo8 =
-  wait [UserKnownFact] reportModule
 
 hooks :: AppHanging
 hooks =

@@ -33,6 +33,15 @@ library
                      , Core.Architecture
                      , Core.Architecture.Cata
                      , Core.Architecture.Internal
+                     , Core.App
+                     , Effects.Demo
+                     , Effects.EffectTheory
+                     , Effects.Logging
+                     , Effects.Names
+                     , Effects.Report
+                     , Effects.System
+                     , Effects.Theory
+                     , Effects.User
                      , Interpreter
                      , Interpreter.Contextware
                      , Interpreter.EffectAlgebra
@@ -40,8 +49,10 @@ library
                      , Interpreter.RecursionModel
                      , Interpreter.Runtime
                      , Interpreter.Runtime.Algebra
+                     , Interpreter.Runtime.Contextware
                      , Interpreter.Runtime.Facts
                      , Interpreter.Runtime.Hanging.FreeMonoid
+                     , Interpreter.Runtime.RecursionModel
                      , Interpreter.Runtime.Smoke
                      , Interpreter.Runtime.Trace
                      , Interpreter.Runtime.Types
@@ -86,6 +97,7 @@ executable mytest
   hs-source-dirs:      app
   main-is:             Main.hs
   other-modules:       CurrentAst
+                     , CurrentEffects
                      , InterpretConfig
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5

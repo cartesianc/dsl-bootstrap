@@ -1,5 +1,6 @@
 module Interpreter.Runtime.Algebra
-  ( runtimeAlgebra
+  ( algebra
+  , runtimeAlgebra
   ) where
 
 import AST.Vocabulary
@@ -42,3 +43,7 @@ runtimeAlgebra =
     , onChoice = choiceByKey
     , onWait = waitForFacts
     }
+
+algebra :: WorkflowAlgebra WorkflowFact WorkflowProgram
+algebra =
+  runtimeAlgebra

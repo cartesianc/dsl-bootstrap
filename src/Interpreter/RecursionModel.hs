@@ -9,9 +9,6 @@ import Core.Architecture.Cata
   ( cataHanging
   , cataWorkflow
   )
-import Core.Validation
-  ( checkedAst
-  )
 import Interpreter.Types
   ( RecursionModel
   )
@@ -20,7 +17,8 @@ import Interpreter.View.Algebra
   )
 
 cataModel :: RecursionModel
-cataModel algebra = checkedAst (cataAfterCheck algebra)
+cataModel algebra =
+  cataAfterCheck algebra
 
 cataAfterCheck :: RecursionModel
 cataAfterCheck algebra ast =

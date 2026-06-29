@@ -1,16 +1,17 @@
 # TODO
 
-本文档记录项目下一阶段的架构路线。README 只保留项目概览，具体实施顺序以本文档为准。
+本文档记录下一阶段的架构路线。README 保留项目概览，实施顺序以本文档为准。
 
 ## 当前路线结论
 
-先完成 workflow 控制流，但只写到抽象接口层；再定义 fact/effect 边界；最后实现完整 effect system。
+当前顺序：先完成 workflow 控制流接口，再接入轻量 effect 边界，最后按需扩展完整 effect system。
 
 - `AppBlueprint` 描述“程序怎么走”：顺序、并发、分支、等待、回调、循环和 hanging 外挂节点。
-- workflow 可以用 effectful carrier 运行，但 workflow 本身不是业务 effect system。
+- workflow 可以用 effectful carrier 运行；业务 effect system 单独定义。
 - workflow 遇到 `fact` 叶子时，只调用抽象 fact/effect 边界，不直接写 IO、数据库、日志、HTTP 或 mock。
-- `EffectTheory` 负责“事实从哪里来”：producer、operation signature、handler、profile、失败策略和校验。
-- 因此当前实施顺序是：`WorkflowModel` -> `FactBoundary` -> `EffectTheory` -> recursion scheme 扩展。
+- `EffectTheory` 负责 fact 来源：producer、send/receive 边界、implementation、profile、失败策略和校验。
+- `Core.App.app` 负责从 AST 出发构建 app plan：收集 fact，展开 producer 闭包，检查 send boundary 和 implementation。
+- 实施顺序：`WorkflowModel` -> `Core.App` -> `Progressive EffectBoundary` -> recursion scheme 扩展。
 
 ## 1. 定义递归边界 / Eliminator 形状
 
@@ -42,9 +43,9 @@
 
 ### 目标
 
-将 workflow 控制流语义从业务 effect handler 中解耦出来，形成独立的 `WorkflowModel` 或 `WorkflowSemantics`。
+将 workflow 控制流语义从业务 effect implementation 中解耦出来，形成独立的 `WorkflowModel` 或 `WorkflowSemantics`。
 
-这一阶段优先实现控制流结构本身，但不实现真实业务副作用。控制流只决定如何进入 AST、如何组合分支、如何调度子 workflow；具体 fact 的生产留给后续 fact/effect 边界和 `EffectTheory`。
+这一阶段实现控制流结构，不接入真实业务副作用。控制流负责进入 AST、组合分支、调度子 workflow；fact 生产交给后续 fact/effect 边界和 `EffectTheory`。
 
 ### 控制流语义
 
@@ -70,7 +71,7 @@
 - 确保 `fallback` 只接收 workflow component，不接收 hanging component 或 fact condition。
 - 为控制流模型实现最小运行时 demo；demo 可以使用 mock/render carrier，不接入真实 effect system。
 
-## 3. 定义 Fact / Effect Boundary
+## 3. 定义轻量 Fact / Effect Boundary
 
 ### 前置条件
 
@@ -78,7 +79,14 @@
 
 ### 目标
 
-在 workflow 和 effect system 之间定义一个稳定边界。workflow 不知道某个 fact 由谁生产，也不知道 handler 怎么运行；它只知道“我现在需要这个 fact 被给出”。
+在 workflow 和 effect system 之间定义稳定边界。workflow 只声明当前需要给出某个 fact；producer 和 implementation 由 effect system 管理。
+
+边界采用渐进式配置：
+
+- 直接 fact：`fact currentFact`
+- fact 依赖：`fact currentFact [needs otherFact]`
+- 出站边界：`fact currentFact [needs otherFact, uses sendName]`
+- profile implementation：只有 `uses sendName` 时才需要
 
 概念方向：
 
@@ -92,15 +100,16 @@ onFact :: Fact -> carrier FactResult
 produceFact :: Fact -> carrier FactResult
 ```
 
-这一步不是完整 effect system，只是把 workflow 的叶子节点从当前 runtime/render 里抽象出来。
+这一步只抽象 workflow 叶子节点，不实现完整 effect system。
 
 ### 边界规则
 
 - `fact` 是 workflow 的叶子节点。
-- workflow 控制流只调用 fact 边界，不直接生产真实业务 fact。
+- workflow 控制流只调用 fact 边界。
 - `wait` 仍然表示 fact gate：它检查 fact 条件，不主动生产 fact。
-- fact 边界可以先有多个简单实现：render、smoke test、mock runtime。
-- 后续 `EffectTheory` 会成为 fact 边界的正式实现来源。
+- `send` 只声明系统可调用的出站能力边界，用于 implementation/profile 检查。
+- `receive` 声明外界直接给出的入站 fact，不需要 implementation。
+- 内部 producer 和纯推导 producer 不需要 send boundary。
 
 ### 输出物
 
@@ -110,11 +119,103 @@ produceFact :: Fact -> carrier FactResult
 - 避免 `recordFact` 这种实现细节直接成为架构语义。
 - 为后续 `EffectTheory` 接入保留稳定接口。
 
-### 3.1 用户新建 Effect 单元的标准动作
+### 3.1 新建 Effect 单元
 
-这一步描述生产程序员在这套架构里新增一个规范 effect 单元时，预期要写哪些前台声明。这里先定义用户面对的工作量；具体类型、校验和 handler 实现放到后续 `EffectTheory` 章节。
+本节定义新增 effect 单元时需要写的前台声明。具体类型、校验和 implementation 实现放到后续 `EffectTheory` 章节。
 
-如果用户只是拼装模块流程，只需要写 `AppBlueprint`：
+#### 前台左键路径
+
+effect system 的前台入口保持可跳转路径：
+
+```text
+main
+  -> currentEffects
+  -> effectTheory
+  -> paymentEffect
+  -> paymentFacts
+  -> paymentSends
+  -> paymentProducers
+  -> paymentImplementations
+```
+
+路径含义：
+
+- `currentEffects`：当前程序选择哪一套 effect theory。
+- `effectTheory`：当前 effect theory 由哪些 effect 单元组成。
+- `paymentEffect`：Payment 模块作为一个 effect 单元，对外暴露什么副作用语义。
+- `paymentFacts`：Payment 模块能提供哪些 workflow 可见的 fact。
+- `paymentSends`：Payment 模块需要哪些出站能力签名。
+- `paymentProducers`：哪些 producer 负责把出站调用结果转化为 fact。
+- `paymentImplementations`：不同 profile 下，send boundary 由哪个 implementation 解释。
+
+示例形状：
+
+```haskell
+paymentEffect :: EffectUnit
+paymentEffect =
+  effect PaymentEffect
+    [ paymentFacts
+    , paymentSends
+    , paymentProducers
+    , paymentImplementations
+    ]
+```
+
+需要业务用户选择或赋值的 effect 组件都应当能单独跳转。`EffectTheory` 可以在 core 层归一化为 record、registry 或 map；前台入口保持 DSL 结构。
+
+前台文件结构采用“一个 effect 一个 claim 文件”。例如 `Effects.User` 里只声明 `userEffect`，内部按需写 `fact`、`send`、`receive` 和 `profile`。需要复用某段声明时再起局部名字。
+
+effect 注册由构建器根据标记生成：
+
+```haskell
+-- effect: paymentEffect
+paymentEffect :: EffectUnit
+paymentEffect =
+  effect PaymentEffect
+    [ paymentFacts
+    , paymentSends
+    , paymentProducers
+    , paymentImplementations
+    ]
+```
+
+`Effects.Theory` 由 `Setup.hs` 收集 `-- effect:` 标记后生成。
+
+#### 与 Interpreter 的耦合边界
+
+effect 前台路径与 interpreter 的耦合集中在一条边界上：
+
+```text
+currentEffects
+  -> contextware
+  -> fact/effect boundary
+  -> fAlgebra
+  -> recursion model
+  -> currentAst
+```
+
+约束如下：
+
+- `currentAst` 只依赖 fact 名字，不直接依赖 effect send boundary、producer 或 implementation。
+- `currentEffects` 不直接依赖 `cata / para / hylo` 等 recursion model。
+- `contextware` 是 effect theory 接入 interpreter 的边界；它负责把 `EffectTheory` 转成 fact 叶子可调用的解释能力。
+- `fAlgebra` 可以接收已经被 `contextware` 装配过的 fact 解释能力，但不应该要求业务 effect 模块理解 workflow 控制流。
+- workflow 控制流负责“怎么进入 AST”，effect system 负责“fact 从哪里来以及由谁解释”。
+
+最终前台形成两条链路：
+
+```text
+main -> currentAst     -> app / plugins / workflow
+main -> currentEffects -> effectTheory / effect units
+```
+
+interpreter 汇合两条链路：
+
+```haskell
+currentInterpreter currentAst currentEffects
+```
+
+拼装模块流程时只写 `AppBlueprint`：
 
 ```haskell
 paymentModule =
@@ -125,7 +226,7 @@ paymentModule =
       ]
 ```
 
-如果用户要让 `PaymentFinishedFact` 真正可被生产，就需要进入 effect system，并完成以下声明。
+如果 `PaymentFinishedFact` 需要由系统生产，补充以下 effect 声明。
 
 1. 声明模块对外给出的 fact
 
@@ -135,21 +236,21 @@ PaymentFinishedFact
 PaymentFailedFact
 ```
 
-这些 fact 是 workflow 能看见的公共语义，不包含 IO、数据库、HTTP 或 mock。
+这些 fact 是 workflow 可见的公共语义，不包含 IO、数据库、HTTP 或 mock。
 
-2. 声明 effect operation signature
+2. 按需声明 send boundary
 
 ```haskell
 ChargePayment :: PaymentRequest -> PaymentEffect PaymentResult
 QueryPayment  :: PaymentId -> PaymentEffect PaymentStatus
 ```
 
-这一步只描述需要什么外部能力，以及每个 operation 的输入和输出。
+`send` 只用于系统主动调用外界能力的出站边界。内部推导或 runtime 内部 producer 不需要 send boundary。
 
 3. 声明 fact producer
 
 ```haskell
-producer PaymentFinishedFact
+fact PaymentFinishedFact
   [ needs UserKnownFact
   , needs PaymentRequestedFact
   , uses ChargePayment
@@ -161,43 +262,44 @@ producer 必须回答：
 
 - 谁生产这个 fact？
 - 生产前依赖哪些 fact？
-- 生产时使用哪些 effect operation？
+- 是否需要出站能力？
 - 生产失败时给出什么失败 fact 或失败策略？
 
-4. 为 profile 声明 handler
+4. 为被 `uses` 的 send boundary 声明 implementation
 
 ```haskell
 productionProfile
-  [ handle ChargePayment prodChargePayment ]
+  [ implement ChargePayment prodChargePayment ]
 
 testProfile
-  [ handle ChargePayment mockChargePayment ]
+  [ implement ChargePayment mockChargePayment ]
 ```
 
-handler 是真正连接 IO、数据库、HTTP、日志、mock 或 benchmark 的位置。
+implementation 连接 IO、数据库、HTTP、日志、mock 或 benchmark。
 
 5. 通过统一校验
 
 系统需要检查：
 
-- workflow 中出现的 fact 是否有 producer，或者被声明为 external fact。
+- workflow 中出现的 fact 是否有 producer，或者被声明为 receive fact。
 - producer 依赖的 fact 是否闭合。
-- producer 使用的 operation 是否存在于 signature。
-- 当前 profile 是否有对应 handler。
+- producer 使用的 send boundary 是否存在于 signature。
+- 当前 profile 是否有对应 implementation。
 - 失败路径是否声明。
-- 模块是否越权使用不属于自己的 operation。
+- 模块是否越权使用不属于自己的 send boundary。
 
-最小规范工作量可以概括为：
+渐进式声明集合：
 
 ```text
-fact
-+ effect operation signature
+workflow fact
 + producer
-+ profile handler
-+ validation
++ send          仅出站边界需要
++ receive       仅入站 fact 需要
++ profile       仅 send boundary 需要
++ app build     自动检查闭包
 ```
 
-这套规则的目的不是增加样板代码，而是把副作用从“随手写 IO”升级为可命名、可追踪、可 mock、可校验的 effect 单元。
+这些声明用于命名、追踪、mock 和校验副作用边界。
 
 ## 4. 定义统一 EffectTheory
 
@@ -207,7 +309,7 @@ fact
 
 ### 目标
 
-新增第二棵前台 DSL 树 `EffectTheory`，专门管理副作用能力、fact 来源、handler 完备性和 profile 切换。
+新增第二棵前台 DSL 树 `EffectTheory`，专门管理副作用能力、fact 来源、implementation 完备性和 profile 切换。
 
 `AppBlueprint` 继续只描述 workflow：
 
@@ -227,7 +329,7 @@ currentEffectTheory :: EffectTheory
 currentInterpreter currentAst currentEffectTheory
 ```
 
-也就是说，`AppBlueprint` 管“程序怎么走”，`EffectTheory` 管“事实从哪里来、副作用由谁解释”。
+`AppBlueprint` 描述 workflow；`EffectTheory` 描述 fact 来源和副作用解释方式。
 
 ### 背景约束
 
@@ -236,8 +338,8 @@ currentInterpreter currentAst currentEffectTheory
 - `fact` 只声明“某个事实被给出”，不包含 IO、数据库、日志、网络请求等执行细节。
 - `require` 不作为 AST 节点存在。
 - `wait facts body` 表示等待 fact 条件满足，不主动生产 fact。
-- 当前 `fact` 的来源还没有规范化；这是 `EffectTheory` 要解决的问题。
-- 不推翻现有 `WorkflowAlgebra`，而是在 fact 叶子位置接入 `EffectTheory`。
+- 当前 `fact` 来源尚未规范化，后续由 `EffectTheory` 处理。
+- 保留现有 `WorkflowAlgebra`，在 fact 叶子位置接入 `EffectTheory`。
 
 ### 当前架构已经满足的条件
 
@@ -250,17 +352,17 @@ currentInterpreter currentAst currentEffectTheory
 
 ### 还缺的条件
 
-- Effect operation signature：有哪些副作用操作，每个操作输入/输出是什么。
+- Effect send signature：有哪些出站能力，每个能力输入/输出是什么。
 - Fact producer registry：哪个 producer 负责生产哪个 fact。
 - Fact dependency closure：生产某个 fact 之前需要哪些 fact，依赖链是否闭合。
-- Handler registry：每个 profile 下哪些 effect 有 handler。
-- Handler completeness validation：用了某个 operation，但 prod/test/mock 是否都有解释。
-- Failure policy：producer 或 handler 失败时如何进入 fallback、错误 fact 或报告。
+- Implementation registry：每个 profile 下哪些 send boundary 有 implementation。
+- Implementation completeness validation：用了某个 send boundary，但 prod/test/mock 是否都有解释。
+- Failure policy：producer 或 implementation 失败时如何进入 fallback、错误 fact 或报告。
 - Permission boundary：模块是否越权使用了不属于自己的 effect。
 
 ### 4.1 定义 Effect Signature
 
-定义 effect operation 的统一签名。
+定义 effect send boundary 的统一签名。
 
 示例方向：
 
@@ -270,10 +372,10 @@ data UserEffect a where
   SaveUser    :: User -> UserEffect ()
 ```
 
-这一步只描述 operation profile：
+这一步只描述出站能力签名：
 
 ```text
-operation = 输入类型 -> 输出类型
+send boundary = 输入类型 -> 输出类型
 ```
 
 不在这里写真实 IO、数据库、HTTP 或 mock。
@@ -281,8 +383,8 @@ operation = 输入类型 -> 输出类型
 输出物：
 
 - 定义最小 `EffectSignature` 或 `EffectOp` 表达方式。
-- 明确 operation constructor 是否直接暴露给业务模块。
-- 为 operation 提供代码即文档的 smart constructor 或 DSL 名字。
+- 明确 send boundary constructor 是否直接暴露给业务模块。
+- 为 send boundary 提供代码即文档的 smart constructor 或 DSL 名字。
 
 ### 4.2 定义 FactProducer
 
@@ -303,7 +405,7 @@ producer UserKnownFact
 ```text
 谁生产 UserKnownFact？
 生产它之前需要哪些 fact？
-生产它会使用哪些 effect operation？
+生产它会使用哪些 send boundary？
 ```
 
 输出物：
@@ -316,7 +418,7 @@ producer UserKnownFact
 
 ### 4.3 定义 EffectTheory
 
-把 signature、producer、profile、handler 声明统一放进一棵前台 DSL。
+把 signature、producer、profile、implementation 声明统一放进一棵前台 DSL。
 
 示例方向：
 
@@ -333,9 +435,9 @@ effectTheory =
         , uses saveUser
         ]
     , profile production
-        [ handle userEffect prodUserHandler ]
+        [ implement userEffect prodUserImplementation ]
     , profile test
-        [ handle userEffect mockUserHandler ]
+        [ implement userEffect mockUserImplementation ]
     ]
 ```
 
@@ -345,10 +447,10 @@ effectTheory =
 - 定义 `effect` DSL。
 - 定义 `producer` DSL。
 - 定义 `profile` DSL。
-- 定义 `handle` DSL。
+- 定义 `implement` DSL。
 - 保持前台只读结构，不暴露 registry/map/validation 实现。
 
-### 4.4 定义 Handler Registry 和 Profile
+### 4.4 定义 Implementation Registry 和 Profile
 
 profile 负责选择生产、测试、mock、benchmark 等解释方式。
 
@@ -358,27 +460,33 @@ profile 负责选择生产、测试、mock、benchmark 等解释方式。
 - `testProfile`
 - `mockProfile`
 - `benchmarkProfile`
-- handler completeness check：每个 profile 是否覆盖当前 workflow 实际会用到的 effect operation。
+- implementation completeness check：每个 profile 是否覆盖当前 workflow 实际会用到的 send boundary。
 
-### 4.5 定义 Validation
+### 4.5 定义 App Build
 
-EffectTheory 必须能检查“写了 A 和 B 但漏了 C”的问题。
+`validate` 不作为业务用户手写入口。检查提升到 app 构建阶段：
+
+```haskell
+app currentAst currentEffects Production
+```
+
+`app` 从 AST 出发自动倒推依赖闭包。
 
 检查项：
 
-- workflow 中出现的每个 `fact` 是否有 producer，或者被声明为 external fact。
+- workflow 中出现的每个 `fact` 是否有 producer，或者被声明为 receive fact。
 - producer 的 `needs` 是否闭合。
-- producer 使用的 operation 是否存在于 signature。
-- 当前 profile 是否有对应 handler。
-- effect operation 是否越权。
+- producer 使用的 send boundary 是否存在于 signature。
+- 当前 profile 是否有对应 implementation。
+- effect send boundary 是否越权。
 - producer 之间是否形成非法循环。
 - `wait` 等外部 fact gate 是否被误当成可自动生产。
 
 输出物：
 
-- `validateEffectTheory`
-- `validateWorkflowAgainstTheory`
-- `EffectTheoryError`
+- `Core.App.app`
+- `AppPlan`
+- `AppError`
 - render/check 报告，把缺失项打印成可读 trace。
 
 ### 4.6 接入 Interpreter
@@ -389,7 +497,7 @@ EffectTheory 必须能检查“写了 A 和 B 但漏了 C”的问题。
 cataWorkflow workflowAlgebra ast
 ```
 
-但 fact 叶子不再直接随意 `recordFact`，而是通过 `EffectTheory` 查询 producer/handler。
+fact 叶子后续通过 `EffectTheory` 查询 producer/implementation。
 
 目标方向：
 
@@ -402,43 +510,43 @@ onFact = produceFactWith currentEffectTheory currentProfile
 - 定义 `FactAlgebra` 或 `FactInterpreter`。
 - 让 `RuntimeAlgebra` 在 `onFact` 处调用 `EffectTheory`。
 - 让 `WorkflowRunReport` 可以展示 fact 生产链。
-- 保持 `WorkflowAlgebra` 不依赖具体业务 operation。
+- 保持 `WorkflowAlgebra` 不依赖具体业务 send boundary。
 
-### 4.7 范畴论性质约束
+### 4.7 结构约束
 
-这套结构的范畴论核心应该满足：
+目标性质：
 
 - Initiality：业务程序先写成自由结构，不提前解释。
-- Compositionality：小 signature、producer、handler 可以组合成大 theory。
-- Homomorphism：handler 必须保持 effect program 的组合结构。
+- Compositionality：小 signature、producer、implementation 可以组合成大 theory。
+- Homomorphism：implementation 必须保持 effect program 的组合结构。
 - Naturality：production/test/mock profile 替换时，workflow AST 不变。
-- Totality / Closure：当前 workflow 需要的 fact 和 operation 必须能被完整解释。
+- Totality / Closure：当前 workflow 需要的 fact 和 send boundary 必须能被完整解释。
 
-工程上对应：
+工程含义：
 
 - 可插件化组合。
 - 可静态/启动时校验。
 - 可统一切换 profile。
-- 可定位缺失 producer/handler。
+- 可定位缺失 producer/implementation。
 - 可把复杂实现藏进 core。
 
-### 4.8 对比现在的收益
+### 4.8 预期收益
 
 现在：
 
 - `fact` 是规范 AST 节点，但 fact 来源没有规范。
 - `recordFact` 可以直接把 fact 记进去，缺少来源证明。
-- handler 是否齐全无法统一检查。
+- implementation 是否齐全无法统一检查。
 - prod/test/mock 切换只能靠解释器约定。
 - 缺少“为什么这个 fact 能产生”的可读报告。
 
-做完后：
+完成后：
 
 - 每个 fact 都能追踪到 producer。
-- 每个 producer 都能说明依赖哪些 fact、使用哪些 operation。
-- 每个 operation 都能检查 handler 是否存在。
+- 每个 producer 都能说明依赖哪些 fact、使用哪些 send boundary。
+- 每个 send boundary 都能检查 implementation 是否存在。
 - prod/test/mock 可以只换 profile，不改 workflow。
-- 缺失 producer、缺失 handler、依赖不闭合可以提前报错。
+- 缺失 producer、缺失 implementation、依赖不闭合可以提前报错。
 - workflow render/check 不只显示执行路径，还能显示 fact 生产链。
 - 模块副作用边界更清楚，插件更安全。
 - 代码即文档从 `AppBlueprint` 扩展到 `EffectTheory`。

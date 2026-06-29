@@ -5,10 +5,13 @@ module Main
 import CurrentAst
   ( currentAst
   )
+import CurrentEffects
+  ( currentEffects
+  )
 import InterpretConfig
   ( currentInterpreter
   )
 
 main :: IO ()
 main =
-  currentInterpreter currentAst
+  currentInterpreter currentAst currentEffects

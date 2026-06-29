@@ -37,9 +37,18 @@ data PluginExport = PluginExport
   , pluginValue :: String
   }
 
+data EffectExport = EffectExport
+  { effectModule :: String
+  , effectValue :: String
+  }
+
 pluginRegistryPath :: FilePath
 pluginRegistryPath =
   "src" </> "Core" </> "Plugins.hs"
+
+effectRegistryPath :: FilePath
+effectRegistryPath =
+  "src" </> "Effects" </> "Theory.hs"
 
 data PluginSource = PluginSource
   { sourcePath :: FilePath
@@ -61,6 +70,7 @@ main =
     simpleUserHooks
       { preBuild = \args flags -> do
           generatePlugins
+          generateEffects
           preBuild simpleUserHooks args flags
       }
 
@@ -75,6 +85,17 @@ generatePlugins = do
       writeFile pluginRegistryPath (renderPlugins pluginExports)
     duplicates ->
       die ("Duplicate plugin exports: " ++ intercalate ", " duplicates)
+
+generateEffects :: IO ()
+generateEffects = do
+  sourceFiles <- haskellFiles ("src" </> "Effects")
+  effectExports <- fmap concat (mapM effectExportsFromFile sourceFiles)
+  case duplicateEffectValues effectExports of
+    [] -> do
+      createDirectoryIfMissing True (takeDirectory effectRegistryPath)
+      writeFile effectRegistryPath (renderEffectTheory effectExports)
+    duplicates ->
+      die ("Duplicate effect exports: " ++ intercalate ", " duplicates)
 
 updatePluginImports :: [FilePath] -> [PluginExport] -> IO ()
 updatePluginImports sourceFiles pluginExports = do
@@ -259,6 +280,18 @@ pluginExportsFromFile path = do
         | valueName <- pluginMarkers source
         ]
 
+effectExportsFromFile :: FilePath -> IO [EffectExport]
+effectExportsFromFile path = do
+  source <- readSource path
+  case moduleName source of
+    Nothing ->
+      pure []
+    Just currentModule ->
+      pure
+        [ EffectExport currentModule valueName
+        | valueName <- effectMarkers source
+        ]
+
 readSource :: FilePath -> IO String
 readSource path =
   withFile path ReadMode $ \handle -> do
@@ -283,9 +316,21 @@ pluginMarkers :: String -> [String]
 pluginMarkers =
   concatMap pluginMarkerLine . lines
 
+effectMarkers :: String -> [String]
+effectMarkers =
+  concatMap effectMarkerLine . lines
+
 pluginMarkerLine :: String -> [String]
 pluginMarkerLine line =
   case stripPrefixText "-- plugin:" (trimLeft line) of
+    Just markerText ->
+      wordsByPluginSeparator markerText
+    Nothing ->
+      []
+
+effectMarkerLine :: String -> [String]
+effectMarkerLine line =
+  case stripPrefixText "-- effect:" (trimLeft line) of
     Just markerText ->
       wordsByPluginSeparator markerText
     Nothing ->
@@ -323,6 +368,51 @@ renderAlias pluginExport =
     ++ "."
     ++ pluginValue pluginExport
 
+renderEffectTheory :: [EffectExport] -> String
+renderEffectTheory effectExports =
+  unlines
+    ( [ "{-# OPTIONS_GHC -Wno-missing-export-lists #-}"
+      , "{-# OPTIONS_GHC -Wno-missing-signatures #-}"
+      , ""
+      , "module Effects.Theory"
+      , "  ( effectTheory"
+      , "  ) where"
+      , ""
+      , "import Effects.EffectTheory"
+      , "  ( EffectTheory"
+      , "  , theory"
+      , "  )"
+      ]
+        ++ map renderQualifiedImport modules
+        ++ [ ""
+           , "effectTheory :: EffectTheory"
+           , "effectTheory ="
+           , "  theory"
+           ]
+        ++ renderEffectList sortedExports
+    )
+  where
+    sortedExports =
+      sortEffectExports effectExports
+    modules =
+      sort (nub (map effectModule sortedExports))
+
+renderQualifiedImport :: String -> String
+renderQualifiedImport moduleNameValue =
+  "import qualified " ++ moduleNameValue
+
+renderEffectList :: [EffectExport] -> [String]
+renderEffectList [] =
+  [ "    []" ]
+renderEffectList (firstExport : rest) =
+  ("    [ " ++ effectReference firstExport)
+    : map (("    , " ++) . effectReference) rest
+    ++ [ "    ]" ]
+
+effectReference :: EffectExport -> String
+effectReference effectExport =
+  effectModule effectExport ++ "." ++ effectValue effectExport
+
 sortPluginExports :: [PluginExport] -> [PluginExport]
 sortPluginExports pluginExports =
   [ pluginExport
@@ -334,11 +424,29 @@ sortPluginExports pluginExports =
   , let pluginExport = PluginExport moduleNameValue valueName
   ]
 
+sortEffectExports :: [EffectExport] -> [EffectExport]
+sortEffectExports effectExports =
+  [ effectExport
+  | (moduleNameValue, valueName) <-
+      sort
+        [ (effectModule effectExport, effectValue effectExport)
+        | effectExport <- effectExports
+        ]
+  , let effectExport = EffectExport moduleNameValue valueName
+  ]
+
 duplicateValues :: [PluginExport] -> [String]
 duplicateValues pluginExports =
   [ valueName
   | valueName <- sort (nub (map pluginValue pluginExports))
   , length (filter ((== valueName) . pluginValue) pluginExports) > 1
+  ]
+
+duplicateEffectValues :: [EffectExport] -> [String]
+duplicateEffectValues effectExports =
+  [ valueName
+  | valueName <- sort (nub (map effectValue effectExports))
+  , length (filter ((== valueName) . effectValue) effectExports) > 1
   ]
 
 wordsByPluginSeparator :: String -> [String]

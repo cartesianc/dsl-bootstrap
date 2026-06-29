@@ -4,29 +4,42 @@ module Interpreter
   , runApp
   , runAppWith
   , runBlueprint
+  , runBlueprintWithEffects
   , runBlueprintWith
   ) where
 
 import AST.AppBlueprint
   ( AppBlueprint
   )
-import Interpreter.Contextware
+import qualified Core.App as App
+import Effects.EffectTheory
+  ( EffectTheory
+  )
+import Effects.Names
+  ( ProfileName (Production)
+  )
+import Interpreter.Runtime.Algebra
+  ( algebra
+  )
+import Interpreter.Runtime.Contextware
   ( contextware
   )
-import Interpreter.FAlgebra
-  ( fAlgebra
-  )
-import Interpreter.RecursionModel
-  ( cataModel
+import Interpreter.Runtime.RecursionModel
+  ( cata
   )
 import Interpreter.Runtime
   ( Runtime (..)
   , runApp
   , runAppWith
   , runBlueprint
+  , runBlueprintWithEffects
   , runBlueprintWith
   )
 
-interpreter :: AppBlueprint -> IO ()
-interpreter ast =
-  cataModel (contextware fAlgebra) ast
+interpreter :: AppBlueprint -> EffectTheory -> IO ()
+interpreter ast effects =
+  case App.app ast effects Production of
+    Left errorReport ->
+      putStrLn ("app build failed: " ++ App.renderAppError errorReport)
+    Right appPlan ->
+      cata (contextware (App.appPlanEffects appPlan) algebra) (App.appPlanBlueprint appPlan)
