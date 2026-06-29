@@ -6,8 +6,8 @@ module Interpreter.Runtime.Algebra
 import AST.Vocabulary
   ( WorkflowFact
   )
-import Core.Architecture.Cata
-  ( WorkflowAlgebra (..)
+import Core.Workflow.Eff
+  ( WorkflowEffAlgebra (..)
   )
 import Interpreter.Runtime.Facts
   ( recordFact
@@ -32,18 +32,29 @@ import Interpreter.Runtime.Workflow.Wait
   ( waitForFacts
   )
 
-runtimeAlgebra :: WorkflowAlgebra WorkflowFact WorkflowProgram
+runtimeAlgebra :: WorkflowEffAlgebra WorkflowFact WorkflowProgram
 runtimeAlgebra =
-  WorkflowAlgebra
-    { onFact = recordFact
-    , onChain = freeMonadChain
-    , onParallel = freeApplicativeParallel
-    , onFallback = freeAlternativeFallback
-    , onRace = freeAlternativeRace
-    , onChoice = choiceByKey
-    , onWait = waitForFacts
+  WorkflowEffAlgebra
+    { onPureEff = pureProgram
+    , onThenEff = thenProgram
+    , onProduceEff = recordFact
+    , onAwaitEff = waitForFacts
+    , onChainEff = freeMonadChain
+    , onParallelEff = freeApplicativeParallel
+    , onFallbackEff = freeAlternativeFallback
+    , onRaceEff = freeAlternativeRace
+    , onChoiceEff = choiceByKey
     }
 
-algebra :: WorkflowAlgebra WorkflowFact WorkflowProgram
+algebra :: WorkflowEffAlgebra WorkflowFact WorkflowProgram
 algebra =
   runtimeAlgebra
+
+thenProgram :: WorkflowProgram -> WorkflowProgram -> WorkflowProgram
+thenProgram left right runtime = do
+  nextRuntime <- left runtime
+  right nextRuntime
+
+pureProgram :: WorkflowProgram
+pureProgram runtime =
+  pure runtime

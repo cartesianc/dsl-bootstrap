@@ -14,8 +14,8 @@ import AST.Vocabulary
 import AST.AppBlueprint
   ( AppBlueprint
   )
-import Core.Architecture.Cata
-  ( WorkflowAlgebra
+import Core.Workflow.Eff
+  ( WorkflowEffAlgebra
   )
 import Effects.EffectTheory
   ( EffectTheory
@@ -29,7 +29,7 @@ type Registry = [WorkflowFact]
 
 type WorkflowProgram = Runtime -> IO Runtime
 
-type RuntimeFAlgebra = WorkflowAlgebra WorkflowFact WorkflowProgram
+type RuntimeFAlgebra = WorkflowEffAlgebra WorkflowFact WorkflowProgram
 
 type RuntimeRecursionModel = RuntimeFAlgebra -> AppBlueprint -> IO ()
 

@@ -26,7 +26,7 @@ reportEffect =
         , needs SquaresCalculatedFact
         , uses GenerateReport
         ]
-    , send GenerateReport ReportInput ReportOutput
+    , externalMake GenerateReport ReportInput ReportOutput
     , profile Production
         [ implement GenerateReport RuntimeGenerateReport
         ]

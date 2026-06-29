@@ -8,7 +8,7 @@ import Effects.EffectTheory
 loggingEffect :: EffectUnit
 loggingEffect =
   effect LoggingEffect
-    [ send WriteLog LogMessage Unit
+    [ externalMake WriteLog LogMessage Unit
     , profile Production
         [ implement WriteLog ConsoleLogHandler
         ]

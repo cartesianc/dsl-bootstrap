@@ -11,9 +11,15 @@ import Control.Exception
   )
 
 import Blueprint
-import Core.Architecture.Cata
-  ( cataHanging
-  , cataWorkflow
+import Core.Architecture.Recursion
+  ( gpreproHanging
+  , gpreproWorkflow
+  )
+import Core.Workflow.Eff
+  ( compileHangingEff
+  , compileWorkflowEff
+  , interpretHangingEff
+  , interpretWorkflowEff
   )
 import Interpreter.Runtime.Algebra
   ( runtimeAlgebra
@@ -45,8 +51,8 @@ runRaceWorkflowSmoke =
 runHangingWorkflowSmoke :: IO ()
 runHangingWorkflowSmoke = do
   putStrLn "[smoke] hanging"
-  runtime <- cataWorkflow runtimeAlgebra smokeFact emptyRuntime
-  result <- try (runHanging (cataHanging runtimeAlgebra smokeHanging) runtime)
+  runtime <- gpreproWorkflow compileWorkflowEff interpretWorkflowEff runtimeAlgebra smokeFact emptyRuntime
+  result <- try (runHanging (gpreproHanging compileHangingEff interpretHangingEff runtimeAlgebra smokeHanging) runtime)
   case result of
     Right nextRuntime ->
       putStrLn ("[smoke] ok " ++ show (availableFacts nextRuntime))
@@ -56,7 +62,7 @@ runHangingWorkflowSmoke = do
 runSmoke :: String -> WorkflowComponent -> IO ()
 runSmoke label workflow = do
   putStrLn ("[smoke] " ++ label)
-  result <- try (cataWorkflow runtimeAlgebra workflow emptyRuntime)
+  result <- try (gpreproWorkflow compileWorkflowEff interpretWorkflowEff runtimeAlgebra workflow emptyRuntime)
   case result of
     Right runtime ->
       putStrLn ("[smoke] ok " ++ show (availableFacts runtime))

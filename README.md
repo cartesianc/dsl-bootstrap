@@ -1,14 +1,77 @@
-# dsl设计模式
+# mytest
 
-这是一个 Haskell 架构 demo。项目把应用结构写成可跳转、可组合的 AST eDSL。执行细节由 interpreter 负责。
+Haskell 架构 DSL demo。项目把应用拆成三条可跳转的前台链路：
 
-## 文档引用
+```text
+currentAst
+currentEffects
+currentInterpreter
+```
 
-DSL 前台写法和插件扩展流程见：[AST DSL 使用说明](docs/AST_SPEC.zh.md)。
+目标：用 Haskell declaration 承载架构文档，保持 IDE 左键路径稳定。
 
-## 设计目标
+## 入口
 
-前台代码只描述结构：
+[app/Main.hs](app/Main.hs)
+
+```haskell
+main :: IO ()
+main =
+  currentInterpreter currentAst currentEffects
+```
+
+入口含义：
+
+```text
+currentAst          workflow AST
+currentEffects      fact / external boundary / profile 声明
+currentInterpreter  app 构建、effect 语义接入、runtime 执行
+```
+
+## 左键路径
+
+AST 路径：
+
+```text
+main
+  -> currentAst
+  -> blueprint
+  -> app / hooks
+  -> plugins / workflow nodes
+```
+
+Effect 路径：
+
+```text
+main
+  -> currentEffects
+  -> effectTheory
+  -> systemEffect / userEffect / reportEffect / ...
+  -> fact / externalMake / externalTake / profile
+```
+
+Interpreter 路径：
+
+```text
+main
+  -> currentInterpreter
+  -> Core.App.app
+  -> recursionScheme
+  -> cata / contextware / algebra
+```
+
+## AST
+
+[src/AST/AppBlueprint.hs](src/AST/AppBlueprint.hs)
+
+```haskell
+data AppBlueprint = AppBlueprint
+  { blueprintApp :: App
+  , blueprintHanging :: AppHanging
+  }
+```
+
+`blueprintApp` 是主 workflow：
 
 ```haskell
 app :: App
@@ -21,77 +84,27 @@ app =
     ]
 ```
 
-开发时点进 `userModule`、`reportModule`，看到的仍然是 DSL 节点。模块的执行方式、渲染方式、runtime 行为由 interpreter 决定。
-
-## 运行入口
-
-`app/Main.hs` 是当前程序装配页：
+`blueprintHanging` 是外挂 workflow：
 
 ```haskell
-main :: IO ()
-main =
-  currentInterpreter currentAst currentEffects
+hooks :: AppHanging
+hooks =
+  hanging
+    [ configurationHook
+    , bootHook
+    , runtimeHook
+    , loggingHook
+    , userHook
+    , reportHook
+    , shutdownHook
+    ]
 ```
 
-`currentAst` 放在 `app/CurrentAst.hs`：
+## Workflow 节点
 
-```haskell
-currentAst :: AppBlueprint
-currentAst =
-  blueprint
-```
+主 workflow 节点：
 
-`currentEffects` 放在 `app/CurrentEffects.hs`：
-
-```haskell
-currentEffects :: EffectTheory
-currentEffects =
-  effectTheory
-```
-
-`currentInterpreter` 放在 `app/InterpretConfig.hs`：
-
-```haskell
-interpretConfig :: InterpretConfig
-interpretConfig =
-  InterpretConfig
-    { interpretRecursionModel = cata
-    , interpretContextware = contextware
-    , interpretFAlgebra = algebra
-    }
-```
-
-当前解释链：
-
-```haskell
-app currentAst currentEffects Production
-recursionScheme cata contextware algebra ast effects
-```
-
-`app` 阶段从 AST 收集 fact，沿 `EffectTheory` 展开 producer 依赖，检查 `uses` 的 send boundary 是否声明、当前 profile 是否有 implementation。检查通过后再进入 recursion model。
-
-## Blueprint 结构
-
-一个 blueprint 分成两块：
-
-```haskell
-data AppBlueprint = AppBlueprint
-  { blueprintApp :: App
-  , blueprintHanging :: AppHanging
-  }
-```
-
-`app` 写主 workflow。
-
-`hanging` 写外挂逻辑。它不属于主 workflow，不会被塞进 `chain` / `parallel` / `fallback` 里面。
-
-## 节点分类
-
-### WorkflowComponent
-
-主执行流组件：
-
-```haskell
+```text
 chain
 parallel
 fact
@@ -101,191 +114,244 @@ race
 choice
 ```
 
-`fact` 是 workflow 的叶子节点，用来声明当前位置给出的 fact。
+`fact` 是 workflow 叶子：
 
 ```haskell
 fact [UserKnownFact]
 ```
 
-`wait` 表示当前分支等待某些 fact：
+`wait` 等待 fact 条件：
 
 ```haskell
 wait [UserKnownFact] reportModule
 ```
 
-fact 条件可以组合：
+条件组合：
 
 ```haskell
-wait
-  (allOf [UserKnownFact, RuntimePreparedFact])
-  reportModule
+wait (allOf [UserKnownFact, RuntimePreparedFact]) reportModule
+wait (anyOf [UserKnownFact, ReportGeneratedFact]) reportModule
 ```
 
-```haskell
-wait
-  (anyOf [UserKnownFact, ReportGeneratedFact])
-  reportModule
-```
+## Hanging 节点
 
-`fallback` 只能写 workflow 分支：
+`hanging` 节点：
 
-```haskell
-fallback [primaryWorkflow, backupWorkflow]
-```
-
-### HangingComponent
-
-`hanging` 里放外挂节点：
-
-```haskell
+```text
 middleware
 callback
 suspense
 loop
 ```
 
-`middleware` 是效果叠加器。它接收一个 workflow body，本身挂在 `hanging` 里：
+示例：
 
 ```haskell
-middleware ReportMiddleware reportModule
+hanging
+  [ middleware ReportMiddleware reportModule
+  , callback
+      (allOf [UserKnownFact, RuntimePreparedFact])
+      reportModule
+  , suspense
+      (anyOf [UserKnownFact, ReportGeneratedFact])
+      reportModule
+  , loop reportModule
+  ]
 ```
 
-含义：`reportModule` 整体叠加 `ReportMiddleware`。多层 middleware 按 `FreeMonoid` 组合；当前 interpreter 把它解释为顺序无关的效果集合。
+语义：
 
-`callback facts body`：当 facts 满足时，把 `body` 作为新的并行分支启动。
-
-`suspense facts runningComponent`：当 facts 满足时，请求暂停或终止正在运行的 `runningComponent`。精确匹配需要后续 component registry。
-
-`loop workflowComponent`：按 `forever` 语义重复执行一个 workflow component。retry、压测、次数控制由其他组件或 scheduler 表达。
-
-```haskell
-hooks :: AppHanging
-hooks =
-  hanging
-    [ middleware ReportMiddleware reportModule
-    , callback
-        (allOf [UserKnownFact, RuntimePreparedFact])
-        reportModule
-    , suspense
-        (anyOf [UserKnownFact, ReportGeneratedFact])
-        reportModule
-    , loop reportModule
-    ]
+```text
+middleware body   给 body 叠加 middleware 效果
+callback facts b  facts 满足后并行启动 b
+suspense facts b  facts 满足后请求暂停或终止 b
+loop b            forever 执行 b
 ```
 
-`middleware`、`callback`、`suspense` 和 `loop` 只属于 `hanging`，不能写进主 workflow。
+`callback`、`suspense`、`loop` 的完整 scheduler / component registry 仍在 TODO 阶段。
 
-## 插件化
+## Plugin
 
-业务组件放在 `src/Plugins/`。组件声明 AST 形状，并用 `-- plugin:` 注册到统一的 `Plugins` 出口。
+业务 workflow 组件放在 [src/Plugins](src/Plugins)。
 
-标准插件文件包含模块声明、`Blueprint` 导入和插件声明：
+插件用 `-- plugin:` 注册：
 
 ```haskell
-{-# OPTIONS_GHC -Wno-missing-export-lists #-}
-
-module Plugins.Payment where
+module Plugins.Lifecycle where
 
 import Blueprint
 
-type PaymentModule = Wait
-
-type PaymentHook = Middleware
-
--- plugin: paymentModule
-paymentModule :: PaymentModule
-paymentModule =
-  wait
-    [ UserKnownFact ]
-    reportModule
-
--- plugin: paymentHook
-paymentHook :: PaymentHook
-paymentHook =
-  middleware PaymentMiddleware paymentModule
+-- plugin: lifecycleStart
+lifecycleStart :: Chain
+lifecycleStart =
+  chain LifecycleStartFlow
+    [ configurationModule
+    , bootModule
+    ]
 ```
 
-如果插件里引用了其它插件，例如上面的 `reportModule`，构建前 `Setup.hs` 会自动维护 import 区块：
+`Setup.hs` 生成统一出口：
+
+```text
+src/Core/Plugins.hs
+```
+
+插件之间的 import 区块由 `Setup.hs` 维护：
 
 ```haskell
 -- plugin imports: begin
-import Plugins.Report
+import Plugins.Boot
+import Plugins.Configuration
 -- plugin imports: end
 ```
 
-这段区块由生成器管理。插件文件不要导入 `Plugins`，也不要手写 `Plugins.Dependencies.X` 或 `Plugins.Scope.X`。
-
-`AST.AppBlueprint` 导入统一出口：
+业务代码导入统一出口：
 
 ```haskell
 import Blueprint
 import Plugins
 ```
 
-主 workflow 通过统一出口引用插件。
+## EffectTheory
 
-## Effect 声明
+Effect 声明放在 [src/Effects](src/Effects)。
 
-Effect 声明是可选治理层。只写 workflow 时不需要 effect；需要运行时闭包检查、profile implementation 或外部边界时，再写 effect unit。
-
-没有前置依赖时，直接声明 fact：
+Effect 用 `-- effect:` 注册：
 
 ```haskell
-fact AppConfiguredFact
+module Effects.Report where
+
+import Effects.EffectTheory
+
+-- effect: reportEffect
+reportEffect :: EffectUnit
+reportEffect =
+  effect ReportEffect
+    [ fact CalculationSectionOpenedFact
+        [ needs UserKnownFact
+        ]
+    , fact ReportGeneratedFact
+        [ needs AddCalculatedFact
+        , needs FactorialCalculatedFact
+        , needs SquaresCalculatedFact
+        , uses GenerateReport
+        ]
+    , externalMake GenerateReport ReportInput ReportOutput
+    , profile Production
+        [ implement GenerateReport RuntimeGenerateReport
+        ]
+    , profile Test
+        [ implement GenerateReport MockReportHandler
+        ]
+    ]
 ```
 
-只有 fact 依赖时，只写 `needs`：
-
-```haskell
-fact AddCalculatedFact
-  [ needs CalculationSectionOpenedFact
-  ]
-```
-
-跨外部边界时声明出站能力：
-
-```haskell
-send GenerateReport ReportInput ReportOutput
-
-fact ReportGeneratedFact
-  [ needs AddCalculatedFact
-  , needs FactorialCalculatedFact
-  , needs SquaresCalculatedFact
-  , uses GenerateReport
-  ]
-```
-
-`needs` 指 fact 依赖，`uses` 指出站能力。只有被 `uses` 的 send boundary 需要在当前 profile 下有 implementation：
-
-```haskell
-profile Production
-  [ implement GenerateReport RuntimeGenerateReport
-  ]
-```
-
-入站事实用 `receive`：
-
-```haskell
-receive LoginRequestFact
-```
-
-`receive` 表示外界把 fact 给系统；`send` 表示系统可以调用外界能力。两者都是边界，但方向相反。
-
-## 项目结构
+Effect DSL：
 
 ```text
-app/             当前入口、当前 AST、当前解释配置
-src/AST/         前台 AST 蓝图和词汇
-src/Effects/     effect theory、producer、send/receive boundary 和 profile 声明
-src/Core/        DSL 核心结构、cata、插件出口和生成器产物
-src/Interpreter/ 解释器 algebra 和 runtime
-src/Plugins/     插件式业务组件
-docs/            中文 DSL 使用说明
+fact x              声明 x 可被系统给出
+fact x [needs y]    声明 x 依赖 y
+fact x [uses s]     声明 x 需要 externalMake s
+externalMake s i o  声明系统调用外部能力 s
+externalTake x      声明外部输入 fact x
+profile p [...]     声明 p 环境下的 implementation
+implement s h       声明 s 由 h 解释
 ```
 
-## TODO
+`Setup.hs` 生成：
 
-后续路线已经单独整理到 [TODO.md](TODO.md)。
+```text
+src/Effects/Theory.hs
+```
+
+当前生成结果形状：
+
+```haskell
+effectTheory :: EffectTheory
+effectTheory =
+  theory
+    [ Effects.Demo.demoEffect
+    , Effects.Logging.loggingEffect
+    , Effects.Report.reportEffect
+    , Effects.System.systemEffect
+    , Effects.User.userEffect
+    ]
+```
+
+## App 构建
+
+[src/Core/App.hs](src/Core/App.hs) 在 runtime 前构建 `AppPlan`：
+
+```text
+validateAst
+effectSemantics
+fact dependency closure
+send boundary check
+profile check
+implementation check
+```
+
+检查项：
+
+```text
+重复 fact producer
+重复 externalMake boundary
+重复 profile implementation
+缺失 fact producer
+fact dependency cycle
+缺失 externalMake boundary
+缺失 profile
+缺失 implementation
+```
+
+检查通过后进入 interpreter：
+
+```haskell
+recursionScheme cata contextware algebra ast effects
+```
+
+## Runtime
+
+当前 runtime 链路：
+
+```text
+AppBlueprint
+  -> compileWorkflowEff
+  -> contextware effects algebra
+  -> runBlueprintWithAlgebra
+```
+
+`contextware` 使用 `EffectTheory` 生成的 `effectSemantics` 包装 `onProduceEff`：
+
+```haskell
+contextware effects algebra =
+  algebra
+    { onProduceEff =
+        ensureFact (effectSemantics effects) (onProduceEff algebra)
+    }
+```
+
+当前边界：
+
+```text
+fact 依赖会自动 ensure
+externalMake 当前输出 trace
+profile implementation 当前用于完备性检查
+真实 IO handler dispatch 后续接入
+```
+
+## 目录
+
+```text
+app/                 当前入口、当前 AST、当前 EffectTheory、当前解释配置
+src/AST/             前台 AppBlueprint 和业务词汇
+src/Plugins/         workflow 插件
+src/Effects/         effect claim、fact producer、external boundary、profile
+src/Core/            AST 核心、AppPlan、effect semantics、workflow lowering
+src/Interpreter/     runtime algebra、contextware、recursion model
+docs/                DSL 使用说明
+TODO.md              后续路线
+```
 
 ## 构建
 
@@ -294,10 +360,41 @@ stack build
 stack exec mytest
 ```
 
-`stack exec mytest` 运行当前 interpreter 输出。临时查看 workflow run report，可以执行：
+HLS 检查：
+
+```powershell
+D:\ghcup\bin\haskell-language-server-9.6.7.exe typecheck app\Main.hs
+```
+
+Workflow run report：
 
 ```powershell
 stack exec ghc -- -package mytest -e "Interpreter.Runtime.WorkflowRunReport.printBlueprintRunReport AST.AppBlueprint.blueprint"
 ```
 
-更多 AST 写法见 `docs/AST_SPEC.zh.md`。
+## 当前阶段
+
+已完成：
+
+```text
+AST DSL
+Plugin 自动注册
+EffectTheory 自动注册
+EffectSemantics
+AppPlan 构建检查
+contextware fact ensure
+runtime trace
+```
+
+待完成：
+
+```text
+真实 handler dispatch
+profile runtime switching
+callback 实时 scheduler
+suspense component registry
+loop lifecycle control
+effect validation report
+```
+
+详细路线见 [TODO.md](TODO.md)。

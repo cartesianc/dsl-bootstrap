@@ -32,8 +32,14 @@ library
                      , Blueprint
                      , Core.Architecture
                      , Core.Architecture.Cata
+                     , Core.Architecture.Cata.Types
+                     , Core.Architecture.Recursion
+                     , Core.Effect.Semantics
                      , Core.Architecture.Internal
                      , Core.App
+                     , Core.Workflow.Eff
+                     , Core.Workflow.Semantics
+                     , Core.Workflow.Semantics.Render
                      , Effects.Demo
                      , Effects.EffectTheory
                      , Effects.Logging
@@ -50,6 +56,7 @@ library
                      , Interpreter.Runtime
                      , Interpreter.Runtime.Algebra
                      , Interpreter.Runtime.Contextware
+                     , Interpreter.Runtime.Ensure
                      , Interpreter.Runtime.Facts
                      , Interpreter.Runtime.Hanging.FreeMonoid
                      , Interpreter.Runtime.RecursionModel

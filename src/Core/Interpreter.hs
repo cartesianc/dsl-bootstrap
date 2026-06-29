@@ -24,9 +24,6 @@ import Interpreter.Runtime.Algebra
 import Interpreter.Runtime.Contextware
   ( contextware
   )
-import Interpreter.Runtime.RecursionModel
-  ( cata
-  )
 import Interpreter.Runtime
   ( Runtime (..)
   , runApp
@@ -34,6 +31,10 @@ import Interpreter.Runtime
   , runBlueprint
   , runBlueprintWithEffects
   , runBlueprintWith
+  , runBlueprintWithAlgebra
+  )
+import Interpreter.Runtime.Types
+  ( emptyRuntime
   )
 
 interpreter :: AppBlueprint -> EffectTheory -> IO ()
@@ -42,4 +43,7 @@ interpreter ast effects =
     Left errorReport ->
       putStrLn ("app build failed: " ++ App.renderAppError errorReport)
     Right appPlan ->
-      cata (contextware (App.appPlanEffects appPlan) algebra) (App.appPlanBlueprint appPlan)
+      runBlueprintWithAlgebra
+        (contextware (App.appPlanEffects appPlan) algebra)
+        emptyRuntime
+        (App.appPlanBlueprint appPlan)

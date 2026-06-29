@@ -12,11 +12,6 @@ module Core.Architecture.Internal
   , freeAlternative
   , freeChoice
   , requirementEffect
-  , fmapFreeMonad
-  , fmapFreeApplicative
-  , fmapFreeMonoid
-  , fmapFreeAlternative
-  , fmapFreeChoice
   , foldFreeMonadState
   , foldFreeApplicativeState
   , foldFreeMonoidState
@@ -85,28 +80,52 @@ requirementEffect :: [requirement] -> RequirementEffect requirement ()
 requirementEffect =
   RequirementEffect
 
-fmapFreeMonad :: (step -> nextStep) -> FreeMonad step -> FreeMonad nextStep
-fmapFreeMonad transform steps =
-  FreeMonad (map transform (freeMonadSteps steps))
+instance Functor FreeMonad where
+  fmap transform steps =
+    FreeMonad (map transform (freeMonadSteps steps))
 
-fmapFreeApplicative :: (branch -> nextBranch) -> FreeApplicative branch -> FreeApplicative nextBranch
-fmapFreeApplicative transform branches =
-  FreeApplicative (map transform (freeApplicativeBranches branches))
+instance Semigroup (FreeMonad step) where
+  FreeMonad left <> FreeMonad right =
+    FreeMonad (left <> right)
 
-fmapFreeMonoid :: (item -> nextItem) -> FreeMonoid item -> FreeMonoid nextItem
-fmapFreeMonoid transform items =
-  FreeMonoid (map transform (freeMonoidItems items))
+instance Monoid (FreeMonad step) where
+  mempty =
+    FreeMonad []
 
-fmapFreeAlternative :: (branch -> nextBranch) -> FreeAlternative branch -> FreeAlternative nextBranch
-fmapFreeAlternative transform branches =
-  FreeAlternative (map transform (freeAlternativeBranches branches))
+instance Functor FreeApplicative where
+  fmap transform branches =
+    FreeApplicative (map transform (freeApplicativeBranches branches))
 
-fmapFreeChoice :: (branch -> nextBranch) -> FreeChoice key branch -> FreeChoice key nextBranch
-fmapFreeChoice transform choices =
-  FreeChoice (map mapChoiceBranch (freeChoiceBranches choices))
-  where
-    mapChoiceBranch (ChoiceBranch key branch) =
-      ChoiceBranch key (transform branch)
+instance Semigroup (FreeApplicative branch) where
+  FreeApplicative left <> FreeApplicative right =
+    FreeApplicative (left <> right)
+
+instance Monoid (FreeApplicative branch) where
+  mempty =
+    FreeApplicative []
+
+instance Functor FreeMonoid where
+  fmap transform items =
+    FreeMonoid (map transform (freeMonoidItems items))
+
+instance Functor FreeAlternative where
+  fmap transform branches =
+    FreeAlternative (map transform (freeAlternativeBranches branches))
+
+instance Semigroup (FreeAlternative branch) where
+  FreeAlternative left <> FreeAlternative right =
+    FreeAlternative (left <> right)
+
+instance Monoid (FreeAlternative branch) where
+  mempty =
+    FreeAlternative []
+
+instance Functor (FreeChoice key) where
+  fmap transform choices =
+    FreeChoice (map mapChoiceBranch (freeChoiceBranches choices))
+    where
+      mapChoiceBranch (ChoiceBranch key branch) =
+        ChoiceBranch key (transform branch)
 
 instance Semigroup (FreeMonoid item) where
   FreeMonoid left <> FreeMonoid right =

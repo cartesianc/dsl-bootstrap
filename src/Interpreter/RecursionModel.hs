@@ -5,9 +5,15 @@ module Interpreter.RecursionModel
 import AST.AppBlueprint
   ( AppBlueprint (..)
   )
-import Core.Architecture.Cata
-  ( cataHanging
-  , cataWorkflow
+import Core.Architecture.Recursion
+  ( gpreproHanging
+  , gpreproWorkflow
+  )
+import Core.Workflow.Semantics
+  ( interpretHangingProgram
+  , interpretWorkflowProgram
+  , lowerHanging
+  , lowerWorkflow
   )
 import Interpreter.Types
   ( RecursionModel
@@ -23,5 +29,5 @@ cataModel algebra =
 cataAfterCheck :: RecursionModel
 cataAfterCheck algebra ast =
   runBlueprint
-    (cataWorkflow algebra (blueprintApp ast))
-    (cataHanging algebra (blueprintHanging ast))
+    (gpreproWorkflow lowerWorkflow interpretWorkflowProgram algebra (blueprintApp ast))
+    (gpreproHanging lowerHanging interpretHangingProgram algebra (blueprintHanging ast))

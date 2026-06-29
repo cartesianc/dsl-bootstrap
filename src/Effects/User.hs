@@ -19,8 +19,8 @@ userEffect =
         , needs UserGreetedFact
         , uses RememberUser
         ]
-    , send AskUserName NoInput UserName
-    , send RememberUser UserRecord Unit
+    , externalMake AskUserName NoInput UserName
+    , externalMake RememberUser UserRecord Unit
     , profile Production
         [ implement AskUserName RuntimeAskUserName
         , implement RememberUser RuntimeRememberUser

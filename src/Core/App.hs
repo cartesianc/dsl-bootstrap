@@ -22,30 +22,43 @@ import Core.Architecture.Internal
   , FreeMonoid (..)
   , RequirementEffect (..)
   )
+import Core.Effect.Semantics
+  ( EffectSemantics (..)
+  , FactContract (..)
+  , HandlerContract (..)
+  , ProducerRequirement (..)
+  , ProfileContract (..)
+  , SendContract (..)
+  , SendUse (..)
+  , TakeMakeRule (..)
+  , effectSemantics
+  , factContractFor
+  , handlerContractFor
+  , handlerContractsFor
+  , profileContractFor
+  , sendContractFor
+  , takeMakeRulesFor
+  )
 import Core.Validation
   ( AstError
   , renderAstError
   , validateAst
   )
 import Effects.EffectTheory
-  ( EffectProfile (..)
-  , EffectSection (..)
-  , EffectTheory (..)
-  , EffectUnit (..)
-  , FactProducer (..)
-  , ImplementationBinding (..)
-  , ProducerStep (..)
+  ( EffectTheory
   , ProfileName
-  , SendBoundary (..)
   , SendName
   )
 
 data AppPlan = AppPlan
   { appPlanBlueprint :: AppBlueprint
   , appPlanEffects :: EffectTheory
+  , appPlanEffectSemantics :: EffectSemantics
   , appPlanProfile :: ProfileName
   , appPlanFacts :: [WorkflowFact]
   , appPlanSendBoundaries :: [SendName]
+  , appPlanHandlerContracts :: [HandlerContract]
+  , appPlanTakeMakeRules :: [TakeMakeRule]
   }
 
 data AppError
@@ -67,21 +80,25 @@ app =
 buildApp :: AppBlueprint -> EffectTheory -> ProfileName -> Either AppError AppPlan
 buildApp blueprint effects currentProfile = do
   checkedBlueprint <- mapLeft InvalidAst (validateAst blueprint)
-  checkEffectTheory effects
+  let semantics = effectSemantics effects
+  checkEffectTheory semantics
   let rootFacts = unique (collectBlueprintFacts checkedBlueprint)
-  closure <- closeFacts effects [] [] rootFacts
+  closure <- closeFacts semantics [] [] rootFacts
   let requiredFacts = unique (rootFacts ++ closureFacts closure)
       requiredSendBoundaries = unique (closureSendBoundaries closure)
-  mapM_ (checkSendBoundary effects) (closureSendUses closure)
-  checkProfile effects currentProfile
-  mapM_ (checkImplementation effects currentProfile) requiredSendBoundaries
+  mapM_ (checkSendBoundary semantics) (closureSendUses closure)
+  checkProfile semantics currentProfile
+  mapM_ (checkImplementation semantics currentProfile) requiredSendBoundaries
   pure
     AppPlan
       { appPlanBlueprint = checkedBlueprint
       , appPlanEffects = effects
+      , appPlanEffectSemantics = semantics
       , appPlanProfile = currentProfile
       , appPlanFacts = requiredFacts
       , appPlanSendBoundaries = requiredSendBoundaries
+      , appPlanHandlerContracts = handlerContractsFor semantics currentProfile requiredSendBoundaries
+      , appPlanTakeMakeRules = takeMakeRulesFor semantics requiredFacts
       }
 
 data Closure = Closure
@@ -107,7 +124,7 @@ mergeClosure left right =
     }
 
 closeFacts ::
-  EffectTheory ->
+  EffectSemantics ->
   [WorkflowFact] ->
   [WorkflowFact] ->
   [WorkflowFact] ->
@@ -125,85 +142,72 @@ closeFacts effects seen stack (currentFact : rest)
       pure (mergeClosure currentClosure restClosure)
 
 closeFact ::
-  EffectTheory ->
+  EffectSemantics ->
   [WorkflowFact] ->
   [WorkflowFact] ->
   WorkflowFact ->
   Either AppError Closure
 closeFact effects seen stack currentFact =
-  case findProducer effects currentFact of
+  case factContractFor effects currentFact of
     Nothing ->
       Left (MissingFactProducer currentFact)
-    Just currentProducer ->
-      closeProducer effects (currentFact : seen) (currentFact : stack) currentProducer
+    Just currentContract ->
+      closeFactContract effects (currentFact : seen) (currentFact : stack) currentContract
 
-closeProducer ::
-  EffectTheory ->
+closeFactContract ::
+  EffectSemantics ->
   [WorkflowFact] ->
   [WorkflowFact] ->
-  FactProducer ->
+  FactContract ->
   Either AppError Closure
-closeProducer effects seen stack currentProducer = do
-  let steps = producerSteps currentProducer
-      neededFacts = concatMap stepFacts steps
-      usedSendBoundaries = concatMap stepSendBoundaries steps
-      sendUses = [(producerFact currentProducer, currentSend) | currentSend <- usedSendBoundaries]
+closeFactContract effects seen stack currentContract = do
+  let neededFacts = concatMap requirementFactList (factContractRequirements currentContract)
+      currentSendUses = factContractSendUses currentContract
+      usedSendBoundaries = map sendUseName currentSendUses
+      sendUses =
+        [ (sendUseFact currentUse, sendUseName currentUse)
+        | currentUse <- currentSendUses
+        ]
   dependencyClosure <- closeFacts effects seen stack neededFacts
   pure
     ( mergeClosure
         dependencyClosure
         Closure
-          { closureFacts = producerFact currentProducer : neededFacts
+          { closureFacts = factContractFact currentContract : neededFacts
           , closureSendBoundaries = usedSendBoundaries
           , closureSendUses = sendUses
           }
     )
 
-stepFacts :: ProducerStep -> [WorkflowFact]
-stepFacts (Needs currentFact) =
+requirementFactList :: ProducerRequirement -> [WorkflowFact]
+requirementFactList (NeedsFact currentFact) =
   [currentFact]
-stepFacts (OnFailure currentFact) =
+requirementFactList (OnFailureFact currentFact) =
   [currentFact]
-stepFacts _ =
-  []
 
-stepSendBoundaries :: ProducerStep -> [SendName]
-stepSendBoundaries (Uses currentSend) =
-  [currentSend]
-stepSendBoundaries _ =
-  []
-
-findProducer :: EffectTheory -> WorkflowFact -> Maybe FactProducer
-findProducer effects currentFact =
-  firstJust
-    [ Just currentProducer
-    | currentProducer <- allProducers effects
-    , producerFact currentProducer == currentFact
-    ]
-
-checkEffectTheory :: EffectTheory -> Either AppError ()
+checkEffectTheory :: EffectSemantics -> Either AppError ()
 checkEffectTheory effects = do
   checkDuplicateFactProducers effects
   checkDuplicateSendBoundaries effects
   checkDuplicateImplementations effects
 
-checkDuplicateFactProducers :: EffectTheory -> Either AppError ()
+checkDuplicateFactProducers :: EffectSemantics -> Either AppError ()
 checkDuplicateFactProducers effects =
-  case findDuplicate (map producerFact (allProducers effects)) of
+  case findDuplicate (map factContractFact (semanticFactContracts effects)) of
     Just currentFact ->
       Left (DuplicateFactProducer currentFact)
     Nothing ->
       pure ()
 
-checkDuplicateSendBoundaries :: EffectTheory -> Either AppError ()
+checkDuplicateSendBoundaries :: EffectSemantics -> Either AppError ()
 checkDuplicateSendBoundaries effects =
-  case findDuplicate (map sendBoundaryName (allSendBoundaries effects)) of
+  case findDuplicate (map sendContractName (semanticSendContracts effects)) of
     Just currentSend ->
       Left (DuplicateSendBoundary currentSend)
     Nothing ->
       pure ()
 
-checkDuplicateImplementations :: EffectTheory -> Either AppError ()
+checkDuplicateImplementations :: EffectSemantics -> Either AppError ()
 checkDuplicateImplementations effects =
   case findDuplicate implementationKeys of
     Just (currentProfile, currentSend) ->
@@ -212,81 +216,31 @@ checkDuplicateImplementations effects =
       pure ()
   where
     implementationKeys =
-      [ (profileName currentProfile, implementedSend currentImplementation)
-      | currentProfile <- allProfiles effects
-      , currentImplementation <- profileImplementations currentProfile
+      [ (profileContractName currentProfile, handlerContractSend currentImplementation)
+      | currentProfile <- semanticProfileContracts effects
+      , currentImplementation <- profileContractHandlers currentProfile
       ]
 
-checkSendBoundary :: EffectTheory -> (WorkflowFact, SendName) -> Either AppError ()
+checkSendBoundary :: EffectSemantics -> (WorkflowFact, SendName) -> Either AppError ()
 checkSendBoundary effects (currentFact, currentSend)
-  | currentSend `elem` map sendBoundaryName (allSendBoundaries effects) =
+  | Just _ <- sendContractFor effects currentSend =
       pure ()
   | otherwise =
       Left (MissingSendBoundary currentFact currentSend)
 
-checkProfile :: EffectTheory -> ProfileName -> Either AppError ()
+checkProfile :: EffectSemantics -> ProfileName -> Either AppError ()
 checkProfile effects currentProfile
-  | currentProfile `elem` map profileName (allProfiles effects) =
+  | Just _ <- profileContractFor effects currentProfile =
       pure ()
   | otherwise =
       Left (MissingProfile currentProfile)
 
-checkImplementation :: EffectTheory -> ProfileName -> SendName -> Either AppError ()
+checkImplementation :: EffectSemantics -> ProfileName -> SendName -> Either AppError ()
 checkImplementation effects currentProfile currentSend
-  | currentSend `elem` map implementedSend (profileImplementationsFor effects currentProfile) =
+  | Just _ <- handlerContractFor effects currentProfile currentSend =
       pure ()
   | otherwise =
       Left (MissingImplementation currentProfile currentSend)
-
-allProducers :: EffectTheory -> [FactProducer]
-allProducers effects =
-  concatMap unitProducers (theoryUnits effects)
-
-allSendBoundaries :: EffectTheory -> [SendBoundary]
-allSendBoundaries effects =
-  concatMap unitSendBoundaries (theoryUnits effects)
-
-allProfiles :: EffectTheory -> [EffectProfile]
-allProfiles effects =
-  concatMap unitProfiles (theoryUnits effects)
-
-profileImplementationsFor :: EffectTheory -> ProfileName -> [ImplementationBinding]
-profileImplementationsFor effects currentProfile =
-  concat
-    [ profileImplementations currentProfileImplementations
-    | currentProfileImplementations <- allProfiles effects
-    , profileName currentProfileImplementations == currentProfile
-    ]
-
-unitProducers :: EffectUnit -> [FactProducer]
-unitProducers =
-  concatMap sectionProducers . effectUnitSections
-
-unitSendBoundaries :: EffectUnit -> [SendBoundary]
-unitSendBoundaries =
-  concatMap sectionSendBoundaries . effectUnitSections
-
-unitProfiles :: EffectUnit -> [EffectProfile]
-unitProfiles =
-  concatMap sectionProfiles . effectUnitSections
-
-sectionProducers :: EffectSection -> [FactProducer]
-sectionProducers (FactClaimSection currentProducer) =
-  [currentProducer]
-sectionProducers _ =
-  []
-
-sectionSendBoundaries :: EffectSection -> [SendBoundary]
-sectionSendBoundaries (SendSection currentSend) =
-  [currentSend]
-sectionSendBoundaries _ =
-  []
-
-sectionProfiles :: EffectSection -> [EffectProfile]
-sectionProfiles (ProfileSection currentProfile) =
-  [currentProfile]
-sectionProfiles _ =
-  []
 
 collectBlueprintFacts :: AppBlueprint -> [WorkflowFact]
 collectBlueprintFacts blueprint =
@@ -366,16 +320,6 @@ unique =
     addUnique items item
       | item `elem` items = items
       | otherwise = items ++ [item]
-
-firstJust :: [Maybe item] -> Maybe item
-firstJust [] =
-  Nothing
-firstJust (currentItem : rest) =
-  case currentItem of
-    Just item ->
-      Just item
-    Nothing ->
-      firstJust rest
 
 findDuplicate :: Eq item => [item] -> Maybe item
 findDuplicate =

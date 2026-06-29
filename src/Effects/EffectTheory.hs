@@ -12,12 +12,12 @@ module Effects.EffectTheory
   , SendBoundary (..)
   , SendSignature (..)
   , effect
+  , externalMake
+  , externalTake
   , implement
   , needs
   , onFailure
   , profile
-  , receive
-  , send
   , theory
   , uses
   , module AST.Facts
@@ -82,8 +82,8 @@ effect :: EffectName -> [EffectSection] -> EffectUnit
 effect =
   EffectUnit
 
-send :: SendName -> TypeName -> TypeName -> EffectSection
-send name input output =
+externalMake :: SendName -> TypeName -> TypeName -> EffectSection
+externalMake name input output =
   SendSection (SendBoundary name (SendSignature input output))
 
 class FactClaim result where
@@ -105,8 +105,8 @@ uses :: SendName -> ProducerStep
 uses =
   Uses
 
-receive :: WorkflowFact -> EffectSection
-receive currentFact =
+externalTake :: WorkflowFact -> EffectSection
+externalTake currentFact =
   FactClaimSection (FactProducer currentFact [External])
 
 onFailure :: WorkflowFact -> ProducerStep
