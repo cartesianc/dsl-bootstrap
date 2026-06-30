@@ -99,13 +99,13 @@ wait :: FactDsl currentFacts => currentFacts -> WorkflowComponent -> Wait
 wait currentFacts =
   Architecture.wait (facts currentFacts)
 
-callback :: FactDsl currentFacts => currentFacts -> WorkflowComponent -> HangingComponent
-callback currentFacts =
-  Architecture.callback (facts currentFacts)
+callback :: WorkflowName -> WorkflowComponent -> HangingComponent
+callback =
+  Architecture.callback
 
-suspense :: FactDsl currentFacts => currentFacts -> WorkflowComponent -> HangingComponent
-suspense currentFacts =
-  Architecture.suspense (facts currentFacts)
+suspense :: WorkflowName -> HangingComponent
+suspense =
+  Architecture.suspense
 
 loop :: WorkflowComponent -> HangingComponent
 loop =

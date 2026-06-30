@@ -54,13 +54,19 @@ import Interpreter.Runtime.Monad
   , runRuntimeM
   , runRuntimeMOrThrow
   , throwRuntimeError
+  , withRuntimeCallbacks
   )
 import Interpreter.Runtime.Types
   ( Runtime (..)
+  , RuntimeCallback (..)
+  , RuntimeCallbackEvent (..)
+  , RuntimeComponentEvent (..)
+  , RuntimeComponentStatus (..)
   , RuntimeEffectEnvironment
   , RuntimeError (..)
   , RuntimeMiddlewareEvent (..)
   , RuntimeResult (..)
+  , RuntimeSuspenseEvent (..)
   , WorkflowProgram
   , emptyRuntime
   )
@@ -128,6 +134,8 @@ runRuntimeBoundarySmoke = do
     (programPlain smokeFact)
   runMiddlewareRuntimeSmoke
   runMiddlewareFailureSmoke
+  runCallbackTargetSmoke
+  runSuspenseRequestSmoke
 
 runMiddlewareRuntimeSmoke :: IO ()
 runMiddlewareRuntimeSmoke = do
@@ -189,6 +197,90 @@ runMiddlewareFailureSmoke = do
       ioError
         ( userError
             ( "[smoke] failed middleware failure cleanup: expected failure, got success "
+                ++ show runtime
+            )
+        )
+
+runCallbackTargetSmoke :: IO ()
+runCallbackTargetSmoke = do
+  putStrLn "[smoke] boundary callback target"
+  let environment =
+        withRuntimeCallbacks
+          [ RuntimeCallback
+              { runtimeCallbackTarget = Foo1
+              , runtimeCallbackBody = programPlain (fact [Foo6Fact])
+              }
+          ]
+          defaultRuntimeEnv
+  result <- runRuntimeM environment emptyRuntime (programPlain smokeCallbackTarget)
+  case result of
+    RuntimeSucceeded _ runtime
+      | Foo5Fact `elem` availableFacts runtime
+          && Foo6Fact `elem` availableFacts runtime
+          && runtimeCallbackEvents runtime
+            == [ RuntimeCallbackTriggered Foo1
+               , RuntimeCallbackCompleted Foo1
+               ]
+          && runtimeComponentEvents runtime
+            == [ RuntimeComponentEntered Foo1
+               , RuntimeComponentExited Foo1
+               ] -> do
+          putStrLn "[smoke] ok callback target"
+    RuntimeSucceeded _ runtime ->
+      ioError
+        ( userError
+            ( "[smoke] failed callback target: unexpected runtime "
+                ++ show runtime
+            )
+        )
+    RuntimeFailed actualError runtime ->
+      ioError
+        ( userError
+            ( "[smoke] failed callback target: expected success, got "
+                ++ show actualError
+                ++ " with "
+                ++ show runtime
+            )
+        )
+
+runSuspenseRequestSmoke :: IO ()
+runSuspenseRequestSmoke = do
+  putStrLn "[smoke] boundary suspense request"
+  firstResult <- runRuntimeM defaultRuntimeEnv emptyRuntime (programPlain smokeCallbackTarget)
+  case firstResult of
+    RuntimeSucceeded _ runtime -> do
+      let currentHanging =
+            Architecture.hanging
+              [ Architecture.suspense Foo1
+              ]
+      secondResult <- runRuntimeM defaultRuntimeEnv runtime (runHanging currentHanging)
+      case secondResult of
+        RuntimeSucceeded _ nextRuntime
+          | RuntimeSuspenseRequested Foo1 RuntimeComponentCompleted
+              `elem` runtimeSuspenseEvents nextRuntime -> do
+              putStrLn "[smoke] ok suspense request"
+        RuntimeSucceeded _ nextRuntime ->
+          ioError
+            ( userError
+                ( "[smoke] failed suspense request: unexpected runtime "
+                    ++ show nextRuntime
+                )
+            )
+        RuntimeFailed actualError nextRuntime ->
+          ioError
+            ( userError
+                ( "[smoke] failed suspense request: expected success, got "
+                    ++ show actualError
+                    ++ " with "
+                    ++ show nextRuntime
+                )
+            )
+    RuntimeFailed actualError runtime ->
+      ioError
+        ( userError
+            ( "[smoke] failed suspense request setup: expected success, got "
+                ++ show actualError
+                ++ " with "
                 ++ show runtime
             )
         )
@@ -325,6 +417,12 @@ smokeChain =
     , fact [Foo6Fact]
     ]
 
+smokeCallbackTarget :: Chain
+smokeCallbackTarget =
+  chain Foo1
+    [ fact [Foo5Fact]
+    ]
+
 smokeWait :: Chain
 smokeWait =
   chain Foo2
@@ -365,7 +463,8 @@ smokeRace =
 smokeHanging :: Hanging
 smokeHanging =
   hanging
-    [ callback [Foo5Fact] (fact [Foo6Fact])
+    [ callback Foo1 (fact [Foo6Fact])
+    , suspense Foo1
     , middleware ReportMiddleware (fact [AddCalculatedFact])
     , loop (fact [SquaresCalculatedFact])
     ]

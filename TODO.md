@@ -55,8 +55,8 @@
 - `fallback`：对应 alternative，表示备用分支。
 - `race`：对应 alternative，表示竞争分支。
 - `choice`：表示按 key 选择分支。
-- `callback`：对应 continuation / async hook。
-- `suspense`：对应外部挂载的控制 hook。
+- `callback`：进入目标 workflow 时并行启动 hook body。
+- `suspense`：记录对目标 workflow 的暂停请求；真实取消等 component registry 完整后再实现。
 - `loop`：对应 `forever`，作为 hanging 节点接收一个 workflow component，并重复执行这个 workflow；retry、压测、次数控制等能力由其他组件表达。
 - `wait`：对应 fact gate，不主动生产 fact。
 

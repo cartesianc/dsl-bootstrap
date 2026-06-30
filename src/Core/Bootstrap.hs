@@ -32,6 +32,7 @@ data CoreSliceRole
 
 data CoreSliceName
   = CoreSyntax
+  | CoreLanguageSpec
   | CoreRecursion
   | CoreHylo
   | CoreEffectTheory
@@ -80,6 +81,20 @@ defaultCoreBoundary =
             ]
         , coreSliceDependsOn = []
         , coreSlicePurpose = "workflow and hanging AST vocabulary"
+        }
+    , CoreSlice
+        { coreSliceName = CoreLanguageSpec
+        , coreSliceRole = PureCore
+        , coreSlicePhase = MinimalCoreFreeze
+        , coreSliceModules =
+            [ "Core.Language"
+            , "Core.Language.Spec"
+            , "Core.Language.Validation"
+            , "Core.Language.Constraint"
+            , "Core.Language.Elaboration"
+            ]
+        , coreSliceDependsOn = []
+        , coreSlicePurpose = "frontend keyword contracts, argument shapes, parent contexts, lowering targets, and elaborator bindings"
         }
     , CoreSlice
         { coreSliceName = CoreRecursion
@@ -168,7 +183,7 @@ defaultCoreBoundary =
             , "Framework.Effect"
             , "Framework.Hylo"
             ]
-        , coreSliceDependsOn = [CoreSyntax, CoreEffectTheory, CoreHylo]
+        , coreSliceDependsOn = [CoreSyntax, CoreLanguageSpec, CoreEffectTheory, CoreHylo]
         , coreSlicePurpose = "public frontend import surface for workflow, effect, and hylo declarations"
         }
     , CoreSlice
@@ -315,6 +330,7 @@ renderCoreSliceName :: CoreSliceName -> String
 renderCoreSliceName currentName =
   case currentName of
     CoreSyntax -> "syntax"
+    CoreLanguageSpec -> "language-spec"
     CoreRecursion -> "recursion"
     CoreHylo -> "hylo"
     CoreEffectTheory -> "effect-theory"

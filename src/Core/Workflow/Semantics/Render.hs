@@ -66,9 +66,9 @@ renderHangingAction :: (Show fact, Show hook) => HangingProgramAction fact hook 
 renderHangingAction currentAction =
   case currentAction of
     ProgramCallback currentCallback ->
-      ("callback " ++ renderFactExpr (callbackFacts currentCallback)) : map (indent 1) (renderWorkflowProgram (callbackBody currentCallback))
+      ("callback " ++ show (callbackTarget currentCallback)) : map (indent 1) (renderWorkflowProgram (callbackBody currentCallback))
     ProgramSuspense currentSuspense ->
-      ("suspense " ++ renderFactExpr (suspenseFacts currentSuspense)) : map (indent 1) (renderWorkflowProgram (suspenseTarget currentSuspense))
+      ["suspense " ++ show (suspenseTarget currentSuspense)]
     ProgramLoop currentLoop ->
       "loop" : map (indent 1) (renderWorkflowProgram (loopBody currentLoop))
     ProgramMiddleware currentMiddleware body ->

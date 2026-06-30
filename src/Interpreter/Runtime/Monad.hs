@@ -13,6 +13,7 @@ module Interpreter.Runtime.Monad
   , throwRuntimeError
   , traceRuntimeM
   , withRuntimeEnv
+  , withRuntimeCallbacks
   ) where
 
 import Core.Effect.Semantics
@@ -31,6 +32,7 @@ import Interpreter.Runtime.Trace
   )
 import Interpreter.Runtime.Types
   ( Runtime (..)
+  , RuntimeCallback
   , RuntimeEnv (..)
   , RuntimeError (..)
   , RuntimeEffectEnvironment
@@ -40,8 +42,12 @@ import Interpreter.Runtime.Types
   )
 
 runtimeEnv :: RuntimeEffectEnvironment -> EffectSemantics -> RuntimeEnv
-runtimeEnv =
+runtimeEnv environment semantics =
   RuntimeEnv
+    { runtimeEnvEffectEnvironment = environment
+    , runtimeEnvEffectSemantics = semantics
+    , runtimeEnvCallbacks = []
+    }
 
 defaultRuntimeEnv :: RuntimeEnv
 defaultRuntimeEnv =
@@ -69,6 +75,12 @@ withRuntimeEnv :: RuntimeEnv -> RuntimeM a -> RuntimeM a
 withRuntimeEnv localEnvironment program =
   RuntimeM $ \_ state ->
     runRuntimeMInternal program localEnvironment state
+
+withRuntimeCallbacks :: [RuntimeCallback] -> RuntimeEnv -> RuntimeEnv
+withRuntimeCallbacks callbacks environment =
+  environment
+    { runtimeEnvCallbacks = callbacks <> runtimeEnvCallbacks environment
+    }
 
 getRuntimeState :: RuntimeM RuntimeState
 getRuntimeState =

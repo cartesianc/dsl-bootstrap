@@ -111,5 +111,8 @@ branchRuntime :: Runtime -> Runtime
 branchRuntime runtime =
   runtime
     { runtimeTrace = []
+    , runtimeComponentEvents = []
+    , runtimeCallbackEvents = []
+    , runtimeSuspenseEvents = []
     , runtimeMiddlewareEvents = []
     }

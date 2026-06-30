@@ -1,5 +1,6 @@
 module Interpreter.Runtime.Hanging.FreeMonoid
   ( runHanging
+  , runtimeCallbacksFromHanging
   ) where
 
 import Control.Concurrent
@@ -30,8 +31,7 @@ import Core.Architecture.Internal
   ( FreeMonoid (..)
   )
 import Interpreter.Runtime.Facts
-  ( factExprAvailable
-  , mergeRuntime
+  ( mergeRuntime
   )
 import Interpreter.Runtime.Monad
   ( askRuntimeEnv
@@ -46,23 +46,26 @@ import Interpreter.Runtime.Middleware
   ( withRuntimeMiddleware
   )
 import Interpreter.Runtime.Trace
-  ( renderFactExpr
-  , runtimeSleep
+  ( runtimeSleep
   , traceRuntime
   )
 import Interpreter.Runtime.Types
   ( Runtime (..)
+  , RuntimeCallback (..)
   , RuntimeEnv
   , RuntimeError (..)
   , RuntimeResult (..)
   , WorkflowProgram
+  )
+import Interpreter.Runtime.Workflow.Node
+  ( requestSuspense
   )
 
 runHanging ::
   Hanging (HangingAction WorkflowFact Interceptor WorkflowProgram) ->
   WorkflowProgram
 runHanging actions = do
-  let currentActions = freeMonoidItems (hangingActions actions)
+  let currentActions = runtimeHangingActions (freeMonoidItems (hangingActions actions))
   environment <- askRuntimeEnv
   runtime <- getRuntimeState
   traceRuntimeM ("hanging fork " ++ show (length currentActions))
@@ -70,6 +73,20 @@ runHanging actions = do
   results <- liftRuntimeIO (mapM takeHangingResult resultBoxes)
   mergeHangingResults results
   traceRuntimeM "hanging done"
+
+runtimeCallbacksFromHanging ::
+  Hanging (HangingAction WorkflowFact Interceptor WorkflowProgram) ->
+  [RuntimeCallback]
+runtimeCallbacksFromHanging actions =
+  [ RuntimeCallback
+      { runtimeCallbackTarget = callbackTarget currentCallback
+      , runtimeCallbackBody = callbackBody currentCallback
+      }
+  | HangingCallback currentCallback <- currentActions
+  ]
+  where
+    currentActions =
+      freeMonoidItems (hangingActions actions)
 
 forkHangingAction ::
   RuntimeEnv ->
@@ -118,37 +135,31 @@ runHangingAction (HangingLoop currentLoop) =
 runHangingAction (HangingMiddleware currentMiddleware body) =
   runMiddleware currentMiddleware body
 
+runtimeHangingActions ::
+  [HangingAction fact hook workflow] ->
+  [HangingAction fact hook workflow]
+runtimeHangingActions =
+  filter runtimeHangingAction
+
+runtimeHangingAction :: HangingAction fact hook workflow -> Bool
+runtimeHangingAction action =
+  case action of
+    HangingCallback _ ->
+      False
+    _ ->
+      True
+
 runCallback ::
   Callback WorkflowFact WorkflowProgram ->
   WorkflowProgram
-runCallback currentCallback = do
-  runtime <- getRuntimeState
-  if factExprAvailable runtime (callbackFacts currentCallback)
-    then do
-      environment <- askRuntimeEnv
-      traceRuntimeM ("callback triggered " ++ renderFactExpr (callbackFacts currentCallback))
-      resultBox <- liftRuntimeIO (forkWorkflowProgram environment runtime (callbackBody currentCallback))
-      result <- liftRuntimeIO (takeHangingResult resultBox)
-      case result of
-        RuntimeSucceeded _ nextRuntime -> do
-          putRuntimeState (mergeRuntime runtime nextRuntime)
-          traceRuntimeM "callback done"
-        RuntimeFailed errorReport _ ->
-          throwRuntimeError errorReport
-    else
-      traceRuntimeM ("callback skipped " ++ renderFactExpr (callbackFacts currentCallback))
+runCallback currentCallback =
+  traceRuntimeM ("callback registered " ++ show (callbackTarget currentCallback))
 
 runSuspense ::
   Suspense WorkflowFact WorkflowProgram ->
   WorkflowProgram
-runSuspense currentSuspense = do
-  runtime <- getRuntimeState
-  if factExprAvailable runtime (suspenseFacts currentSuspense)
-    then do
-      traceRuntimeM ("suspense requested " ++ renderFactExpr (suspenseFacts currentSuspense))
-      traceRuntimeM "suspense pending component registry"
-    else
-      traceRuntimeM ("suspense skipped " ++ renderFactExpr (suspenseFacts currentSuspense))
+runSuspense currentSuspense =
+  requestSuspense (suspenseTarget currentSuspense)
 
 runLoop ::
   Loop WorkflowProgram ->
@@ -186,20 +197,13 @@ runMiddleware currentMiddleware body = do
     body
     traceRuntimeM ("middleware " ++ show (middlewareHook currentMiddleware) ++ " end")
 
-forkWorkflowProgram ::
-  RuntimeEnv ->
-  Runtime ->
-  WorkflowProgram ->
-  IO (MVar (Either SomeException (RuntimeResult ())))
-forkWorkflowProgram environment runtime program = do
-  resultBox <- newEmptyMVar
-  _ <- forkIO (try (runRuntimeM environment (branchRuntime runtime) program) >>= putMVar resultBox)
-  pure resultBox
-
 branchRuntime :: Runtime -> Runtime
 branchRuntime runtime =
   runtime
     { runtimeTrace = []
+    , runtimeComponentEvents = []
+    , runtimeCallbackEvents = []
+    , runtimeSuspenseEvents = []
     , runtimeMiddlewareEvents = []
     }
 
@@ -208,6 +212,11 @@ emptyBranchRuntime =
   Runtime
     { availableFacts = []
     , runtimeTrace = []
+    , runtimeActiveComponents = []
+    , runtimeCompletedComponents = []
+    , runtimeComponentEvents = []
+    , runtimeCallbackEvents = []
+    , runtimeSuspenseEvents = []
     , runtimeMiddlewareStack = []
     , runtimeMiddlewareEvents = []
     }

@@ -46,6 +46,9 @@ Core.*               AST 核心、AppPlan、effect semantics、constraint IR
 Interpreter.*        runtime/view interpreter 和 algebra
 ```
 
+前台语法契约由 `Core.Language.defaultLanguageSpec` 描述。它记录 keyword、参数形状、父上下文、结果类型和 lowering target。
+`Core.Language.defaultElaborationContract` 记录每个 lowering target 对应的实现入口，例如 `LowerToCallback -> Blueprint.callback`。
+
 自举前的 core 分层由 `Core.Bootstrap.defaultCoreBoundary` 描述：
 
 ```text
@@ -191,11 +194,9 @@ loop
 hanging
   [ middleware ReportMiddleware reportModule
   , callback
-      (allOf [UserKnownFact, RuntimePreparedFact])
+      ShutdownFlow
       reportModule
-  , suspense
-      (anyOf [UserKnownFact, ReportGeneratedFact])
-      reportModule
+  , suspense ReportModuleFlow
   , loop reportModule
   ]
 ```
@@ -204,12 +205,12 @@ hanging
 
 ```text
 middleware body   给 body 叠加 middleware 效果
-callback facts b  facts 满足后并行启动 b
-suspense facts b  facts 满足后请求暂停或终止 b
+callback target b  进入 target 时并行启动 b
+suspense target    记录对 target 的暂停请求
 loop b            forever 执行 b
 ```
 
-`callback`、`suspense`、`loop` 的完整 scheduler / component registry 见 TODO。
+`callback` 已按 workflow target 注册。`suspense` 当前只记录请求和 target 状态，真正取消等 component registry 完整后再补。
 
 自举范围：`blueprintApp` 与 `blueprintHanging`。前者覆盖主执行流；后者覆盖 middleware、callback、suspense、loop。
 
@@ -217,8 +218,8 @@ Hanging runtime v0：
 
 ```text
 middleware  作为 workflow 包装语义
-callback    条件满足后启动 body
-suspense    记录暂停请求，精细 component registry 后续补
+callback    进入目标 workflow 时启动 body
+suspense    记录暂停请求和 target 状态
 loop        表达有意重复
 ```
 
@@ -439,7 +440,7 @@ src/Framework/       前台/后台 facade
 src/AST/             AppBlueprint 和业务词汇
 src/Plugins/         workflow 插件
 src/Effects/         effect claim、fact producer、external boundary、profile
-src/Core/            AST 核心、AppPlan、effect semantics、workflow lowering
+src/Core/            AST 核心、LanguageSpec、ElaborationContract、AppPlan、effect semantics、workflow lowering
 src/Interpreter/     runtime algebra、contextware、recursion model
 docs/                DSL 使用说明
 TODO.md              后续路线
@@ -535,14 +536,16 @@ minimal effect handler dispatch
 RuntimeM minimal shape
 runtime trace state
 core bootstrap boundary map
+frontend language spec
+frontend elaboration contract
 ```
 
 待完成：
 
 ```text
 profile runtime switching
-callback 实时 scheduler
-suspense component registry
+callback target dispatch polish
+suspense real cancellation
 loop lifecycle control
 effect validation report
 ```

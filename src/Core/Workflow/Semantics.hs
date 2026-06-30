@@ -143,7 +143,7 @@ mapCallback ::
   Callback fact nextWorkflow
 mapCallback transform currentCallback =
   Callback
-    { callbackFacts = callbackFacts currentCallback
+    { callbackTarget = callbackTarget currentCallback
     , callbackBody = transform (callbackBody currentCallback)
     }
 
@@ -151,10 +151,9 @@ mapSuspense ::
   (workflow -> nextWorkflow) ->
   Suspense fact workflow ->
   Suspense fact nextWorkflow
-mapSuspense transform currentSuspense =
+mapSuspense _ currentSuspense =
   Suspense
-    { suspenseFacts = suspenseFacts currentSuspense
-    , suspenseTarget = transform (suspenseTarget currentSuspense)
+    { suspenseTarget = suspenseTarget currentSuspense
     }
 
 mapLoop ::

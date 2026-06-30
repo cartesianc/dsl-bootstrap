@@ -15,8 +15,12 @@ import Interpreter.Runtime.Monad
 import Interpreter.Runtime.Types
   ( WorkflowProgram
   )
+import Interpreter.Runtime.Workflow.Node
+  ( runNamedWorkflow
+  )
 
 freeMonadChain :: WorkflowName -> Chain WorkflowProgram -> WorkflowProgram
-freeMonadChain label steps = do
-  traceRuntimeM ("chain " ++ show label)
-  mapM_ id (freeMonadSteps (chainSteps steps))
+freeMonadChain label steps =
+  runNamedWorkflow label $ do
+    traceRuntimeM ("chain " ++ show label)
+    mapM_ id (freeMonadSteps (chainSteps steps))

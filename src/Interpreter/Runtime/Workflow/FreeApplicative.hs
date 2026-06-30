@@ -40,16 +40,20 @@ import Interpreter.Runtime.Types
   , WorkflowProgram
   , RuntimeResult (..)
   )
+import Interpreter.Runtime.Workflow.Node
+  ( runNamedWorkflow
+  )
 
 freeApplicativeParallel :: WorkflowName -> Parallel WorkflowProgram -> WorkflowProgram
-freeApplicativeParallel label branches = do
-  let branchPrograms = freeApplicativeBranches (parallelBranches branches)
-  environment <- askRuntimeEnv
-  runtime <- getRuntimeState
-  traceRuntimeM ("parallel " ++ show label ++ " fork " ++ show (length branchPrograms))
-  results <- liftRuntimeIO (runParallelBranches environment runtime branchPrograms)
-  mergeParallelResults results
-  traceRuntimeM ("parallel " ++ show label ++ " done")
+freeApplicativeParallel label branches =
+  runNamedWorkflow label $ do
+    let branchPrograms = freeApplicativeBranches (parallelBranches branches)
+    environment <- askRuntimeEnv
+    runtime <- getRuntimeState
+    traceRuntimeM ("parallel " ++ show label ++ " fork " ++ show (length branchPrograms))
+    results <- liftRuntimeIO (runParallelBranches environment runtime branchPrograms)
+    mergeParallelResults results
+    traceRuntimeM ("parallel " ++ show label ++ " done")
 
 runParallelBranches :: RuntimeEnv -> Runtime -> [WorkflowProgram] -> IO [RuntimeResult ()]
 runParallelBranches environment runtime branches = do
@@ -93,6 +97,9 @@ branchRuntime :: Runtime -> Runtime
 branchRuntime runtime =
   runtime
     { runtimeTrace = []
+    , runtimeComponentEvents = []
+    , runtimeCallbackEvents = []
+    , runtimeSuspenseEvents = []
     , runtimeMiddlewareEvents = []
     }
 
@@ -101,6 +108,11 @@ emptyBranchRuntime =
   Runtime
     { availableFacts = []
     , runtimeTrace = []
+    , runtimeActiveComponents = []
+    , runtimeCompletedComponents = []
+    , runtimeComponentEvents = []
+    , runtimeCallbackEvents = []
+    , runtimeSuspenseEvents = []
     , runtimeMiddlewareStack = []
     , runtimeMiddlewareEvents = []
     }

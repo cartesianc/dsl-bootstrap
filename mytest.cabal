@@ -40,6 +40,11 @@ library
                      , Core.Effect.Constraint
                      , Core.Effect.Constraint.SMT
                      , Core.Effect.Semantics
+                     , Core.Language
+                     , Core.Language.Constraint
+                     , Core.Language.Elaboration
+                     , Core.Language.Spec
+                     , Core.Language.Validation
                      , Core.Architecture.Internal
                      , Core.App
                      , Core.App.Ana
@@ -82,6 +87,7 @@ library
                      , Interpreter.Runtime.Workflow.FreeAlternative
                      , Interpreter.Runtime.Workflow.FreeApplicative
                      , Interpreter.Runtime.Workflow.FreeMonad
+                     , Interpreter.Runtime.Workflow.Node
                      , Interpreter.Runtime.Workflow.Wait
                      , Interpreter.Types
                      , Interpreter.View.Algebra

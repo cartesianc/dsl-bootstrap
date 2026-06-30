@@ -44,11 +44,13 @@ import Interpreter.Runtime.Handlers
   )
 import Interpreter.Runtime.Hanging.FreeMonoid
   ( runHanging
+  , runtimeCallbacksFromHanging
   )
 import Interpreter.Runtime.Monad
   ( defaultRuntimeEnv
   , runRuntimeMOrThrow
   , runtimeEnv
+  , withRuntimeCallbacks
   )
 import Interpreter.Runtime.Types
   ( Runtime (..)
@@ -87,16 +89,20 @@ runBlueprintWithAlgebra =
 
 runBlueprintWithAlgebraInEnv :: RuntimeEnv -> RuntimeFAlgebra -> Runtime -> AppBlueprint -> IO ()
 runBlueprintWithAlgebraInEnv environment currentAlgebra runtime blueprint = do
+  let currentHanging =
+        gpreproHanging compileHangingEff interpretHangingEff currentAlgebra (blueprintHanging blueprint)
+  let currentEnvironment =
+        withRuntimeCallbacks (runtimeCallbacksFromHanging currentHanging) environment
   appRuntime <-
     runRuntimeMOrThrow
-      environment
+      currentEnvironment
       runtime
       (gpreproWorkflow compileWorkflowEff interpretWorkflowEff currentAlgebra (blueprintApp blueprint))
   _ <-
     runRuntimeMOrThrow
-      environment
+      currentEnvironment
       appRuntime
-      (runHanging (gpreproHanging compileHangingEff interpretHangingEff currentAlgebra (blueprintHanging blueprint)))
+      (runHanging currentHanging)
   pure ()
 
 runBlueprintWithEffects :: EffectTheory -> AppBlueprint -> IO ()

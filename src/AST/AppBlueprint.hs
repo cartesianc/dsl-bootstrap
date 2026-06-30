@@ -112,11 +112,9 @@ foo4Hook =
 foo7 :: HangingComponent
 foo7 =
   callback
-    (allOf [UserKnownFact, RuntimePreparedFact])
+    ShutdownFlow
     reportModule
 
 foo9 :: HangingComponent
 foo9 =
-  suspense
-    (anyOf [UserKnownFact, ReportGeneratedFact])
-    reportModule
+  suspense ReportModuleFlow

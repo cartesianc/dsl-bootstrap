@@ -11,6 +11,7 @@ import Core.Architecture
   ( Fact (..)
   , FactExpr (..)
   , Requirement (..)
+  , WorkflowName
   )
 import Core.Architecture.Internal
   ( RequirementEffect (..)
@@ -53,6 +54,11 @@ mergeRuntime left right =
   left
     { availableFacts = mergeFacts (availableFacts left) (availableFacts right)
     , runtimeTrace = runtimeTrace left <> runtimeTrace right
+    , runtimeCompletedComponents =
+        mergeWorkflowNames (runtimeCompletedComponents left) (runtimeCompletedComponents right)
+    , runtimeComponentEvents = runtimeComponentEvents left <> runtimeComponentEvents right
+    , runtimeCallbackEvents = runtimeCallbackEvents left <> runtimeCallbackEvents right
+    , runtimeSuspenseEvents = runtimeSuspenseEvents left <> runtimeSuspenseEvents right
     , runtimeMiddlewareEvents = runtimeMiddlewareEvents left <> runtimeMiddlewareEvents right
     }
 
@@ -70,8 +76,16 @@ collectFacts =
 
 mergeFacts :: [WorkflowFact] -> [WorkflowFact] -> [WorkflowFact]
 mergeFacts =
-  foldl addFact
+  mergeUnique
+
+mergeWorkflowNames :: [WorkflowName] -> [WorkflowName] -> [WorkflowName]
+mergeWorkflowNames =
+  mergeUnique
+
+mergeUnique :: Eq item => [item] -> [item] -> [item]
+mergeUnique =
+  foldl addItem
   where
-    addFact facts currentFact
-      | currentFact `elem` facts = facts
-      | otherwise = currentFact : facts
+    addItem items item
+      | item `elem` items = items
+      | otherwise = item : items

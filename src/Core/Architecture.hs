@@ -83,7 +83,7 @@ data FactExpr fact
   | FactAny [FactExpr fact]
 
 data Callback fact workflow = Callback
-  { callbackFacts :: FactExpr fact
+  { callbackTarget :: WorkflowName
   , callbackBody :: workflow
   }
 
@@ -92,8 +92,7 @@ newtype Wait fact = Wait
   }
 
 data Suspense fact workflow = Suspense
-  { suspenseFacts :: FactExpr fact
-  , suspenseTarget :: workflow
+  { suspenseTarget :: WorkflowName
   }
 
 newtype Loop workflow = Loop
@@ -214,18 +213,17 @@ hanging =
   freeHanging
 
 callback ::
-  FactExpr fact ->
+  WorkflowName ->
   workflow ->
   HangingAction fact hook workflow
-callback currentFacts body =
-  HangingCallback (Callback currentFacts body)
+callback currentTarget body =
+  HangingCallback (Callback currentTarget body)
 
 suspense ::
-  FactExpr fact ->
-  workflow ->
+  WorkflowName ->
   HangingAction fact hook workflow
-suspense currentFacts target =
-  HangingSuspense (Suspense currentFacts target)
+suspense currentTarget =
+  HangingSuspense (Suspense currentTarget)
 
 loop ::
   workflow ->

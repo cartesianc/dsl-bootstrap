@@ -35,8 +35,8 @@ hooks :: AppHanging
 hooks =
   hanging
     [ middleware ReportMiddleware reportModule
-    , callback [UserKnownFact] reportModule
-    , suspense [ReportGeneratedFact] reportModule
+    , callback ShutdownFlow reportModule
+    , suspense ReportModuleFlow
     , loop reportModule
     ]
 ```
@@ -81,7 +81,7 @@ allOf [UserKnownFact, RuntimePreparedFact]
 anyOf [UserKnownFact, ReportGeneratedFact]
 ```
 
-`wait`、`callback`、`suspense` 都接收 `FactComponent`。
+`wait` 接收 `FactComponent`。`callback` 和 `suspense` 接收 workflow target。
 
 ### HangingComponent
 
@@ -211,20 +211,20 @@ choice
 作用域：`hanging`。
 
 ```haskell
-callback [SomeFact] body
+callback SomeFlow body
 ```
 
-语义：fact 条件满足时，`body` 作为新的并行分支启动。
+语义：运行进入 `SomeFlow` 时，`body` 作为并行分支启动。
 
 ### Suspense
 
 作用域：`hanging`。
 
 ```haskell
-suspense [SomeFact] runningComponent
+suspense SomeFlow
 ```
 
-语义：fact 条件满足时，请求暂停或终止正在运行的 `runningComponent`。精确匹配需要 component registry。
+语义：记录对 `SomeFlow` 的暂停请求和当前状态。当前版本不执行真实取消。
 
 ### Loop
 

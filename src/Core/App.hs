@@ -277,9 +277,9 @@ collectHangingActionFacts :: HangingAction WorkflowFact hook (Workflow WorkflowF
 collectHangingActionFacts currentAction =
   case currentAction of
     HangingCallback currentCallback ->
-      collectFactExpr (callbackFacts currentCallback) ++ collectWorkflowFacts (callbackBody currentCallback)
-    HangingSuspense currentSuspense ->
-      collectFactExpr (suspenseFacts currentSuspense) ++ collectWorkflowFacts (suspenseTarget currentSuspense)
+      collectWorkflowFacts (callbackBody currentCallback)
+    HangingSuspense _ ->
+      []
     HangingLoop currentLoop ->
       collectWorkflowFacts (loopBody currentLoop)
     HangingMiddleware _ body ->

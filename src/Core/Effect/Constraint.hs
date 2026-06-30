@@ -29,7 +29,6 @@ import Core.Architecture
   , Parallel (..)
   , Requirement (..)
   , Race (..)
-  , Suspense (..)
   , Wait (..)
   , Workflow (..)
   )
@@ -176,11 +175,9 @@ collectHangingActionWaits ::
 collectHangingActionWaits currentAction =
   case currentAction of
     HangingCallback currentCallback ->
-      map (WaitsFor RootScope) (collectFactExpr (callbackFacts currentCallback))
-        ++ collectWorkflowWaits RootScope (callbackBody currentCallback)
-    HangingSuspense currentSuspense ->
-      map (WaitsFor RootScope) (collectFactExpr (suspenseFacts currentSuspense))
-        ++ collectWorkflowWaits RootScope (suspenseTarget currentSuspense)
+      collectWorkflowWaits RootScope (callbackBody currentCallback)
+    HangingSuspense _ ->
+      []
     HangingLoop currentLoop ->
       collectWorkflowWaits RootScope (loopBody currentLoop)
     HangingMiddleware _ body ->

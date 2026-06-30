@@ -4,6 +4,10 @@ module Interpreter.Runtime.Types
   , HandlerResult (..)
   , Registry
   , Runtime (..)
+  , RuntimeCallback (..)
+  , RuntimeCallbackEvent (..)
+  , RuntimeComponentEvent (..)
+  , RuntimeComponentStatus (..)
   , RuntimeContextware
   , RuntimeEnv (..)
   , RuntimeError (..)
@@ -14,6 +18,7 @@ module Interpreter.Runtime.Types
   , RuntimeMiddlewareEvent (..)
   , RuntimeRecursionModel
   , RuntimeResult (..)
+  , RuntimeSuspenseEvent (..)
   , RuntimeState
   , WorkflowProgram
   , emptyRuntime
@@ -22,6 +27,9 @@ module Interpreter.Runtime.Types
 import AST.Vocabulary
   ( Interceptor
   , WorkflowFact
+  )
+import Core.Architecture
+  ( WorkflowName
   )
 import AST.AppBlueprint
   ( AppBlueprint
@@ -44,12 +52,38 @@ import Effects.Names
 data Runtime = Runtime
   { availableFacts :: [WorkflowFact]
   , runtimeTrace :: [String]
+  , runtimeActiveComponents :: [WorkflowName]
+  , runtimeCompletedComponents :: [WorkflowName]
+  , runtimeComponentEvents :: [RuntimeComponentEvent]
+  , runtimeCallbackEvents :: [RuntimeCallbackEvent]
+  , runtimeSuspenseEvents :: [RuntimeSuspenseEvent]
   , runtimeMiddlewareStack :: [Interceptor]
   , runtimeMiddlewareEvents :: [RuntimeMiddlewareEvent]
   }
   deriving (Eq, Show)
 
 type RuntimeState = Runtime
+
+data RuntimeComponentStatus
+  = RuntimeComponentNotStarted
+  | RuntimeComponentRunning
+  | RuntimeComponentCompleted
+  deriving (Eq, Show)
+
+data RuntimeComponentEvent
+  = RuntimeComponentEntered WorkflowName
+  | RuntimeComponentExited WorkflowName
+  deriving (Eq, Show)
+
+data RuntimeCallbackEvent
+  = RuntimeCallbackTriggered WorkflowName
+  | RuntimeCallbackCompleted WorkflowName
+  | RuntimeCallbackFailed WorkflowName
+  deriving (Eq, Show)
+
+data RuntimeSuspenseEvent
+  = RuntimeSuspenseRequested WorkflowName RuntimeComponentStatus
+  deriving (Eq, Show)
 
 data RuntimeMiddlewareEvent
   = RuntimeMiddlewareEntered Interceptor
@@ -82,6 +116,12 @@ data RuntimeEffectEnvironment = RuntimeEffectEnvironment
 data RuntimeEnv = RuntimeEnv
   { runtimeEnvEffectEnvironment :: RuntimeEffectEnvironment
   , runtimeEnvEffectSemantics :: EffectSemantics
+  , runtimeEnvCallbacks :: [RuntimeCallback]
+  }
+
+data RuntimeCallback = RuntimeCallback
+  { runtimeCallbackTarget :: WorkflowName
+  , runtimeCallbackBody :: WorkflowProgram
   }
 
 data RuntimeError
@@ -156,6 +196,11 @@ emptyRuntime =
   Runtime
     { availableFacts = []
     , runtimeTrace = []
+    , runtimeActiveComponents = []
+    , runtimeCompletedComponents = []
+    , runtimeComponentEvents = []
+    , runtimeCallbackEvents = []
+    , runtimeSuspenseEvents = []
     , runtimeMiddlewareStack = []
     , runtimeMiddlewareEvents = []
     }

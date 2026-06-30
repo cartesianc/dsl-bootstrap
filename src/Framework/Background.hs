@@ -47,20 +47,61 @@ module Framework.Background
   , SmtResult (..)
   , SmtStatus (..)
   , WorkflowScope (..)
+  , ArgumentCardinality (..)
+  , ArgumentSpec (..)
+  , ElaborationConstraintFact (..)
+  , ElaborationContract (..)
+  , ElaborationError (..)
+  , ElaboratorBinding (..)
+  , ElaboratorImplementation (..)
+  , KeywordName (..)
+  , KeywordSpec (..)
+  , LanguageConstraintError (..)
+  , LanguageConstraintFact (..)
+  , LanguageError (..)
+  , LanguageSpec (..)
+  , LoweringTarget (..)
+  , SyntaxKind (..)
   , checkConstraintFacts
+  , checkDefaultElaborationContract
+  , checkDefaultLanguageConstraints
+  , checkDefaultLanguageSpec
+  , checkElaborationContract
   , checkFrontendBoundary
   , checkFrontendBoundaryWith
   , checkFrontendImports
   , checkFrontendImportsWithRules
+  , checkLanguageConstraints
+  , checkLanguageSpec
   , constraintsFromAppPlan
   , defaultFrontendBoundaryPolicy
   , defaultFrontendBoundaryRules
+  , defaultElaborationConstraints
+  , defaultElaborationContract
+  , defaultLanguageConstraints
+  , defaultLanguageSpec
+  , elaborationConstraintsFromSpec
+  , elaborationContractValid
+  , elaborator
   , extractFrontendImports
   , frontendBoundaryPolicyRules
   , defaultSmtPropositions
+  , keyword
+  , keywordNameText
+  , languageConstraintsFromSpec
+  , languageSpecValid
   , matchesModulePattern
+  , many
+  , optional
   , proveMinimalCore
   , proveMinimalCoreWith
+  , renderElaborationConstraintFact
+  , renderElaborationConstraintFacts
+  , renderElaborationError
+  , renderLanguageConstraintError
+  , renderLanguageConstraintFact
+  , renderLanguageConstraintFacts
+  , renderLanguageError
   , renderConstraintError
   , renderConstraintFacts
   , renderFrontendBoundaryError
@@ -68,6 +109,7 @@ module Framework.Background
   , renderSmtEvidence
   , renderSmtResult
   , renderSmtResults
+  , required
   , smtPassed
   , EffectSemantics (..)
   , FactContract (..)
@@ -101,10 +143,15 @@ module Framework.Background
   , HandlerRegistry (..)
   , HandlerResult (..)
   , RuntimeHandler (..)
+  , RuntimeCallback (..)
+  , RuntimeCallbackEvent (..)
+  , RuntimeComponentEvent (..)
+  , RuntimeComponentStatus (..)
   , RuntimeEnv (..)
   , RuntimeError (..)
   , RuntimeEffectEnvironment (..)
   , RuntimeM (..)
+  , RuntimeSuspenseEvent (..)
   , RuntimeResult (..)
   , RuntimeState
   , WorkflowProgram (..)
@@ -134,6 +181,7 @@ module Framework.Background
   , traceRuntimeM
   , withRuntimeMiddleware
   , withRuntimeEnv
+  , withRuntimeCallbacks
   , Runtime (..)
   , runApp
   , runAppWith
@@ -151,6 +199,10 @@ import Core.Boundary.Frontend
 import Core.Effect.Constraint
 import Core.Effect.Constraint.SMT
 import Core.Effect.Semantics
+import Core.Language.Constraint
+import Core.Language.Elaboration
+import Core.Language.Spec
+import Core.Language.Validation
 import Core.Workflow.Eff
 import Core.Workflow.Semantics
 import Interpreter.Runtime.Contextware
@@ -166,7 +218,12 @@ import Interpreter.Runtime.Types
   , RuntimeError (..)
   , RuntimeEffectEnvironment (..)
   , RuntimeHandler (..)
+  , RuntimeCallback (..)
+  , RuntimeCallbackEvent (..)
+  , RuntimeComponentEvent (..)
+  , RuntimeComponentStatus (..)
   , RuntimeM (..)
   , RuntimeResult (..)
+  , RuntimeSuspenseEvent (..)
   , RuntimeState
   )

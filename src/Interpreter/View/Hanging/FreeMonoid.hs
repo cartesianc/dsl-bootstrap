@@ -14,7 +14,6 @@ import Core.Architecture.Internal
 import Interpreter.View.Program
   ( Program
   , childIndent
-  , printFactExpr
   , printNode
   , renderInterceptor
   )
@@ -30,17 +29,11 @@ freeMonoidMiddleware currentMiddleware body indent = do
 
 runHangingAction :: Int -> HangingAction WorkflowFact Interceptor Program -> IO ()
 runHangingAction indent (HangingCallback currentCallback) = do
-  printNode indent "callback"
-  printNode (childIndent indent) "when"
-  printFactExpr (childIndent (childIndent indent)) (callbackFacts currentCallback)
+  printNode indent ("callback " ++ show (callbackTarget currentCallback))
   printNode (childIndent indent) "run"
   callbackBody currentCallback (childIndent (childIndent indent))
 runHangingAction indent (HangingSuspense currentSuspense) = do
-  printNode indent "suspense"
-  printNode (childIndent indent) "when"
-  printFactExpr (childIndent (childIndent indent)) (suspenseFacts currentSuspense)
-  printNode (childIndent indent) "suspend"
-  suspenseTarget currentSuspense (childIndent (childIndent indent))
+  printNode indent ("suspense " ++ show (suspenseTarget currentSuspense))
 runHangingAction indent (HangingLoop currentLoop) = do
   printNode indent "loop"
   printNode (childIndent indent) "repeat"

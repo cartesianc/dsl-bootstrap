@@ -23,14 +23,15 @@ import Core.Architecture.Internal
 data AstError
   = WorkflowSelfReference WorkflowName [WorkflowName]
   | WorkflowNameOverlap WorkflowName [WorkflowName] [WorkflowName]
+  | HangingTargetMissing WorkflowName
   deriving (Show)
 
 type SeenWorkflowName = (WorkflowName, [WorkflowName])
 
 validateAst :: AppBlueprint -> Either AstError AppBlueprint
 validateAst blueprint = do
-  _ <- validateWorkflow [] [] (blueprintApp blueprint)
-  validateHanging (blueprintHanging blueprint)
+  appNames <- validateWorkflow [] [] (blueprintApp blueprint)
+  validateHanging (map fst appNames) (blueprintHanging blueprint)
   pure blueprint
 
 validateWorkflow ::
@@ -132,23 +133,25 @@ validateWorkflows seen ancestors =
   foldM (`validateWorkflow` ancestors) seen
 
 validateHanging ::
+  [WorkflowName] ->
   Hanging (HangingAction fact hook (Workflow fact hook)) ->
   Either AstError ()
-validateHanging actions =
-  mapM_ validateHangingAction (freeMonoidItems (hangingActions actions))
+validateHanging appNames actions =
+  mapM_ (validateHangingAction appNames) (freeMonoidItems (hangingActions actions))
 
 validateHangingAction ::
+  [WorkflowName] ->
   HangingAction fact hook (Workflow fact hook) ->
   Either AstError ()
-validateHangingAction currentAction =
+validateHangingAction appNames currentAction =
   case currentAction of
     HangingCallback currentCallback -> do
+      validateHangingTarget appNames (callbackTarget currentCallback)
       _ <- validateWorkflow [] [] (callbackBody currentCallback)
       pure ()
 
     HangingSuspense currentSuspense -> do
-      _ <- validateWorkflow [] [] (suspenseTarget currentSuspense)
-      pure ()
+      validateHangingTarget appNames (suspenseTarget currentSuspense)
 
     HangingLoop currentLoop -> do
       _ <- validateWorkflow [] [] (loopBody currentLoop)
@@ -157,6 +160,13 @@ validateHangingAction currentAction =
     HangingMiddleware _ body -> do
       _ <- validateWorkflow [] [] body
       pure ()
+
+validateHangingTarget :: [WorkflowName] -> WorkflowName -> Either AstError ()
+validateHangingTarget appNames currentTarget
+  | currentTarget `elem` appNames =
+      pure ()
+  | otherwise =
+      Left (HangingTargetMissing currentTarget)
 
 renderAstError :: AstError -> String
 renderAstError (WorkflowSelfReference label path) =
@@ -173,6 +183,9 @@ renderAstError (WorkflowNameOverlap label firstPath secondPath) =
     ++ " and "
     ++ renderPath secondPath
     ++ ". Move intentional reuse to hanging."
+renderAstError (HangingTargetMissing currentTarget) =
+  "hanging target does not exist in app workflow: "
+    ++ show currentTarget
 
 renderPath :: [WorkflowName] -> String
 renderPath =

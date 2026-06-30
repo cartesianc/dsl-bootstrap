@@ -200,7 +200,7 @@ src/Interpreter/Runtime/*.hs
 src/Interpreter/View/*.hs
 ```
 
-职责：AST 结构、recursion scheme、AppPlan、constraint IR、effect semantics、runtime algebra、解释流程。
+职责：AST 结构、前台语法契约、elaboration 契约、recursion scheme、AppPlan、constraint IR、effect semantics、runtime algebra、解释流程。
 
 ## Core Bootstrap 分层
 
@@ -216,6 +216,7 @@ Slice：
 
 ```text
 syntax            AST、hanging、workflow DSL、Framework.Workflow
+language-spec     keyword、argument shape、parent context、lowering target、elaborator binding
 recursion         cata / gprepro / workflow lowering
 hylo              seed、coalgebra、ana/hylo 入口
 effect-theory     effect 声明、take/make、profile、handler contract
@@ -291,7 +292,8 @@ exit middleware
 
 进入和退出写入结构化 middleware event。target body 失败时仍执行 exit，并合并失败分支 event。
 
-未实现：callback / suspense scheduler；component identity 匹配。
+已实现：callback target dispatch；suspense request event。
+未实现：suspense real cancellation；完整 component registry。
 
 业务模块无需直接使用 `RuntimeM`。
 

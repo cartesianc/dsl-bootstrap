@@ -113,14 +113,14 @@ data FactExprSeed
   | FactAnySeed [FactExprSeed]
 
 data HangingSeed
-  = CallbackSeed FactExprSeed WorkflowSeed
-  | SuspenseSeed FactExprSeed WorkflowSeed
+  = CallbackSeed WorkflowName WorkflowSeed
+  | SuspenseSeed WorkflowName
   | LoopSeed WorkflowSeed
   | MiddlewareSeed Interceptor WorkflowSeed
 
 data HangingLayer workflowSeed
-  = CallbackLayer FactExprSeed workflowSeed
-  | SuspenseLayer FactExprSeed workflowSeed
+  = CallbackLayer WorkflowName workflowSeed
+  | SuspenseLayer WorkflowName
   | LoopLayer workflowSeed
   | MiddlewareLayer Interceptor workflowSeed
 
@@ -346,10 +346,10 @@ anaFactExpr currentSeed =
 hangingSeedCoalgebra :: HangingSeed -> HangingLayer WorkflowSeed
 hangingSeedCoalgebra currentSeed =
   case currentSeed of
-    CallbackSeed currentFacts body ->
-      CallbackLayer currentFacts body
-    SuspenseSeed currentFacts body ->
-      SuspenseLayer currentFacts body
+    CallbackSeed currentTarget body ->
+      CallbackLayer currentTarget body
+    SuspenseSeed currentTarget ->
+      SuspenseLayer currentTarget
     LoopSeed body ->
       LoopLayer body
     MiddlewareSeed currentMiddleware body ->
@@ -379,10 +379,10 @@ anaHangingActionWith ::
   HangingComponent
 anaHangingActionWith unfoldWorkflow unfoldHanging currentSeed =
   case unfoldHanging currentSeed of
-    CallbackLayer currentFacts body ->
-      Architecture.callback (anaFactExpr currentFacts) (anaWorkflowWith unfoldWorkflow body)
-    SuspenseLayer currentFacts body ->
-      Architecture.suspense (anaFactExpr currentFacts) (anaWorkflowWith unfoldWorkflow body)
+    CallbackLayer currentTarget body ->
+      Architecture.callback currentTarget (anaWorkflowWith unfoldWorkflow body)
+    SuspenseLayer currentTarget ->
+      Architecture.suspense currentTarget
     LoopLayer body ->
       Architecture.loop (anaWorkflowWith unfoldWorkflow body)
     MiddlewareLayer currentMiddleware body ->
@@ -397,10 +397,10 @@ anaHangingActionWithM ::
 anaHangingActionWithM unfoldWorkflow unfoldHanging currentSeed = do
   currentLayer <- unfoldHanging currentSeed
   case currentLayer of
-    CallbackLayer currentFacts body ->
-      Architecture.callback (anaFactExpr currentFacts) <$> anaWorkflowWithM unfoldWorkflow body
-    SuspenseLayer currentFacts body ->
-      Architecture.suspense (anaFactExpr currentFacts) <$> anaWorkflowWithM unfoldWorkflow body
+    CallbackLayer currentTarget body ->
+      Architecture.callback currentTarget <$> anaWorkflowWithM unfoldWorkflow body
+    SuspenseLayer currentTarget ->
+      pure (Architecture.suspense currentTarget)
     LoopLayer body ->
       Architecture.loop <$> anaWorkflowWithM unfoldWorkflow body
     MiddlewareLayer currentMiddleware body ->
