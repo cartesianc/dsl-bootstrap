@@ -8,3 +8,9 @@ Setup.hie
 *.dyn_o
 dist/
 dist-newstyle/
+.tools/
+.vscode/
+.idea/
+.codex/
+.agents/
+*.code-workspace

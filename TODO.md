@@ -9,8 +9,8 @@
 - `AppBlueprint` 描述“程序怎么走”：顺序、并发、分支、等待、回调、循环和 hanging 外挂节点。
 - workflow 可以用 effectful carrier 运行；业务 effect system 单独定义。
 - workflow 遇到 `fact` 叶子时，只调用抽象 fact/effect 边界，不直接写 IO、数据库、日志、HTTP 或 mock。
-- `EffectTheory` 负责 fact 来源：producer、externalMake/externalTake 边界、implementation、profile、失败策略和校验。
-- `Core.App.app` 负责从 AST 出发构建 app plan：收集 fact，展开 producer 闭包，检查 externalMake boundary 和 implementation。
+- `EffectTheory` 负责 fact 来源：producer、transform、externalMake/externalTake 边界、失败策略和校验。
+- `Core.App.app` 负责从 AST 出发构建 app plan：收集 fact，展开 producer 闭包，检查 transform 和 externalMake boundary。
 - 实施顺序：`WorkflowModel` -> `Core.App` -> `Progressive EffectBoundary` -> recursion scheme 扩展。
 
 ## 1. 定义递归边界 / Eliminator 形状
@@ -43,7 +43,7 @@
 
 ### 目标
 
-将 workflow 控制流语义从业务 effect implementation 中解耦出来，形成独立的 `WorkflowModel` 或 `WorkflowSemantics`。
+将 workflow 控制流语义从业务 handler 中解耦出来，形成独立的 `WorkflowModel` 或 `WorkflowSemantics`。
 
 这一阶段实现控制流结构，不接入真实业务副作用。控制流负责进入 AST、组合分支、调度子 workflow；fact 生产交给后续 fact/effect 边界和 `EffectTheory`。
 
@@ -79,14 +79,14 @@
 
 ### 目标
 
-在 workflow 和 effect system 之间定义稳定边界。workflow 只声明当前需要给出某个 fact；producer 和 implementation 由 effect system 管理。
+在 workflow 和 effect system 之间定义稳定边界。workflow 只声明当前需要给出某个 fact；producer 由 effect system 管理，handler 由 runtime environment 管理。
 
 边界采用渐进式配置：
 
 - 直接 fact：`fact currentFact`
 - fact 依赖：`fact currentFact [needs otherFact]`
 - 出站边界：`fact currentFact [needs otherFact, uses sendName]`
-- profile implementation：只有 `uses sendName` 时才需要
+- runtime handler：只有 `uses sendName` 时才需要在运行环境中绑定
 
 概念方向：
 
@@ -107,8 +107,8 @@ produceFact :: Fact -> carrier FactResult
 - `fact` 是 workflow 的叶子节点。
 - workflow 控制流只调用 fact 边界。
 - `wait` 仍然表示 fact gate：它检查 fact 条件，不主动生产 fact。
-- `externalMake` 只声明系统可调用的出站能力边界，用于 implementation/profile 检查。
-- `externalTake` 声明外界直接给出的入站 fact，不需要 implementation。
+- `externalMake` 只声明系统可调用的出站能力边界，用于 send contract 和 runtime handler 检查。
+- `externalTake` 声明外界直接给出的入站 fact。
 - 内部 producer 和纯推导 producer 不需要 externalMake boundary。
 
 ### 输出物
@@ -121,7 +121,7 @@ produceFact :: Fact -> carrier FactResult
 
 ### 3.1 新建 Effect 单元
 
-本节定义新增 effect 单元时需要写的前台声明。具体类型、校验和 implementation 实现放到后续 `EffectTheory` 章节。
+本节定义新增 effect 单元时需要写的前台声明。具体类型、校验和 handler 实现放到后续 runtime 章节。
 
 #### 前台左键路径
 
@@ -135,7 +135,7 @@ main
   -> paymentFacts
   -> paymentSends
   -> paymentProducers
-  -> paymentImplementations
+  -> paymentRuntimeHandlers
 ```
 
 路径含义：
@@ -146,7 +146,7 @@ main
 - `paymentFacts`：Payment 模块能提供哪些 workflow 可见的 fact。
 - `paymentSends`：Payment 模块需要哪些出站能力签名。
 - `paymentProducers`：哪些 producer 负责把出站调用结果转化为 fact。
-- `paymentImplementations`：不同 profile 下，externalMake boundary 由哪个 implementation 解释。
+- `paymentRuntimeHandlers`：运行环境中 externalMake boundary 由哪个 handler 解释。
 
 示例形状：
 
@@ -157,13 +157,12 @@ paymentEffect =
     [ paymentFacts
     , paymentSends
     , paymentProducers
-    , paymentImplementations
     ]
 ```
 
 需要业务用户选择或赋值的 effect 组件都应当能单独跳转。`EffectTheory` 可以在 core 层归一化为 record、registry 或 map；前台入口保持 DSL 结构。
 
-前台文件结构采用“一个 effect 一个 claim 文件”。例如 `Effects.User` 里只声明 `userEffect`，内部按需写 `fact`、`externalMake`、`externalTake` 和 `profile`。需要复用某段声明时再起局部名字。
+前台文件结构采用“一个 effect 一个 claim 文件”。例如 `Effects.User` 里只声明 `userEffect`，内部按需写 `fact`、`transform`、`externalMake` 和 `externalTake`。需要复用某段声明时再起局部名字。
 
 effect 注册由构建器根据标记生成：
 
@@ -196,7 +195,7 @@ currentEffects
 
 约束如下：
 
-- `currentAst` 只依赖 fact 名字，不直接依赖 effect externalMake boundary、producer 或 implementation。
+- `currentAst` 只依赖 fact 名字，不直接依赖 effect externalMake boundary、producer 或 handler。
 - `currentEffects` 不直接依赖 `cata / para / hylo` 等 recursion model。
 - `contextware` 是 effect theory 接入 interpreter 的边界；它负责把 `EffectTheory` 转成 fact 叶子可调用的解释能力。
 - `fAlgebra` 可以接收已经被 `contextware` 装配过的 fact 解释能力，但不应该要求业务 effect 模块理解 workflow 控制流。
@@ -265,17 +264,17 @@ producer 必须回答：
 - 是否需要出站能力？
 - 生产失败时给出什么失败 fact 或失败策略？
 
-4. 为被 `uses` 的 externalMake boundary 声明 implementation
+4. 为被 `uses` 的 externalMake boundary 准备 runtime handler
 
 ```haskell
-productionProfile
-  [ implement ChargePayment prodChargePayment ]
-
-testProfile
-  [ implement ChargePayment mockChargePayment ]
+paymentRuntimeEnvironment =
+  runtimeEffectEnvironment
+    (HandlerRegistry
+      [ HandlerBinding ChargePayment RuntimeChargePayment prodChargePayment
+      ])
 ```
 
-implementation 连接 IO、数据库、HTTP、日志、mock 或 benchmark。
+handler 连接 IO、数据库、HTTP、日志、mock 或 benchmark。
 
 5. 通过统一校验
 
@@ -284,7 +283,7 @@ implementation 连接 IO、数据库、HTTP、日志、mock 或 benchmark。
 - workflow 中出现的 fact 是否有 producer，或者被声明为 externalTake fact。
 - producer 依赖的 fact 是否闭合。
 - producer 使用的 externalMake boundary 是否存在于 signature。
-- 当前 profile 是否有对应 implementation。
+- runtime 环境是否有对应 handler。
 - 失败路径是否声明。
 - 模块是否越权使用不属于自己的 externalMake boundary。
 
@@ -295,7 +294,7 @@ workflow fact
 + producer
 + externalMake          仅出站边界需要
 + externalTake       仅入站 fact 需要
-+ profile       仅 externalMake boundary 需要
++ runtime handler       仅运行时解释 externalMake 需要
 + app build     自动检查闭包
 ```
 
@@ -309,7 +308,7 @@ workflow fact
 
 ### 目标
 
-新增第二棵前台 DSL 树 `EffectTheory`，专门管理副作用能力、fact 来源、implementation 完备性和 profile 切换。
+新增第二棵前台 DSL 树 `EffectTheory`，专门管理副作用能力、fact 来源、transform 和 external boundary。
 
 `AppBlueprint` 继续只描述 workflow：
 
@@ -355,9 +354,9 @@ currentInterpreter currentAst currentEffectTheory
 - Effect externalMake signature：有哪些出站能力，每个能力输入/输出是什么。
 - Fact producer registry：哪个 producer 负责生产哪个 fact。
 - Fact dependency closure：生产某个 fact 之前需要哪些 fact，依赖链是否闭合。
-- Implementation registry：每个 profile 下哪些 externalMake boundary 有 implementation。
-- Implementation completeness validation：用了某个 externalMake boundary，但 prod/test/mock 是否都有解释。
-- Failure policy：producer 或 implementation 失败时如何进入 fallback、错误 fact 或报告。
+- Handler registry：当前 runtime environment 下哪些 externalMake boundary 有 handler。
+- Handler completeness validation：用了某个 externalMake boundary，运行时是否有解释。
+- Failure policy：producer 或 handler 失败时如何进入 fallback、错误 fact 或报告。
 - Permission boundary：模块是否越权使用了不属于自己的 effect。
 
 ### 4.1 定义 Effect Signature
@@ -418,7 +417,7 @@ FactProducer 需要回答：
 
 ### 4.3 定义 EffectTheory
 
-把 signature、producer、profile、implementation 声明统一放进一棵前台 DSL。
+把 signature、producer、transform 和 external boundary 声明统一放进一棵前台 DSL。
 
 示例方向：
 
@@ -434,10 +433,6 @@ effectTheory =
         , uses askUserName
         , uses saveUser
         ]
-    , profile production
-        [ implement userEffect prodUserImplementation ]
-    , profile test
-        [ implement userEffect mockUserImplementation ]
     ]
 ```
 
@@ -446,21 +441,19 @@ effectTheory =
 - 定义 `EffectTheory`。
 - 定义 `effect` DSL。
 - 定义 `producer` DSL。
-- 定义 `profile` DSL。
-- 定义 `implement` DSL。
 - 保持前台只读结构，不暴露 registry/map/validation 实现。
 
-### 4.4 定义 Implementation Registry 和 Profile
+### 4.4 定义 Runtime Handler Registry
 
-profile 负责选择生产、测试、mock、benchmark 等解释方式。
+`RuntimeEffectEnvironment` 负责选择当前运行时使用的 handler registry 和 transform registry。
 
 输出物：
 
-- `productionProfile`
-- `testProfile`
-- `mockProfile`
-- `benchmarkProfile`
-- implementation completeness check：每个 profile 是否覆盖当前 workflow 实际会用到的 externalMake boundary。
+- `productionEnvironment`
+- `testEnvironment`
+- `mockEnvironment`
+- `benchmarkEnvironment`
+- handler completeness check：当前 environment 是否覆盖当前 workflow 实际会用到的 externalMake boundary。
 
 ### 4.5 定义 App Build
 
@@ -477,7 +470,7 @@ app currentAst currentEffects Production
 - workflow 中出现的每个 `fact` 是否有 producer，或者被声明为 externalTake fact。
 - producer 的 `needs` 是否闭合。
 - producer 使用的 externalMake boundary 是否存在于 signature。
-- 当前 profile 是否有对应 implementation。
+- runtime environment 是否有对应 handler。
 - effect externalMake boundary 是否越权。
 - producer 之间是否形成非法循环。
 - `wait` 等外部 fact gate 是否被误当成可自动生产。
@@ -497,12 +490,12 @@ app currentAst currentEffects Production
 cataWorkflow workflowAlgebra ast
 ```
 
-fact 叶子后续通过 `EffectTheory` 查询 producer/implementation。
+fact 叶子后续通过 `EffectTheory` 查询 producer，通过 `RuntimeEffectEnvironment` 查询 handler。
 
 目标方向：
 
 ```haskell
-onFact = produceFactWith currentEffectTheory currentProfile
+onFact = produceFactWith currentEffectTheory currentRuntimeEnvironment
 ```
 
 输出物：
@@ -517,17 +510,17 @@ onFact = produceFactWith currentEffectTheory currentProfile
 目标性质：
 
 - Initiality：业务程序先写成自由结构，不提前解释。
-- Compositionality：小 signature、producer、implementation 可以组合成大 theory。
-- Homomorphism：implementation 必须保持 effect program 的组合结构。
-- Naturality：production/test/mock profile 替换时，workflow AST 不变。
+- Compositionality：小 signature、producer、transform 可以组合成大 theory。
+- Homomorphism：handler 必须保持 effect program 的组合结构。
+- Naturality：production/test/mock environment 替换时，workflow AST 不变。
 - Totality / Closure：当前 workflow 需要的 fact 和 externalMake boundary 必须能被完整解释。
 
 工程含义：
 
 - 可插件化组合。
 - 可静态/启动时校验。
-- 可统一切换 profile。
-- 可定位缺失 producer/implementation。
+- 可统一切换 runtime environment。
+- 可定位缺失 producer/handler。
 - 可把复杂实现藏进 core。
 
 ### 4.8 预期收益
@@ -536,7 +529,7 @@ onFact = produceFactWith currentEffectTheory currentProfile
 
 - `fact` 是规范 AST 节点，但 fact 来源没有规范。
 - `recordFact` 可以直接把 fact 记进去，缺少来源证明。
-- implementation 是否齐全无法统一检查。
+- handler 是否齐全无法统一检查。
 - prod/test/mock 切换只能靠解释器约定。
 - 缺少“为什么这个 fact 能产生”的可读报告。
 
@@ -544,9 +537,9 @@ onFact = produceFactWith currentEffectTheory currentProfile
 
 - 每个 fact 都能追踪到 producer。
 - 每个 producer 都能说明依赖哪些 fact、使用哪些 externalMake boundary。
-- 每个 externalMake boundary 都能检查 implementation 是否存在。
-- prod/test/mock 可以只换 profile，不改 workflow。
-- 缺失 producer、缺失 implementation、依赖不闭合可以提前报错。
+- 每个 externalMake boundary 都能检查 handler 是否存在。
+- prod/test/mock 可以只换 runtime environment，不改 workflow。
+- 缺失 producer、缺失 handler、依赖不闭合可以提前报错。
 - workflow render/check 不只显示执行路径，还能显示 fact 生产链。
 - 模块副作用边界更清楚，插件更安全。
 - 代码即文档从 `AppBlueprint` 扩展到 `EffectTheory`。
@@ -625,13 +618,13 @@ onFact = produceFactWith currentEffectTheory currentProfile
 
 ### 当前结论
 
-先抽取纯 Haskell 约束事实，再接 SMT solver。输入包括 `AppPlan`、`EffectTheory`、take/make rule、profile implementation 和 wait gate。
+先抽取纯 Haskell 约束事实，再生成 SMT-LIB 接外部 solver。输入包括 `AppPlan`、`EffectTheory`、take/make/transform rule、externalMake boundary 和 wait gate。
 
-这层约束事实先服务于解释、检查和错误报告；等 effect system 语义稳定后，再选择是否把它翻译成 SBV、Z3 或其他 solver 后端。
+这层约束事实先服务于解释、检查和错误报告；当前 backend 已能自动查找 `z3` 或 `cvc5`。后续再补更强的反例、最小集合和优化查询。
 
 ### 目标
 
-定义不依赖 runtime handler 的 `Core.Effect.Constraint`。内容包括当前 app 的 fact、rule、externalMake、externalTake、implementation 和 wait 条件；不执行 IO，不调用具体 handler。
+定义不依赖 runtime handler 的 `Core.Effect.Constraint`。内容包括当前 app 的 fact、rule、externalMake、externalTake 和 wait 条件；不执行 IO，不调用具体 handler。
 
 示例形状：
 
@@ -640,7 +633,6 @@ data ConstraintFact
   = Makes RuleId WorkflowFact
   | Takes RuleId WorkflowFact
   | UsesExternalMake RuleId SendName
-  | Implements ProfileName SendName
   | ExternalTake WorkflowFact
   | WaitsFor WorkflowName WorkflowFact
 ```
@@ -657,7 +649,7 @@ data ConstraintFact
 - 某个 fact 能否从已有 take/make rule 倒推出来源。
 - 某个 producer 依赖的 take fact 是否都有来源。
 - 某个 `uses externalMake` 是否存在对应 externalMake signature。
-- 当前 profile 是否实现了所有会被使用的 externalMake。
+- 当前 app 使用的 externalMake 是否都有 signature。
 - `externalTake` fact 是否被错误地当成可自动生产。
 - `wait` 等待的 fact 是否存在明显永远不会出现的情况。
 - 是否存在多个 rule 同时生产同一个 fact，并且语义没有声明冲突处理方式。
@@ -666,9 +658,9 @@ data ConstraintFact
 ### 直接收益
 
 - app 构建阶段输出缺失依赖解释。
-- profile 完备性从约束事实中统一检查。
+- externalMake 完备性从约束事实中统一检查。
 - runtime 执行前解释 fact 产生路径。
-- mock / benchmark 自动计算最小 externalMake implementation 集合。
+- mock / benchmark 可以根据约束事实计算最小 handler 集合。
 - JSON、RPC、插件注册表或 ana coalgebra 复用同一套检查。
 
 ### 后续 SMT 用途
@@ -677,7 +669,7 @@ solver 输入：
 
 - fact reachability：某个目标 fact 是否一定可达。
 - counterexample：如果不可达，给出缺失的最短依赖链。
-- minimal implementation set：某个 profile 至少要实现哪些 externalMake。
+- minimal handler set：某个 runtime environment 至少要实现哪些 externalMake。
 - dead wait candidate：哪些 wait 条件在当前 app 中没有可行来源。
 - recursive/template legality：自引用、模板展开和 loop 是否有合法停止标记。
 - conflicting producer：多个 producer 同时 make 同一 fact 时是否违反唯一性约束。

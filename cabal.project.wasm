@@ -1,4 +1,6 @@
-packages: .
+packages:
+  framework-core
+  domain-app
 
 -- Build with the GHC WebAssembly/WASI toolchain.
 --

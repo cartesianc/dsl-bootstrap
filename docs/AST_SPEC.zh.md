@@ -245,7 +245,7 @@ loop workflowComponent
 新建：
 
 ```text
-src/Plugins/Payment.hs
+domain-app/src/Plugins/Payment.hs
 ```
 
 ### 第二步：声明模块导出
@@ -318,10 +318,10 @@ paymentHook =
 构建时 `Setup.hs` 会扫描这个声明，并生成统一出口：
 
 ```text
-src/Core/Plugins.hs
+domain-app/src/Plugins.hs
 ```
 
-新增 `src/Plugins/Payment.hs` 后，把模块名加入 `mytest.cabal` 的 `exposed-modules`：
+新增 `domain-app/src/Plugins/Payment.hs` 后，把模块名加入 `domain-app/domain-app.cabal` 的 `exposed-modules`：
 
 ```cabal
                      , Plugins.Payment
@@ -332,7 +332,7 @@ src/Core/Plugins.hs
 打开：
 
 ```text
-src/AST/AppBlueprint.hs
+domain-app/src/Domain/AppBlueprint.hs
 ```
 
 文件头导入统一入口：
@@ -362,7 +362,7 @@ hooks =
     ]
 ```
 
-`AST.AppBlueprint` 通过 `Plugins` 统一出口引用插件。
+`Domain.AppBlueprint` 通过 `Plugins` 统一出口引用插件。
 
 ## 5. AST 只写结构
 
@@ -373,7 +373,7 @@ hooks =
 - HTTP 请求
 - 文件读写
 - 真实日志逻辑
-- implementation 查找
+- handler 查找
 - service 注入
 - runtime state 修改
 
