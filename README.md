@@ -1,125 +1,206 @@
-# new-framework-core
+# dsl-bootstrap
 
-这个仓库现在拆成两个当前参与构建的包：
+`dsl-bootstrap` is a small Haskell framework experiment for describing an app as:
+
+- a workflow AST
+- an effect theory
+- a runtime environment
+- a domain report that proves the AST/effect/runtime contract closes
+
+The current architecture has two active packages:
 
 ```text
 new-framework-core
-  新的 framework core/compiler 包。
+  Framework kernel, facade modules, bootstrap evidence, and self-domain expression.
 
 domain-app
-  一个最小 domain app。它依赖 new-framework-core，内容就是 framework-core 自身，用来验证“新 core 作为 compiler，同时作为 domain 被表达”可以通过编译和 runtime closure。
+  The frontend domain source. It uses the same facade DSL shape as framework-core.
 ```
 
-旧的业务 DomainApp、generated plugin registry、generated effect registry、`current` / `demo` registry alias 都不再是 production surface。
+## Current Shape
 
-## Core 表达内容
+The project now uses one source style for framework and domain code.
 
-`new-framework-core` 表达的是 framework core 自身：
+Framework-core expresses itself through `Domain.*` modules:
 
 ```text
-AST 数据结构
-effect theory DSL
-runtime interpreter
-buildApp / validation
-boundary checks
-hylo / rendering / proof surface
-runtime fact closure
+new-framework-core/src/Domain/AppBlueprint.hs
+new-framework-core/src/Domain/Effects.hs
+new-framework-core/src/Domain/Vocabulary.hs
 ```
 
-主结构保持为：
+Domain-app expresses the frontend through the same layers:
 
 ```text
-new-framework-core/src/Bootstrap/*
-new-framework-core/src/Bootstrap/Effects/<Group>/Registration
-new-framework-core/src/Bootstrap/Effects/<Group>/Facts
-new-framework-core/src/Domain/*
-```
-
-公共入口：
-
-```text
-frameworkCoreAst
-frameworkCoreEffects
-frameworkCoreDomain
-runFrameworkCoreDomain
-```
-
-## Self Domain App
-
-`domain-app` 不再承载 core 实现。它只做第一层使用者：
-
-```text
-domain-app/src/SelfDomainApp.hs
+domain-app/src/Domain/AppBlueprint.hs
+domain-app/src/Effects/Theory.hs
+domain-app/src/Domain/Runtime.hs
 domain-app/app/Main.hs
 ```
 
-它把 `frameworkCoreDomain` 作为自己的内容，并通过 `Bootstrap.Report.buildFrameworkCoreReport` 验证：
+The frontend entrypoint is:
 
-```text
-domain-app:self-framework-core
-  content: framework-core
+```haskell
+main :: IO ()
+main =
+  currentInterpreter currentAst currentEffects
 ```
 
-这一步的意义是确认新 core 已经可以被一个外部 domain app 使用，而不是继续把 domain app 和 core 混成同一个包。
-
-## Self-Hosting 模型
-
-不引入 compatibility layer 或 migration layer：
-
-```text
-Stage 0 当前已编译 framework
-  -> 按旧约束构建新的 framework implementation / semantic surface
-  -> 产出 Stage 1 framework
-
-Stage 1 framework
-  -> 拥有新语义
-  -> 重新解释并验证同一份 framework expression
-```
-
-即使修改 AST 语义、effect DSL 语法、fact closure 规则，Stage 0 也只是构建新的 kernel artifact；新语义由 Stage 1 产生后承担。
-
-## 构建
-
-使用 watcher：
+Run it with:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-watch.ps1 -CommandLine "stack build --no-terminal"
-```
-
-## Smoke
-
-core 自检：
-
-```powershell
-stack exec domain-registry
-stack exec ast-tree -- all
-stack exec domain-map -- json all
-stack exec bootstrap-smoke
-stack exec bootstrap-runtime-smoke
-stack exec bootstrap-report
 stack exec mytest
 ```
 
-self domain app 自检：
+## Public Facade
+
+Frontend/domain code should import the public facade:
+
+```haskell
+import Framework.Workflow
+import Framework.Effect
+import Framework.Background
+```
+
+The stable facade modules are:
+
+```text
+Framework.Workflow
+Framework.Effect
+Framework.Background
+Framework.Domain
+Framework.Runtime
+Framework.FixedPoint
+```
+
+`Bootstrap.*` remains the kernel/native bootstrap layer. `Bootstrap.*` must not import `Framework.*`.
+
+## Runtime
+
+`Framework.Background` exposes the production runtime API through `Framework.Runtime`.
+
+Supported runtime behavior includes:
+
+- typed runtime values
+- typed handler results
+- transform registry execution
+- middleware enter/exit trace
+- callback trigger/completion trace
+- suspense request trace
+- loop start trace
+- fact closure execution
+- handler coverage reporting
+
+The domain app demonstrates typed runtime flow:
+
+```text
+AskUserName -> UserName
+UserNameToReportInput: UserName -> ReportInput
+GenerateReport: ReportInput -> ReportOutput
+```
+
+## Workflow Expression
+
+The workflow AST supports the frontend expression used by old-version:
+
+- `chain`
+- `parallel`
+- `fallback`
+- `race`
+- `choice`
+- `wait`
+- `fact`
+- `hanging`
+- `middleware`
+- `callback`
+- `suspense`
+- `loop`
+
+Both framework-core and domain-app use this shape through facade imports.
+
+## Effect System
+
+The effect DSL supports:
+
+- fact declarations
+- dependencies through `needs`
+- pipe input through `take`
+- pipe output through `make`
+- external sends through `uses`
+- external boundaries through `externalMake`
+- transform declarations
+- send policies such as idempotency and retry metadata
+- handler coverage in reports
+
+Framework-core self expression uses `Framework.Effect` in `Domain.Effects`.
+Domain-app uses the same facade in `Effects.*`.
+
+## Diagnosis And SMT Status
+
+Current implementation status:
+
+- Runtime failures have structured `RuntimeError` values and rendered failure output.
+- Bootstrap evidence includes core boundary, frontend boundary, language spec, elaboration contract, constraint IR, and SMT proof facts.
+- `bootstrap-report` and `fixed-point-smoke` verify the self-domain evidence path.
+- A full old-version-style public `RuntimeDiagnosis` module is still pending.
+- A full public SMT solver adapter module is still pending.
+
+The current SMT path is represented as bootstrap evidence via `RunSmtProof` and `SmtProofPassedFact`. Public solver APIs should be restored in a later stage.
+
+## Package Boundaries
+
+Expected boundaries:
+
+```text
+Bootstrap.* -> no Framework.* imports
+domain-app/src -> no Bootstrap.* imports
+domain-app/app/Main.hs -> currentInterpreter currentAst currentEffects
+new-framework-core/src/Domain/* -> self-domain facade expression
+```
+
+`new-framework-core/src/Domain/*` is allowed to import `Framework.Workflow` and `Framework.Effect` so framework-core can describe itself with the same facade style as domain-app.
+
+## Reports And Smoke Commands
+
+Build:
 
 ```powershell
+stack build
+```
+
+Frontend/domain app:
+
+```powershell
+stack exec mytest
+stack exec domain-app-report
 stack exec domain-app-self-smoke
 ```
 
-## 负向边界
+Framework-core bootstrap and self evidence:
 
-Production source 和输出不得重新暴露：
-
-```text
-Foo
-Greeting
-UserNameAsked
-ReportGenerated
-Plugins.
-Effects.User
-Effects.Report
-Effects.Demo
-Framework.* production import
+```powershell
+stack exec framework-core-mytest
+stack exec bootstrap-smoke
+stack exec bootstrap-runtime-smoke
+stack exec bootstrap-report
+stack exec fixed-point-smoke
 ```
 
-`Bootstrap.CoreSurface` 中出现的历史 `Framework.*` 名字只是被表达对象的 catalog data，不是 production import。
+Expected high-level results:
+
+```text
+domain-app-report: passed
+domain-app-self-smoke: passed
+bootstrap-report: passed
+fixed-point-smoke: diffs: 0
+```
+
+## Next Work
+
+Recommended next stage:
+
+1. Restore public diagnosis modules.
+2. Restore public SMT/proof adapter modules.
+3. Add focused runtime assertion tests for fallback, race, choice, failure, retry metadata, and handler output mismatch.
+4. Restore automatic plugin/effect registry generation after the semantic APIs settle.
+5. Add a compact architecture diagram/report generated from the domain registry.
