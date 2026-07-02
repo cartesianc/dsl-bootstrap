@@ -143,13 +143,13 @@ coreProofEffect =
 coreRuntimeEffect :: EffectUnit
 coreRuntimeEffect =
   Effect.effect CoreRuntimeEffect
-    [ Effect.fact RuntimeSmokePassedFact
+    [ Effect.fact RuntimeEvidencePassedFact
         [ Effect.needs MinimalCoreReportBuiltFact
         , Effect.take MinimalCoreReportArtifact
-        , Effect.uses RunRuntimeSmoke
-        , Effect.make RuntimeSmokeEvidence
+        , Effect.uses RunRuntimeEvidence
+        , Effect.make RuntimeEvidenceArtifact
         ]
-    , Effect.externalMake RunRuntimeSmoke MinimalCoreReportArtifact RuntimeSmokeEvidence
+    , Effect.externalMake RunRuntimeEvidence MinimalCoreReportArtifact RuntimeEvidenceArtifact
     ]
 
 coreExpressionEffect :: EffectUnit
@@ -164,7 +164,7 @@ coreExpressionEffect =
         ]
     , Effect.fact RuntimeInterpreterExpressedFact
         [ Effect.needs CoreSurfaceFormalizedFact
-        , Effect.needs RuntimeSmokePassedFact
+        , Effect.needs RuntimeEvidencePassedFact
         ]
     , Effect.fact BuildAppValidationExpressedFact
         [ Effect.needs MinimalCoreReportBuiltFact
@@ -179,7 +179,7 @@ coreExpressionEffect =
         , Effect.needs SmtProofPassedFact
         ]
     , Effect.fact RuntimeFactClosureExpressedFact
-        [ Effect.needs RuntimeSmokePassedFact
+        [ Effect.needs RuntimeEvidencePassedFact
         , Effect.needs SmtProofPassedFact
         ]
     , Effect.fact FrameworkCoreNativeValidatedFact
@@ -202,10 +202,10 @@ coreReportEffect =
     [ Effect.fact FrameworkCoreReportPublishedFact
         [ Effect.needs FrameworkCoreNativeValidatedFact
         , Effect.needs FrameworkCoreExpressedFact
-        , Effect.needs RuntimeSmokePassedFact
-        , Effect.take RuntimeSmokeEvidence
+        , Effect.needs RuntimeEvidencePassedFact
+        , Effect.take RuntimeEvidenceArtifact
         , Effect.uses PublishFrameworkCoreReport
         , Effect.make FrameworkCoreReportArtifact
         ]
-    , Effect.externalMake PublishFrameworkCoreReport RuntimeSmokeEvidence FrameworkCoreReportArtifact
+    , Effect.externalMake PublishFrameworkCoreReport RuntimeEvidenceArtifact FrameworkCoreReportArtifact
     ]

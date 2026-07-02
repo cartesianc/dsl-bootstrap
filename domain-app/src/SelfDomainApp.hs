@@ -9,6 +9,8 @@ import Domain.AppBlueprint
   ( blueprint )
 import Domain.Runtime
   ( domainRuntimeEffectEnvironment )
+import Domain.SemanticEvidence
+  ( domainSemanticChecks )
 import Effects.Theory
   ( effectTheory )
 import Framework.Domain
@@ -16,7 +18,7 @@ import Framework.Domain
   , DomainReport (..)
   , DomainReportStatus (..)
   , buildDomainReport
-  , domainWithRuntime
+  , domainWithRuntimeAndEvidence
   , renderDomainReport
   )
 
@@ -26,11 +28,12 @@ selfDomainAppName =
 
 domainAppDomain :: DomainRegistration
 domainAppDomain =
-  domainWithRuntime
+  domainWithRuntimeAndEvidence
     selfDomainAppName
     blueprint
     effectTheory
     domainRuntimeEffectEnvironment
+    domainSemanticChecks
 
 runSelfDomainApp :: IO ()
 runSelfDomainApp = do

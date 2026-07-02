@@ -17,8 +17,8 @@ frameworkCoreReportPublishedFact =
   fact FrameworkCoreReportPublishedFact
     [ needs FrameworkCoreNativeValidatedFact
     , needs FrameworkCoreExpressedFact
-    , needs RuntimeSmokePassedFact
-    , Effect.take RuntimeSmokeEvidence
+    , needs RuntimeEvidencePassedFact
+    , Effect.take RuntimeEvidenceArtifact
     , uses PublishFrameworkCoreReport
     , make FrameworkCoreReportArtifact
     ]

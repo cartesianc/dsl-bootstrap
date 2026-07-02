@@ -64,11 +64,11 @@ module Bootstrap.Vocabulary
   , pattern ReadPackageFiles
   , pattern RuntimeFactClosureExpressedFact
   , pattern RuntimeInterpreterExpressedFact
-  , pattern RuntimeSmokeEvidence
-  , pattern RunRuntimeSmoke
+  , pattern RuntimeEvidenceArtifact
+  , pattern RunRuntimeEvidence
   , pattern RunSmtProof
   , pattern SmtProofEvidence
-  , pattern RuntimeSmokePassedFact
+  , pattern RuntimeEvidencePassedFact
   , pattern SmtProofPassedFact
   , pattern ValidateRuntimeFlow
   , pattern ValidateStaticContractsFlow
@@ -154,8 +154,8 @@ pattern ConstraintIRBuiltFact = WorkflowFact "ConstraintIRBuiltFact"
 pattern SmtProofPassedFact :: WorkflowFact
 pattern SmtProofPassedFact = WorkflowFact "SmtProofPassedFact"
 
-pattern RuntimeSmokePassedFact :: WorkflowFact
-pattern RuntimeSmokePassedFact = WorkflowFact "RuntimeSmokePassedFact"
+pattern RuntimeEvidencePassedFact :: WorkflowFact
+pattern RuntimeEvidencePassedFact = WorkflowFact "RuntimeEvidencePassedFact"
 
 pattern AstStructureExpressedFact :: WorkflowFact
 pattern AstStructureExpressedFact = WorkflowFact "AstStructureExpressedFact"
@@ -244,8 +244,8 @@ pattern ConstraintIRArtifact = TypeName "ConstraintIRArtifact"
 pattern SmtProofEvidence :: TypeName
 pattern SmtProofEvidence = TypeName "SmtProofEvidence"
 
-pattern RuntimeSmokeEvidence :: TypeName
-pattern RuntimeSmokeEvidence = TypeName "RuntimeSmokeEvidence"
+pattern RuntimeEvidenceArtifact :: TypeName
+pattern RuntimeEvidenceArtifact = TypeName "RuntimeEvidenceArtifact"
 
 pattern FrameworkCoreReportArtifact :: TypeName
 pattern FrameworkCoreReportArtifact = TypeName "FrameworkCoreReportArtifact"
@@ -292,8 +292,8 @@ pattern GenerateConstraintIR = SendName "GenerateConstraintIR"
 pattern RunSmtProof :: SendName
 pattern RunSmtProof = SendName "RunSmtProof"
 
-pattern RunRuntimeSmoke :: SendName
-pattern RunRuntimeSmoke = SendName "RunRuntimeSmoke"
+pattern RunRuntimeEvidence :: SendName
+pattern RunRuntimeEvidence = SendName "RunRuntimeEvidence"
 
 pattern PublishFrameworkCoreReport :: SendName
 pattern PublishFrameworkCoreReport = SendName "PublishFrameworkCoreReport"

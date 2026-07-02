@@ -23,4 +23,4 @@ coreReportEffect =
 
 publishFrameworkCoreReportBoundary :: EffectSection
 publishFrameworkCoreReportBoundary =
-  externalMake PublishFrameworkCoreReport RuntimeSmokeEvidence FrameworkCoreReportArtifact
+  externalMake PublishFrameworkCoreReport RuntimeEvidenceArtifact FrameworkCoreReportArtifact

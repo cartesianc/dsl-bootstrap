@@ -5,8 +5,16 @@ module Framework.Domain
   , DomainReportStatus (..)
   , DomainRegistration (..)
   , DomainRuntimeBackend (..)
+  , DomainSemanticCheck (..)
+  , DomainSemanticEvidence (..)
+  , DomainSemanticEvidenceStatus (..)
   , buildDomainReport
   , domain
+  , domainEvidenceFailed
+  , domainEvidencePassed
+  , domainReportSemanticEvidencePassed
+  , domainSemanticEvidencePassed
+  , domainWithRuntimeAndEvidence
   , domainWithRuntime
   , frameworkCoreDomain
   , frameworkCoreFacadeDomain
@@ -32,7 +40,7 @@ import Bootstrap.Runtime
   )
 import Bootstrap.Workflow
   ( AppBlueprint
-  , WorkflowFact
+  , WorkflowFact (..)
   )
 import Domain.Ast
   ( AstRegistration (..)
@@ -55,12 +63,29 @@ data DomainEffectHandlerRegistration = DomainEffectHandlerRegistration
   , effectHandlerRuntime :: DomainRuntimeBackend
   }
 
+data DomainSemanticCheck = DomainSemanticCheck
+  { domainSemanticCheckName :: String
+  , runDomainSemanticCheck :: DomainRegistration -> NativeAppPlan -> IO DomainSemanticEvidence
+  }
+
+data DomainSemanticEvidence = DomainSemanticEvidence
+  { domainSemanticEvidenceName :: String
+  , domainSemanticEvidenceStatus :: DomainSemanticEvidenceStatus
+  , domainSemanticEvidenceDetails :: [String]
+  }
+
+data DomainSemanticEvidenceStatus
+  = DomainSemanticEvidencePassed
+  | DomainSemanticEvidenceFailed
+  deriving (Eq, Show)
+
 data DomainRegistration = DomainRegistration
   { domainRegistrationName :: String
   , domainAst :: AstRegistration
   , domainEffects :: EffectRegistration
   , domainEffectHandlers :: DomainEffectHandlerRegistration
   , domainInterpreterName :: String
+  , domainSemanticChecks :: [DomainSemanticCheck]
   }
 
 data DomainReport = DomainReport
@@ -80,6 +105,7 @@ data DomainReport = DomainReport
   , domainReportHandlerCoverage :: [DomainHandlerCoverage]
   , domainReportArtifacts :: [RuntimeArtifact]
   , domainReportProofResults :: [Proof.SmtResult]
+  , domainReportSemanticEvidence :: [DomainSemanticEvidence]
   , domainReportFailures :: [String]
   }
 
@@ -114,6 +140,16 @@ domainWithRuntime ::
   Runtime.RuntimeEffectEnvironment ->
   DomainRegistration
 domainWithRuntime name ast effects handlers =
+  domainWithRuntimeAndEvidence name ast effects handlers []
+
+domainWithRuntimeAndEvidence ::
+  String ->
+  AppBlueprint ->
+  EffectTheory ->
+  Runtime.RuntimeEffectEnvironment ->
+  [DomainSemanticCheck] ->
+  DomainRegistration
+domainWithRuntimeAndEvidence name ast effects handlers semanticChecks =
   DomainRegistration
     { domainRegistrationName = name
     , domainAst =
@@ -132,6 +168,7 @@ domainWithRuntime name ast effects handlers =
           , effectHandlerRuntime = DomainFrameworkRuntime handlers
           }
     , domainInterpreterName = "runtime"
+    , domainSemanticChecks = semanticChecks
     }
 
 frameworkCoreDomain :: DomainRegistration
@@ -159,6 +196,7 @@ nativeDomainFromRegistry name registration =
           }
     , domainInterpreterName =
         RegistryInterpreter.interpreterRegistrationName (Registry.domainInterpreter registration)
+    , domainSemanticChecks = []
     }
 
 runDomain :: DomainRegistration -> IO ()
@@ -181,7 +219,17 @@ buildDomainReport registration =
       pure (failedDomainReport (domainRegistrationName registration) message)
     Right plan -> do
       runtimeResult <- runDomainRuntime (effectHandlerRuntime (domainEffectHandlers registration)) effects blueprint
-      pure (domainReportFromPlan registration plan (domainProofResults blueprint effects plan) runtimeResult)
+      let proofResults =
+            domainProofResults blueprint effects plan
+      semanticEvidence <-
+        domainSemanticEvidence
+          registration
+          blueprint
+          effects
+          plan
+          proofResults
+          runtimeResult
+      pure (domainReportFromPlan registration plan proofResults semanticEvidence runtimeResult)
   where
     blueprint =
       astRegistrationBlueprint (domainAst registration)
@@ -214,6 +262,7 @@ renderDomainReport report =
   , "  total: " ++ show (length (domainReportArtifacts report))
   ]
     ++ renderProofResults (domainReportProofResults report)
+    ++ renderSemanticEvidence (domainReportSemanticEvidence report)
     ++ renderFailures (domainReportFailures report)
 
 runDomainRuntime ::
@@ -257,11 +306,11 @@ frameworkRuntimeArtifacts runtime =
   | currentValue <- Runtime.runtimeValues runtime
   ]
 
-domainReportFromPlan :: DomainRegistration -> NativeAppPlan -> [Proof.SmtResult] -> DomainRuntimeResult -> DomainReport
-domainReportFromPlan registration plan proofResults runtimeResult =
+domainReportFromPlan :: DomainRegistration -> NativeAppPlan -> [Proof.SmtResult] -> [DomainSemanticEvidence] -> DomainRuntimeResult -> DomainReport
+domainReportFromPlan registration plan proofResults semanticEvidence runtimeResult =
   DomainReport
     { domainReportName = domainRegistrationName registration
-    , domainReportStatus = reportStatus runtimeResult failedConstraints missingFinal extraFinal coverage proofResults
+    , domainReportStatus = reportStatus runtimeResult failedConstraints missingFinal extraFinal coverage proofResults semanticEvidence
     , domainReportSurfaceModules = coreSurfaceModuleCount
     , domainReportSurfaceCapabilities = coreSurfaceCapabilityCount
     , domainReportConstraintTotal = length constraints
@@ -276,6 +325,7 @@ domainReportFromPlan registration plan proofResults runtimeResult =
     , domainReportHandlerCoverage = coverage
     , domainReportArtifacts = artifacts
     , domainReportProofResults = proofResults
+    , domainReportSemanticEvidence = semanticEvidence
     , domainReportFailures = failures
     }
   where
@@ -336,6 +386,7 @@ failedDomainReport name message =
     , domainReportHandlerCoverage = []
     , domainReportArtifacts = []
     , domainReportProofResults = []
+    , domainReportSemanticEvidence = []
     , domainReportFailures = [message]
     }
 
@@ -346,8 +397,9 @@ reportStatus ::
   [WorkflowFact] ->
   [DomainHandlerCoverage] ->
   [Proof.SmtResult] ->
+  [DomainSemanticEvidence] ->
   DomainReportStatus
-reportStatus runtimeResult failedConstraints missingFinal extraFinal coverage proofResults =
+reportStatus runtimeResult failedConstraints missingFinal extraFinal coverage proofResults semanticEvidence =
   case problems of
     [] ->
       DomainReportPassed
@@ -360,6 +412,7 @@ reportStatus runtimeResult failedConstraints missingFinal extraFinal coverage pr
         ++ factProblems
         ++ handlerProblems
         ++ proofProblems
+        ++ semanticEvidenceProblems
     constraintProblems =
       [ "failed native constraints: " ++ show (length failedConstraints)
       | not (null failedConstraints)
@@ -392,6 +445,114 @@ reportStatus runtimeResult failedConstraints missingFinal extraFinal coverage pr
       | result <- proofResults
       , Proof.smtResultStatus result == Proof.SmtFailed
       ]
+    semanticEvidenceProblems =
+      [ "failed semantic evidence: " ++ domainSemanticEvidenceName evidence
+      | evidence <- semanticEvidence
+      , not (domainSemanticEvidencePassed evidence)
+      ]
+
+domainSemanticEvidence ::
+  DomainRegistration ->
+  AppBlueprint ->
+  EffectTheory ->
+  NativeAppPlan ->
+  [Proof.SmtResult] ->
+  DomainRuntimeResult ->
+  IO [DomainSemanticEvidence]
+domainSemanticEvidence registration blueprint effects plan proofResults runtimeResult = do
+  customEvidence <-
+    mapM
+      (\currentCheck -> runDomainSemanticCheck currentCheck registration plan)
+      (domainSemanticChecks registration)
+  pure
+    ( builtInDomainSemanticEvidence blueprint effects plan proofResults runtimeResult
+        ++ customEvidence
+    )
+
+builtInDomainSemanticEvidence ::
+  AppBlueprint ->
+  EffectTheory ->
+  NativeAppPlan ->
+  [Proof.SmtResult] ->
+  DomainRuntimeResult ->
+  [DomainSemanticEvidence]
+builtInDomainSemanticEvidence blueprint effects plan proofResults runtimeResult =
+  [ constraintIrBuiltEvidence constraints
+  , pureSmtProofEvidence proofResults
+  , negativeConstraintEvidence
+  , runtimeClosureEvidence runtimeResult
+  ]
+  where
+    constraints =
+      case Proof.constraintsFromAppPlan blueprint effects of
+        Right currentConstraints ->
+          currentConstraints
+        Left _ ->
+          Proof.constraintsFromNativeAppPlan plan
+
+constraintIrBuiltEvidence :: [Proof.ConstraintFact] -> DomainSemanticEvidence
+constraintIrBuiltEvidence constraints
+  | null constraints =
+      domainEvidenceFailed "constraint-ir-built" ["constraint fact set is empty"]
+  | otherwise =
+      domainEvidencePassed "constraint-ir-built" ["constraint facts: " ++ show (length constraints)]
+
+pureSmtProofEvidence :: [Proof.SmtResult] -> DomainSemanticEvidence
+pureSmtProofEvidence results
+  | Proof.smtPassed results =
+      domainEvidencePassed "constraint-proof-passed" ["pure propositions: " ++ show (length results)]
+  | otherwise =
+      domainEvidenceFailed
+        "constraint-proof-passed"
+        [ Proof.renderSmtResult result
+        | result <- results
+        , Proof.smtResultStatus result == Proof.SmtFailed
+        ]
+
+negativeConstraintEvidence :: DomainSemanticEvidence
+negativeConstraintEvidence =
+  if Proof.MissingFactSource missingFact `elem` errors
+    then domainEvidencePassed "constraint-negative-check" ["missing fact source is detected"]
+    else domainEvidenceFailed "constraint-negative-check" ["missing fact source was accepted"]
+  where
+    missingFact =
+      WorkflowFact "SelfEvidenceMissingFact"
+    errors =
+      Proof.checkConstraintFacts [Proof.RequiresFact missingFact]
+
+runtimeClosureEvidence :: DomainRuntimeResult -> DomainSemanticEvidence
+runtimeClosureEvidence runtimeResult =
+  case runtimeResult of
+    DomainRuntimeSucceeded _ _ [] ->
+      domainEvidencePassed "runtime-closure-executed" ["runtime result is successful"]
+    DomainRuntimeSucceeded _ _ runtimeFailures ->
+      domainEvidenceFailed "runtime-closure-executed" runtimeFailures
+    DomainRuntimeFailed message ->
+      domainEvidenceFailed "runtime-closure-executed" [message]
+
+domainEvidencePassed :: String -> [String] -> DomainSemanticEvidence
+domainEvidencePassed name details =
+  DomainSemanticEvidence
+    { domainSemanticEvidenceName = name
+    , domainSemanticEvidenceStatus = DomainSemanticEvidencePassed
+    , domainSemanticEvidenceDetails = details
+    }
+
+domainEvidenceFailed :: String -> [String] -> DomainSemanticEvidence
+domainEvidenceFailed name details =
+  DomainSemanticEvidence
+    { domainSemanticEvidenceName = name
+    , domainSemanticEvidenceStatus = DomainSemanticEvidenceFailed
+    , domainSemanticEvidenceDetails = details
+    }
+
+domainSemanticEvidencePassed :: DomainSemanticEvidence -> Bool
+domainSemanticEvidencePassed evidence =
+  domainSemanticEvidenceStatus evidence == DomainSemanticEvidencePassed
+
+domainReportSemanticEvidencePassed :: DomainReport -> Bool
+domainReportSemanticEvidencePassed report =
+  all domainSemanticEvidencePassed (domainReportSemanticEvidence report)
 
 handlerCoverageReport :: NativeAppPlan -> DomainRuntimeBackend -> [DomainHandlerCoverage]
 handlerCoverageReport plan backend =
@@ -495,6 +656,26 @@ renderProofResults results =
   , "  failed: " ++ show (countProofStatus Proof.SmtFailed results)
   , "  skipped: " ++ show (countProofStatus Proof.SmtSkipped results)
   ]
+
+renderSemanticEvidence :: [DomainSemanticEvidence] -> [String]
+renderSemanticEvidence evidence =
+  [ "semantic evidence:"
+  , "  total: " ++ show (length evidence)
+  , "  passed: " ++ show (length (filter domainSemanticEvidencePassed evidence))
+  , "  failed: " ++ show (length (filter (not . domainSemanticEvidencePassed) evidence))
+  ]
+    ++ concatMap renderSemanticEvidenceItem evidence
+
+renderSemanticEvidenceItem :: DomainSemanticEvidence -> [String]
+renderSemanticEvidenceItem evidence =
+  ("  " ++ renderSemanticEvidenceStatus (domainSemanticEvidenceStatus evidence) ++ " " ++ domainSemanticEvidenceName evidence)
+    : map ("    " ++) (domainSemanticEvidenceDetails evidence)
+
+renderSemanticEvidenceStatus :: DomainSemanticEvidenceStatus -> String
+renderSemanticEvidenceStatus DomainSemanticEvidencePassed =
+  "passed"
+renderSemanticEvidenceStatus DomainSemanticEvidenceFailed =
+  "failed"
 
 countProofStatus :: Proof.SmtStatus -> [Proof.SmtResult] -> Int
 countProofStatus status results =

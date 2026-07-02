@@ -2,26 +2,14 @@ module Main
   ( main
   ) where
 
-import CurrentAst
-  ( currentAst )
-import CurrentEffects
-  ( currentEffects )
-import Domain.Runtime
-  ( domainRuntimeEffectEnvironment )
 import Framework.Domain
   ( buildDomainReport
-  , domainWithRuntime
   , renderDomainReport
   )
+import SelfDomainApp
+  ( domainAppDomain )
 
 main :: IO ()
 main = do
-  report <-
-    buildDomainReport
-      ( domainWithRuntime
-          "domain-app"
-          currentAst
-          currentEffects
-          domainRuntimeEffectEnvironment
-      )
+  report <- buildDomainReport domainAppDomain
   mapM_ putStrLn (renderDomainReport report)

@@ -212,7 +212,7 @@ bootstrapSendBoundaries =
   , BuildMinimalCoreReport
   , GenerateConstraintIR
   , RunSmtProof
-  , RunRuntimeSmoke
+  , RunRuntimeEvidence
   , PublishFrameworkCoreReport
   ]
 
@@ -650,13 +650,13 @@ runBootstrapNative RunSmtProof _ _ =
           pure (succeedArtifact SmtProofEvidence "native proof passed; external solver not required")
       | otherwise ->
           pure (HandlerFailed (renderNativePlanErrors plan))
-runBootstrapNative RunRuntimeSmoke _ _ =
-  case buildNativeApp runtimeClosureSmokeAst runtimeClosureSmokeEffects of
+runBootstrapNative RunRuntimeEvidence _ _ =
+  case buildNativeApp runtimeClosureEvidenceAst runtimeClosureEvidenceEffects of
     Left message ->
       pure (HandlerFailed message)
     Right plan
       | nativePlanPassed plan ->
-          pure (succeedArtifact RuntimeSmokeEvidence "native runtime fact closure passed")
+          pure (succeedArtifact RuntimeEvidenceArtifact "native runtime fact closure passed")
       | otherwise ->
           pure (HandlerFailed (renderNativePlanErrors plan))
 runBootstrapNative PublishFrameworkCoreReport _ _ =
@@ -675,8 +675,8 @@ buildNativeFrameworkCoreReport =
       | otherwise ->
           Left (renderNativePlanErrors plan)
 
-runtimeClosureSmokeAst :: Workflow.AppBlueprint
-runtimeClosureSmokeAst =
+runtimeClosureEvidenceAst :: Workflow.AppBlueprint
+runtimeClosureEvidenceAst =
   Workflow.AppBlueprint
     { Workflow.blueprintApp =
         Workflow.fact (Workflow.factItems [runtimeClosureRootFact])
@@ -684,11 +684,11 @@ runtimeClosureSmokeAst =
         Workflow.hanging []
     }
 
-runtimeClosureSmokeEffects :: Effect.EffectTheory
-runtimeClosureSmokeEffects =
+runtimeClosureEvidenceEffects :: Effect.EffectTheory
+runtimeClosureEvidenceEffects =
   Effect.theory
     [ Effect.effect
-        (Effect.EffectName "FrameworkCoreRuntimeClosureSmokeEffect")
+        (Effect.EffectName "FrameworkCoreRuntimeClosureEvidenceEffect")
         [ Effect.fact runtimeClosureRootFact
             [ Effect.needs runtimeClosureDependencyFact
             ]

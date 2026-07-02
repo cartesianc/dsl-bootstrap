@@ -3,7 +3,7 @@ cabal-version:       2.2
 name:                new-framework-core
 version:             0.1.0.0
 synopsis:            New framework core
-description:         Native framework-core AST, effect DSL, runtime interpreter, validation, proof, and bootstrap smoke executables.
+description:         Native framework-core AST, effect DSL, runtime interpreter, validation, proof, semantic evidence, and witness executables.
 license:             BSD-3-Clause
 license-file:        ../LICENSE
 author:              onetime
@@ -42,7 +42,7 @@ library
                      , Bootstrap.Effects.CoreProof.Registration.Effect
                      , Bootstrap.Effects.CoreReport.Facts.FrameworkCoreReportPublished
                      , Bootstrap.Effects.CoreReport.Registration.Effect
-                     , Bootstrap.Effects.CoreRuntime.Facts.RuntimeSmokePassed
+                     , Bootstrap.Effects.CoreRuntime.Facts.RuntimeEvidencePassed
                      , Bootstrap.Effects.CoreRuntime.Registration.Effect
                      , Bootstrap.Effects.CoreSurface.Registration.Effect
                      , Bootstrap.Report
@@ -208,9 +208,9 @@ executable fixed-point-smoke
                        -Wpartial-fields
                        -Wredundant-constraints
 
-executable constraint-proof-smoke
+executable constraint-proof-witness
   hs-source-dirs:      app
-  main-is:             ConstraintProofSmoke.hs
+  main-is:             ConstraintProofWitness.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , new-framework-core

@@ -34,7 +34,7 @@ runtimeInterpreterExpressedFact :: EffectSection
 runtimeInterpreterExpressedFact =
   fact RuntimeInterpreterExpressedFact
     [ needs CoreSurfaceFormalizedFact
-    , needs RuntimeSmokePassedFact
+    , needs RuntimeEvidencePassedFact
     ]
 
 buildAppValidationExpressedFact :: EffectSection
@@ -61,7 +61,7 @@ hyloRenderingProofSurfaceExpressedFact =
 runtimeFactClosureExpressedFact :: EffectSection
 runtimeFactClosureExpressedFact =
   fact RuntimeFactClosureExpressedFact
-    [ needs RuntimeSmokePassedFact
+    [ needs RuntimeEvidencePassedFact
     , needs SmtProofPassedFact
     ]
 
