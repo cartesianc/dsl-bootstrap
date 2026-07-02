@@ -140,3 +140,28 @@ domain-app 是外部使用者
 减少解释性套话
 避免对照式套话
 ```
+
+## 7. 业务稳定版入口
+
+自举层服务 framework 迭代。进入业务稳定版后，默认入口需要打薄：
+
+```text
+Framework.Business
+业务 vocabulary
+workflow
+effect theory
+runtime handlers
+轻量 diagnosis/report
+```
+
+以下能力保留给 framework 作者：
+
+```text
+Bootstrap.*
+SelfArtifact
+fixed-point gate
+artifact materialization gate
+self-artifact-witness
+workflow-semantics-witness
+kernel replacement flow
+```

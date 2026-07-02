@@ -118,7 +118,43 @@ Stage 1 产生后负责解释和验证新语义
 
 这里没有 compatibility layer 或 migration layer。
 
-## 6. 当前成功标准
+## 6. 业务稳定版打薄
+
+自举机制服务 framework 迭代：
+
+```text
+修改 kernel 语义
+替换 framework source
+验证 Stage 0 / Stage 1 fixed point
+生成隔离 artifact
+维护 witness 和 gate
+```
+
+进入业务稳定版后，默认入口收敛为薄 facade：
+
+```text
+Framework.Business
+业务 vocabulary
+workflow
+effect theory
+runtime handlers
+轻量 diagnosis/report
+```
+
+业务稳定版默认隐藏：
+
+```text
+Bootstrap.*
+SelfArtifact
+fixed-point gate
+self-artifact-witness
+workflow-semantics-witness
+kernel replacement flow
+```
+
+这些能力保留在 framework devtools 或 bootstrap 包中，由框架作者维护。
+
+## 7. 当前成功标准
 
 core 成功：
 

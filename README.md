@@ -121,6 +121,34 @@ rg -n "^import\s+Bootstrap\." domain-app/src domain-app/app
 
 两个命令应无输出。
 
+## 自举层定位
+
+自举层服务 framework 迭代、语义迁移和内核替换。业务稳定版会把默认入口打薄。
+
+业务作者默认只接触：
+
+```text
+Framework.Business
+Workflow
+Effect Theory
+Runtime handlers
+轻量 diagnosis/report
+```
+
+框架作者继续维护：
+
+```text
+Bootstrap.*
+SelfArtifact
+fixed-point gate
+artifact materialization gate
+workflow semantics witness
+self-artifact witness
+kernel replacement flow
+```
+
+发布稳定业务版时，自举工具应进入 devtools/bootstrap 包或内部命令。业务文档从“如何自举框架”转向“如何表达业务”。
+
 ## 编写业务
 
 `domain-app` 展示业务侧形态：

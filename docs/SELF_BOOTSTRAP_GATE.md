@@ -41,6 +41,8 @@ framework 改动完成前必须通过编译和自证。
 
 旧 framework 替换前必须在目标提交运行 `self-artifact-witness` 并通过。
 
+本 gate 面向 framework 迭代、内核替换和 artifact 物化。业务稳定版使用打薄入口，日常开发只运行业务级 build、report 和轻量 witness。
+
 ## 每次 Framework 改动的 Gate
 
 提交前运行：

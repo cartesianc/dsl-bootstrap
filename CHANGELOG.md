@@ -12,6 +12,7 @@
 - native source roots 改为读取 `new-framework-core/src`。
 - 主架构文档按双包边界重写。
 - README 改为使用指南，并把 HLS cradle entry 对齐到具体 executable。
+- 文档新增自举层定位：自举服务 framework 迭代，业务稳定版使用打薄入口。
 - workflow runtime 语义补齐真实 `parallel`、`race`、`fallback`、`choice`、`FactAny`、`loop`、`callback`、`middleware`、`suspense`。
 - SMT solver 发现逻辑支持 `Z3_EXE`、`CVC5_EXE` 和 `PATH`。
 - `constraint-proof-witness` 支持 `--smt=off|auto|required` 和 `FRAMEWORK_SMT`。
