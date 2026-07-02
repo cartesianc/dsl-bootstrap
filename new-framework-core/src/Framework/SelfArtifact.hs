@@ -71,11 +71,16 @@ defaultSelfArtifactManifest =
         [ ArtifactSource "new-framework-core" "new-framework-core"
         , ArtifactSource "domain-app" "domain-app"
         , ArtifactSource "docs" "docs"
+        , ArtifactSource "scripts" "scripts"
+        , ArtifactSource ".gitignore" ".gitignore"
+        , ArtifactSource "cabal.project.wasm" "cabal.project.wasm"
+        , ArtifactSource "hie.yaml" "hie.yaml"
         , ArtifactSource "stack.yaml" "stack.yaml"
         , ArtifactSource "stack.yaml.lock" "stack.yaml.lock"
         , ArtifactSource "LICENSE" "LICENSE"
         , ArtifactSource "README.md" "README.md"
         , ArtifactSource "CHANGELOG.md" "CHANGELOG.md"
+        , ArtifactSource "TODO.md" "TODO.md"
         ]
     , artifactManifestCommands =
         [ ArtifactCommand "stack build" "stack" ["build"]
