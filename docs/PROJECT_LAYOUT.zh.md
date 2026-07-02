@@ -25,7 +25,7 @@ new-framework-core/src/Bootstrap/Runtime
   Boundary    core/frontend boundary policy 和语言契约检查。
 
 new-framework-core/src/Framework
-  public facade。外部 domain 默认只接触这里。
+  public facade。外部 domain 默认只接触这里。Framework.Business 是 effect 前台语法入口。
 
 new-framework-core/src/Domain
   framework-core 自己的 self-domain expression。它通过 facade style 表达 framework-core。
@@ -56,7 +56,10 @@ domain-app/src/Plugins
   前台 workflow fragments。只描述业务模块，不写算法。
 
 domain-app/src/Effects
-  effect theory。只描述 facts、needs、take/make、externalMake、transform、error/retry/idempotency。
+  effect theory lowering facade。只把 Domain.Business 的 capability group lower 成底层 EffectUnit。
+
+domain-app/src/Domain/Business.hs
+  effect 前台业务能力声明。只写 capability、pipeline、policy、handler binding、transform binding。
 
 domain-app/src/Domain/Vocabulary.hs
 domain-app/src/Domain/EffectVocabulary.hs
@@ -79,9 +82,10 @@ domain-app/src/SelfDomainApp.hs
 
 ```text
 AppBlueprint 和 Plugins.* 应该像配置文件。
+Domain.Business 和 Effects.* 也应该像配置文件。
 不要在前台写算法、搜索、格式化、计算、IO。
 算法进入 Domain.Runtime handler/transform。
-约束进入 Effects.*。
+业务能力进入 Domain.Business，底层 effect IR 由 Framework.Business 自动生成。
 可验证结论进入 Domain.SemanticEvidence。
 ```
 

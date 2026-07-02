@@ -40,6 +40,12 @@ stack exec mytest
 stack exec domain-app-report
 ```
 
+验证 effect 前台语法：
+
+```powershell
+stack exec business-syntax-witness
+```
+
 检查 framework fixed point：
 
 ```powershell
@@ -68,6 +74,10 @@ Project layout and frontend rules:
 
 [docs/PROJECT_LAYOUT.zh.md](docs/PROJECT_LAYOUT.zh.md)
 
+Effect frontend syntax:
+
+[docs/EFFECT_FRONTEND_SYNTAX.zh.md](docs/EFFECT_FRONTEND_SYNTAX.zh.md)
+
 Domain app business flow:
 
 [domain-app/README.md](domain-app/README.md)
@@ -79,6 +89,7 @@ domain-app-report: status passed
 bootstrap-report: status passed
 fixed-point-smoke: diffs: 0
 workflow-semantics-witness: ok workflow semantics evidence
+business-syntax-witness: ok business syntax evidence 3 claims
 self-artifact-witness: passed
 ```
 
@@ -96,6 +107,7 @@ facade 模块：
 
 ```text
 Framework.Workflow        workflow AST 构造器
+Framework.Business        effect 前台 capability/pipeline DSL
 Framework.Effect          effect theory DSL
 Framework.Background      runtime、reports、diagnosis、proof facade
 Framework.Runtime         typed RuntimeM interpreter API
@@ -170,6 +182,7 @@ kernel replacement flow
 ```text
 domain-app/src/Domain/Vocabulary.hs
 domain-app/src/Domain/AppBlueprint.hs
+domain-app/src/Domain/Business.hs
 domain-app/src/Effects/Theory.hs
 domain-app/src/Domain/Runtime.hs
 domain-app/src/Domain/SemanticEvidence.hs
@@ -244,11 +257,26 @@ appFlow =
     ]
 ```
 
-### 3. 声明 Effect Theory
+### 3. 声明业务能力和 Effect Theory
 
-在 `Effects.*` 中使用 `Framework.Effect`。
+业务入口先在 `Domain.Business` 中使用 `Framework.Business` 声明 capability、pipeline、handler binding 和 transform binding。`Effects.*` 只负责调用 `capabilitiesEffect` lower 成底层 effect theory。
 
-核心声明：
+前台声明：
+
+```text
+capability
+requires
+input
+output
+uses
+produces
+policy
+pipeline
+handler binding
+transform binding
+```
+
+底层 IR 仍然保留：
 
 ```text
 needs          fact 依赖
@@ -263,6 +291,8 @@ retry          retry policy
 ```
 
 effect theory 把 workflow facts、runtime handlers、generated reports 连接成同一套契约。
+
+详细规范：[docs/EFFECT_FRONTEND_SYNTAX.zh.md](docs/EFFECT_FRONTEND_SYNTAX.zh.md)
 
 ### 4. 实现 Runtime Handlers
 
@@ -458,6 +488,7 @@ stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
 stack exec domain-app-report
 stack exec registry-codegen-witness
+stack exec business-syntax-witness
 ```
 
 运行：
@@ -497,6 +528,7 @@ stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
 stack exec registry-codegen-witness
+stack exec business-syntax-witness
 stack exec self-artifact-witness
 ```
 
@@ -507,6 +539,7 @@ stack build
 stack exec mytest
 stack exec domain-app-report
 stack exec domain-app-self-smoke
+stack exec business-syntax-witness
 stack exec framework-core-mytest
 stack exec bootstrap-smoke
 stack exec bootstrap-runtime-smoke

@@ -149,6 +149,7 @@ stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
 stack exec domain-app-report
 stack exec registry-codegen-witness
+stack exec business-syntax-witness
 ```
 
 通过标准：
@@ -159,6 +160,7 @@ fixed-point diffs: 0
 workflow semantics witness passed
 domain-app report passed
 registry codegen witness passed
+business syntax witness passed
 ```
 
 如果本机 HLS 占用默认 `.stack-work` 的 build lock，可以在当前工作树中用隔离目录验证：

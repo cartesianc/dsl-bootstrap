@@ -24,10 +24,13 @@ Plugins.*
   named workflow fragments only
 
 Effects.*
-  fact dependencies, send boundaries, and type flow only
+  thin lowering facade only
 
 Domain.Vocabulary / Domain.EffectVocabulary
   stable names only
+
+Domain.Business
+  capability, pipeline, policy, handler binding, transform binding
 
 Domain.Runtime
   handler and transform implementation
@@ -36,4 +39,6 @@ Domain.SemanticEvidence
   evidence probes and generated-source checks
 ```
 
-Do not put algorithms in `Domain.AppBlueprint` or `Plugins.*`. If a step needs computation, IO, retry behavior, or typed value conversion, express the fact/send/transform in `Effects.*` and implement the work in `Domain.Runtime` handlers or transforms.
+Do not put algorithms in `Domain.AppBlueprint`, `Plugins.*`, `Domain.Business`, or `Effects.*`. If a step needs computation, IO, retry behavior, or typed value conversion, express the capability/send/transform in `Domain.Business` and implement the work in `Domain.Runtime` handlers or transforms.
+
+`Effects.*` should stay boring: each module lowers a small capability group with `Framework.Business.capabilitiesEffect`.

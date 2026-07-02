@@ -61,6 +61,7 @@ stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
 stack exec registry-codegen-witness
+stack exec business-syntax-witness
 stack exec self-artifact-witness
 ```
 
@@ -75,6 +76,7 @@ runtime-diagnosis-witness: passed
 constraint-proof-witness --smt=auto: passed
 workflow-semantics-witness: passed
 registry-codegen-witness: passed
+business-syntax-witness: passed
 self-artifact-witness: passed
 ```
 
@@ -103,9 +105,10 @@ gate 步骤：
 7. Stage 1 artifact 运行 workflow-semantics-witness。
 8. Stage 1 artifact 运行 domain-app-report。
 9. Stage 1 artifact 运行 registry-codegen-witness。
+10. Stage 1 artifact 运行 business-syntax-witness。
 ```
 
-九步全部通过后，旧 framework 保留为参考和回滚点。
+十步全部通过后，旧 framework 保留为参考和回滚点。
 
 ## 替换 Gate
 

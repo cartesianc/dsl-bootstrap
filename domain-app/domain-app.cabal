@@ -15,6 +15,7 @@ build-type:          Simple
 library
   hs-source-dirs:      src
   exposed-modules:     Blueprint
+                     , Domain.Business
                      , Domain.EffectVocabulary
                      , Domain.AppBlueprint
                      , Domain.RegistryCodegenSpec
@@ -123,6 +124,23 @@ executable runtime-diagnosis-witness
 executable registry-codegen-witness
   hs-source-dirs:      app
   main-is:             RegistryCodegenWitness.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , domain-app
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable business-syntax-witness
+  hs-source-dirs:      app
+  main-is:             BusinessSyntaxWitness.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , domain-app

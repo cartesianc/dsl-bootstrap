@@ -1,23 +1,19 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module Effects.System
   ( systemEffect
   ) where
 
 import Domain.EffectVocabulary
-import Domain.Vocabulary
+  ( pattern SystemEffect )
+import Domain.Business
+  ( systemCapabilities )
+import Framework.Business
+  ( capabilitiesEffect )
 import Framework.Effect
+  ( EffectUnit )
 
 -- effect: systemEffect
 systemEffect :: EffectUnit
 systemEffect =
-  effect SystemEffect
-    [ fact AppConfiguredFact
-    , fact AppStartedFact
-        [ needs AppConfiguredFact
-        ]
-    , fact RuntimePreparedFact
-        [ needs AppConfiguredFact
-        ]
-    , fact AppFinishedFact
-        [ needs ReportGeneratedFact
-        ]
-    ]
+  capabilitiesEffect SystemEffect systemCapabilities

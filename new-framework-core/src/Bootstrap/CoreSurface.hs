@@ -80,6 +80,7 @@ explicitCoreSurfaceModules :: [CoreSurfaceModule]
 explicitCoreSurfaceModules =
   [ workflowFacade
   , effectFacade
+  , businessFacade
   , hyloFacade
   , backgroundAppBuild
   , backgroundBootstrapBoundary
@@ -239,6 +240,7 @@ coreSurfaceSlices =
       , coreSurfaceSliceModules =
           [ "Framework.Workflow"
           , "Framework.Effect"
+          , "Framework.Business"
           , "Framework.Hylo"
           ]
       , coreSurfaceSliceDependsOn = ["CoreSyntax", "CoreLanguageSpec", "CoreEffectTheory", "CoreHylo"]
@@ -630,6 +632,46 @@ effectFacade =
           [ "ErrorInput"
           , "NoInput"
           , "Unit"
+          ]
+    )
+
+businessFacade :: CoreSurfaceModule
+businessFacade =
+  moduleSurface
+    "Framework.Business"
+    "frontend business capability, pipeline, policy, handler binding, and transform binding syntax"
+    ( map typeCapability
+        [ "BusinessShapeIssue"
+        , "Capability"
+        , "CapabilityClause"
+        , "CapabilityPolicy"
+        , "CapabilityUse"
+        , "HandlerBindingSpec"
+        , "Pipeline"
+        , "TransformBindingSpec"
+        ]
+        ++ map valueCapability
+          [ "businessShapePassed"
+          , "capabilitiesEffect"
+          , "capability"
+          , "capabilityEffectSections"
+          , "checkBusinessShape"
+          , "handler"
+          , "handlerBinding"
+          , "idempotentPolicy"
+          , "input"
+          , "onError"
+          , "output"
+          , "pipeline"
+          , "pipelineTransformCandidates"
+          , "policy"
+          , "produces"
+          , "renderBusinessShapeIssue"
+          , "requires"
+          , "retryOnce"
+          , "transform"
+          , "transformBinding"
+          , "uses"
           ]
     )
 

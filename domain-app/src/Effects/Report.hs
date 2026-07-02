@@ -1,34 +1,19 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module Effects.Report
   ( reportEffect
   ) where
 
 import Domain.EffectVocabulary
-import Domain.Vocabulary
+  ( pattern ReportEffect )
+import Domain.Business
+  ( reportCapabilities )
+import Framework.Business
+  ( capabilitiesEffect )
 import Framework.Effect
+  ( EffectUnit )
 
 -- effect: reportEffect
 reportEffect :: EffectUnit
 reportEffect =
-  effect ReportEffect
-    [ fact CalculationSectionOpenedFact
-        [ needs UserKnownFact
-        ]
-    , fact AddCalculatedFact
-        [ needs CalculationSectionOpenedFact
-        ]
-    , fact FactorialCalculatedFact
-        [ needs CalculationSectionOpenedFact
-        ]
-    , fact SquaresCalculatedFact
-        [ needs CalculationSectionOpenedFact
-        ]
-    , fact ReportGeneratedFact
-        [ needs AddCalculatedFact
-        , needs FactorialCalculatedFact
-        , needs SquaresCalculatedFact
-        , needs UserNameAskedFact
-        , transform UserName ReportInput UserNameToReportInput
-        , uses GenerateReport
-        ]
-    , externalMake GenerateReport ReportInput ReportOutput
-    ]
+  capabilitiesEffect ReportEffect reportCapabilities

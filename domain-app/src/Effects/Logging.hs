@@ -1,13 +1,19 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module Effects.Logging
   ( loggingEffect
   ) where
 
 import Domain.EffectVocabulary
+  ( pattern LoggingEffect )
+import Domain.Business
+  ( loggingCapabilities )
+import Framework.Business
+  ( capabilitiesEffect )
 import Framework.Effect
+  ( EffectUnit )
 
 -- effect: loggingEffect
 loggingEffect :: EffectUnit
 loggingEffect =
-  effect LoggingEffect
-    [ externalMake WriteLog LogMessage Unit
-    ]
+  capabilitiesEffect LoggingEffect loggingCapabilities

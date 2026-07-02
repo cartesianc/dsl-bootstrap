@@ -1,30 +1,20 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Effects.User
   ( userEffect
   ) where
 
 import Domain.EffectVocabulary
-import Domain.Vocabulary
+  ( pattern UserEffect )
+import Domain.Business
+  ( userCapabilities )
+import Framework.Business
+  ( capabilitiesEffect )
 import Framework.Effect
+  ( EffectUnit )
 
 -- effect: userEffect
 userEffect :: EffectUnit
 userEffect =
-  effect UserEffect
-    [ fact UserNameAskedFact
-        [ uses AskUserName
-        , error HandleUserNameError
-        ]
-    , fact UserGreetedFact
-        [ needs UserNameAskedFact
-        ]
-    , fact UserKnownFact
-        [ needs UserNameAskedFact
-        , needs UserGreetedFact
-        , uses RememberUser
-        ]
-    , externalMake AskUserName NoInput UserName
-    , externalMake HandleUserNameError ErrorInput Unit
-    , externalMake RememberUser UserName Unit
-    ]
+  capabilitiesEffect UserEffect userCapabilities

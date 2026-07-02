@@ -90,6 +90,7 @@ defaultSelfArtifactManifest =
         , ArtifactCommand "workflow semantics witness" "stack" ["exec", "workflow-semantics-witness"]
         , ArtifactCommand "domain app report" "stack" ["exec", "domain-app-report"]
         , ArtifactCommand "registry codegen witness" "stack" ["exec", "registry-codegen-witness"]
+        , ArtifactCommand "business syntax witness" "stack" ["exec", "business-syntax-witness"]
         ]
     }
 

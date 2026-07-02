@@ -20,6 +20,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Blueprint
                      , Bootstrap.Blueprint
+                     , Bootstrap.Business
                      , Bootstrap.CoreSurface
                      , Bootstrap.Effect
                      , Bootstrap.Effects
@@ -66,6 +67,7 @@ library
                      , Framework.Background
                      , Framework.Background.ConstraintProof
                      , Framework.Background.RuntimeDiagnosis
+                     , Framework.Business
                      , Framework.Domain
                      , Framework.Effect
                      , Framework.FixedPoint
