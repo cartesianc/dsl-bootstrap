@@ -11,6 +11,7 @@
 - Updated Stack, Cabal project, and HLS cradle configuration to build both packages.
 - Updated native source roots so boundary/import checks read `new-framework-core/src` instead of the old `framework-core/src`.
 - Rewrote the main architecture docs around the new two-package boundary.
+- Reworked the README into a usage guide and mapped HLS cradle entries to concrete executables.
 
 ### Added
 
