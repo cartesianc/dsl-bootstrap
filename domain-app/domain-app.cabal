@@ -2,8 +2,8 @@ cabal-version:       2.2
 
 name:                domain-app
 version:             0.1.0.0
-synopsis:            Domain application built on framework-core
-description:         Current domain app, concrete blueprint, plugins, effects, handlers, and smoke executables.
+synopsis:            Self-hosted framework-core domain app
+description:         Minimal domain app whose content is the new framework core itself.
 license:             BSD-3-Clause
 license-file:        ../LICENSE
 author:              onetime
@@ -15,33 +15,13 @@ build-type:          Custom
 custom-setup
   setup-depends:      base >= 4.7 && < 5
                     , Cabal >= 2.2
-                    , directory
-                    , filepath
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Blueprint
-                     , Domain.EffectVocabulary
-                     , Domain.AppBlueprint
-                     , Domain.Runtime
-                     , Domain.Vocabulary
-                     , Effects.Demo
-                     , Effects.Logging
-                     , Effects.Report
-                     , Effects.System
-                     , Effects.Theory
-                     , Effects.User
-                     , Plugins
-                     , Plugins.Boot
-                     , Plugins.Configuration
-                     , Plugins.Handle
-                     , Plugins.Lifecycle
-                     , Plugins.Logging
-                     , Plugins.Report
-                     , Plugins.Shutdown
+  exposed-modules:     SelfDomainApp
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
-                     , framework-core
+                     , new-framework-core
   ghc-options:         -Wall
                        -Wcompat
                        -Widentities
@@ -52,70 +32,13 @@ library
                        -Wpartial-fields
                        -Wredundant-constraints
 
-executable mytest
+executable domain-app-self-smoke
   hs-source-dirs:      app
   main-is:             Main.hs
-  other-modules:       CurrentAst
-                     , CurrentEffects
-                     , InterpretConfig
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , domain-app
-                     , framework-core
-  ghc-options:         -Wall
-                       -Wcompat
-                       -Widentities
-                       -Wincomplete-record-updates
-                       -Wincomplete-uni-patterns
-                       -Wmissing-export-lists
-                       -Wmissing-home-modules
-                       -Wpartial-fields
-                       -Wredundant-constraints
-
-executable runtime-smoke
-  hs-source-dirs:      app
-  main-is:             RuntimeSmoke.hs
-  other-modules:       Runtime.Smoke
-  default-language:    Haskell2010
-  build-depends:       base >= 4.7 && < 5
-                     , domain-app
-                     , framework-core
-  ghc-options:         -Wall
-                       -Wcompat
-                       -Widentities
-                       -Wincomplete-record-updates
-                       -Wincomplete-uni-patterns
-                       -Wmissing-export-lists
-                       -Wmissing-home-modules
-                       -Wpartial-fields
-                       -Wredundant-constraints
-                       -O0
-                       -fno-write-ide-info
-
-executable frontend-boundary-smoke
-  hs-source-dirs:      app
-  main-is:             FrontendBoundarySmoke.hs
-  default-language:    Haskell2010
-  build-depends:       base >= 4.7 && < 5
-                     , domain-app
-                     , framework-core
-  ghc-options:         -Wall
-                       -Wcompat
-                       -Widentities
-                       -Wincomplete-record-updates
-                       -Wincomplete-uni-patterns
-                       -Wmissing-export-lists
-                       -Wmissing-home-modules
-                       -Wpartial-fields
-                       -Wredundant-constraints
-
-executable core-boundary-smoke
-  hs-source-dirs:      app
-  main-is:             CoreBoundarySmoke.hs
-  default-language:    Haskell2010
-  build-depends:       base >= 4.7 && < 5
-                     , domain-app
-                     , framework-core
+                     , new-framework-core
   ghc-options:         -Wall
                        -Wcompat
                        -Widentities

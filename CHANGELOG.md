@@ -1,11 +1,22 @@
-# Changelog for `mytest`
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to the
-[Haskell Package Versioning Policy](https://pvp.haskell.org/).
+# Changelog
 
 ## Unreleased
 
-## 0.1.0.0 - YYYY-MM-DD
+### Changed
+
+- Split the current build surface into `new-framework-core` and `domain-app`.
+- Moved the framework-core expression/compiler implementation into `new-framework-core`.
+- Removed the old `framework-core` source tree from the active architecture.
+- Reworked `domain-app` into a minimal self domain app whose content is `framework-core`.
+- Updated Stack, Cabal project, and HLS cradle configuration to build both packages.
+- Updated native source roots so boundary/import checks read `new-framework-core/src` instead of the old `framework-core/src`.
+- Rewrote the main architecture docs around the new two-package boundary.
+
+### Added
+
+- Added `domain-app-self-smoke`, which verifies the external domain app can compile and run the framework-core self report through `new-framework-core`.
+
+### Removed
+
+- Removed core implementation ownership from `domain-app`.
+- Kept old oracle smoke executables out of the current build surface.

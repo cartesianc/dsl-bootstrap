@@ -2,16 +2,9 @@ module Main
   ( main
   ) where
 
-import CurrentAst
-  ( currentAst
-  )
-import CurrentEffects
-  ( currentEffects
-  )
-import InterpretConfig
-  ( currentInterpreter
-  )
+import SelfDomainApp
+  ( runSelfDomainApp )
 
 main :: IO ()
 main =
-  currentInterpreter currentAst currentEffects
+  runSelfDomainApp

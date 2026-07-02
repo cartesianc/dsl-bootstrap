@@ -29,7 +29,7 @@ snapshot: ghc-9.6.7
 #   - auto-update
 #   - wai
 packages:
-- framework-core
+- new-framework-core
 - domain-app
 # Dependency packages to be pulled from upstream that are not in the snapshot.
 # These entries can reference officially published versions as well as

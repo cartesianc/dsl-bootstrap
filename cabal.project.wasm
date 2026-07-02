@@ -1,5 +1,5 @@
 packages:
-  framework-core
+  new-framework-core
   domain-app
 
 -- Build with the GHC WebAssembly/WASI toolchain.

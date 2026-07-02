@@ -1,0 +1,183 @@
+cabal-version:       2.2
+
+name:                new-framework-core
+version:             0.1.0.0
+synopsis:            New framework core
+description:         Native framework-core AST, effect DSL, runtime interpreter, validation, proof, and bootstrap smoke executables.
+license:             BSD-3-Clause
+license-file:        ../LICENSE
+author:              onetime
+maintainer:          1018248628@qq.com
+copyright:           2026 onetime
+category:            Application
+build-type:          Custom
+
+custom-setup
+  setup-depends:      base >= 4.7 && < 5
+                    , Cabal >= 2.2
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     Blueprint
+                     , Bootstrap.Blueprint
+                     , Bootstrap.CoreSurface
+                     , Bootstrap.Effect
+                     , Bootstrap.Effects
+                     , Bootstrap.Effects.CoreBoundary.Facts.CoreBoundaryValidated
+                     , Bootstrap.Effects.CoreBoundary.Facts.FrontendBoundaryValidated
+                     , Bootstrap.Effects.CoreBoundary.Facts.ImportGraphBuilt
+                     , Bootstrap.Effects.CoreBoundary.Registration.Effect
+                     , Bootstrap.Effects.CoreExpression.Facts.FrameworkCoreExpression
+                     , Bootstrap.Effects.CoreExpression.Registration.Effect
+                     , Bootstrap.Effects.CoreLanguage.Facts.ElaborationContractValidated
+                     , Bootstrap.Effects.CoreLanguage.Facts.LanguageSpecValidated
+                     , Bootstrap.Effects.CoreLanguage.Registration.Effect
+                     , Bootstrap.Effects.CoreModule.Facts.CoreHostModulesClassified
+                     , Bootstrap.Effects.CoreModule.Facts.FrameworkCoreModulesClassified
+                     , Bootstrap.Effects.CoreModule.Facts.PackageModulesDiscovered
+                     , Bootstrap.Effects.CoreModule.Registration.Effect
+                     , Bootstrap.Effects.CoreProof.Facts.ConstraintIRBuilt
+                     , Bootstrap.Effects.CoreProof.Facts.MinimalCoreReportBuilt
+                     , Bootstrap.Effects.CoreProof.Facts.SmtProofPassed
+                     , Bootstrap.Effects.CoreProof.Registration.Effect
+                     , Bootstrap.Effects.CoreReport.Facts.FrameworkCoreReportPublished
+                     , Bootstrap.Effects.CoreReport.Registration.Effect
+                     , Bootstrap.Effects.CoreRuntime.Facts.RuntimeSmokePassed
+                     , Bootstrap.Effects.CoreRuntime.Registration.Effect
+                     , Bootstrap.Effects.CoreSurface.Registration.Effect
+                     , Bootstrap.Report
+                     , Bootstrap.Runtime
+                     , Bootstrap.Vocabulary
+                     , Bootstrap.Workflow
+                     , Domain.Ast
+                     , Domain.EffectHandlers
+                     , Domain.Effects
+                     , Domain.AppBlueprint
+                     , Domain.Interpreter
+                     , Domain.Registry
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , directory
+                     , filepath
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable mytest
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable bootstrap-smoke
+  hs-source-dirs:      app
+  main-is:             BootstrapSmoke.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable bootstrap-runtime-smoke
+  hs-source-dirs:      app
+  main-is:             BootstrapRuntimeSmoke.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable bootstrap-report
+  hs-source-dirs:      app
+  main-is:             BootstrapReport.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable ast-tree
+  hs-source-dirs:      app
+  main-is:             AstTree.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable domain-registry
+  hs-source-dirs:      app
+  main-is:             RegistryReport.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable domain-map
+  hs-source-dirs:      app
+  main-is:             DomainMap.hs
+  other-modules:       Domain.Relations
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints

@@ -1,221 +1,121 @@
 # 包边界
 
-项目当前拆成两个 Stack/Cabal package：
+当前 build surface 有两个包：
 
 ```text
-framework-core
+new-framework-core
 domain-app
 ```
 
-依赖方向固定为：
+旧 `framework-core/` 目录已经从当前架构中移除，不作为源码、package dependency 或 source catalog 保留。
+
+## 1. new-framework-core
+
+`new-framework-core` 是新的 compiler/core 包，拥有：
 
 ```text
-domain-app -> framework-core
-framework-core -> domain-app  禁止
+Bootstrap.Workflow
+Bootstrap.Effect
+Bootstrap.Runtime
+Bootstrap.Report
+Domain.Ast
+Domain.Effects
+Domain.EffectHandlers
+Domain.Interpreter
+Domain.Registry
 ```
 
-`stack build` 会强制这个方向。`core-boundary-smoke` 会再扫描真实 Haskell import graph，检查 package 方向和 `Core.Bootstrap.defaultCoreBoundary` 是否一致。
-
-## framework-core
-
-路径：
+生产 registry 只注册：
 
 ```text
-framework-core/
-  framework-core.cabal
-  src/AST
-  src/Core
-  src/Effects/EffectTheory.hs
-  src/Effects/Names.hs
-  src/Framework
-  src/Interpreter
+framework-core
 ```
 
-职责：
+core 自带可执行：
 
 ```text
-workflow AST 基础结构
-AppBlueprint 类型
-generic fact/name/interceptor carrier
-EffectTheory DSL 和 effect semantics
-validation
-AppPlan build
-constraint IR
-SMT backend
-frontend boundary checker
-import graph checker
-runtime algebra / RuntimeM / handler dispatch
-recursion / hylo facade
+mytest
+domain-registry
+ast-tree
+domain-map
+bootstrap-smoke
+bootstrap-runtime-smoke
+bootstrap-report
 ```
 
-公开 facade：
+## 2. domain-app
+
+`domain-app` 是外部使用者，不是 core 实现容器。
+
+它只暴露：
+
+```text
+SelfDomainApp
+```
+
+它的内容是 `framework-core` 自身：
+
+```text
+domain-app:self-framework-core
+  content: framework-core
+```
+
+验证入口：
+
+```text
+domain-app-self-smoke
+```
+
+## 3. Source Catalog
+
+native import graph 当前扫描：
+
+```text
+new-framework-core/src
+domain-app/src
+```
+
+core boundary 检查只针对：
+
+```text
+new-framework-core/src
+```
+
+这保证当前 core 不再从旧实现目录偷读任何源码。
+
+## 4. Import 规则
+
+production source 允许：
+
+```text
+Bootstrap.*
+Domain.*
+SelfDomainApp
+Blueprint
+Prelude
+base libraries
+```
+
+production source 禁止：
 
 ```text
 Framework.Workflow
 Framework.Effect
-Framework.Hylo
 Framework.Background
-```
-
-`Framework.Workflow` 是 framework 级 workflow facade。当前 domain 为了保留具体 `WorkflowFact`、`WorkflowName`、`Interceptor` 的简洁写法，另有 `domain-app/src/Blueprint.hs` 作为业务 facade。
-业务词汇不放在 `framework-core`。当前业务的 workflow/effect 名称在：
-
-```text
-domain-app/src/Domain/Vocabulary.hs
-domain-app/src/Domain/EffectVocabulary.hs
-```
-
-## domain-app
-
-路径：
-
-```text
-domain-app/
-  domain-app.cabal
-  Setup.hs
-  app/
-  src/Blueprint.hs
-  src/Domain/AppBlueprint.hs
-  src/Domain/Vocabulary.hs
-  src/Domain/EffectVocabulary.hs
-  src/Domain/Runtime.hs
-  src/Plugins
-  src/Effects
-```
-
-职责：
-
-```text
-当前业务蓝图
-当前业务 workflow/effect vocabulary
-当前业务 runtime handler / transform 绑定
-workflow plugins
-effect units
-effect theory registry
-main / smoke executables
-```
-
-前台入口：
-
-```text
-domain-app/app/Main.hs
-domain-app/app/CurrentAst.hs
-domain-app/app/CurrentEffects.hs
-domain-app/app/InterpretConfig.hs
-```
-
-主入口保持：
-
-```haskell
-main =
-  currentInterpreter currentAst currentEffects
-```
-
-## 前台导入规则
-
-业务 workflow 模块导入：
-
-```haskell
-import Blueprint
-```
-
-业务 effect 模块导入：
-
-```haskell
-import Framework.Effect
-```
-
-外部 seed / fixture / hylo 入口导入：
-
-```haskell
-import Framework.Hylo
-```
-
-业务前台禁止直接导入：
-
-```text
+Framework.Background.*
 Core.*
 Interpreter.*
-Framework.Background
-Effects.EffectTheory
-Effects.Names
-AST.*
+old generated registry modules
 ```
 
-`domain-app/app/InterpretConfig.hs` 是应用入口到 runtime 的薄绑定，导入 `Framework.Background` 和 `Domain.Runtime`。普通 workflow/effect 声明不走这条路。
+`Bootstrap.CoreSurface` 里的历史 `Framework.*` 字符串是 catalog data，不是 import。
 
-## 自动注册
+## 5. Setup 规则
 
-`domain-app/Setup.hs` 维护两个注册表：
-
-```text
-domain-app/src/Plugins.hs
-domain-app/src/Effects/Theory.hs
-```
-
-标记：
+`Setup.hs` 保持最小：
 
 ```haskell
--- plugin: userModule
--- effect: userEffect
+main = defaultMain
 ```
 
-构建时生成统一出口。新增业务 plugin 或 effect 后，需要把模块加入 `domain-app/domain-app.cabal` 的 `exposed-modules`。
-
-## 检查入口
-
-Frontend boundary：
-
-```powershell
-stack exec frontend-boundary-smoke
-```
-
-检查前台 import 是否绕过 facade。
-
-Core/package boundary：
-
-```powershell
-stack exec core-boundary-smoke
-```
-
-检查内容：
-
-```text
-framework-core 不 import domain-app
-domain-app 只按声明依赖 framework-core
-Core.Bootstrap slice 无重复、无未知依赖、无非法环
-真实 import graph 落在 slice 依赖闭包内
-minimal core / SMT smoke 仍通过
-```
-
-## Core Bootstrap 分层
-
-`Core.Bootstrap.defaultCoreBoundary` 描述自举前的 core map：
-
-```text
-syntax
-language-spec
-recursion
-hylo
-effect-theory
-app-build
-constraint-ir
-proof-boundary
-smt-backend
-frontend-facade
-frontend-boundary
-runtime-adapter
-```
-
-手写 slice 图用于表达架构意图。真实 import graph 用于检查代码是否遵守这张图。
-
-## Ana / Hylo 边界
-
-Canonical documentation 仍是手写 Haskell AST：
-
-```text
-Domain.AppBlueprint.blueprint
-Effects.Theory.effectTheory
-```
-
-`Framework.Hylo` 用于外部 seed、fixture、重启恢复和边界测试。外部输入通过 unfold algebra / coalgebra 展开成 `AppBlueprint + EffectTheory`，再进入 app build、constraint IR、runtime 或 SMT。
+任何未来 generator 都必须生成 framework expression 代码，不能生成旧业务 registries。

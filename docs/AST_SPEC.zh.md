@@ -1,55 +1,37 @@
-# AST DSL 使用说明
+# AST 规范
 
-前台 AST 写法规格。free 结构、cata 和 runtime 实现属于 core/interpreter。
+本文描述当前 production AST 如何表达 framework-core。旧业务 DomainApp 的组件、插件和 effect 示例不再属于本文档。
 
-## 1. 蓝图形状
+## 1. 入口
 
-主蓝图由 `app` 和 `hooks` 组成：
+AST 入口是：
 
-```haskell
-blueprint :: AppBlueprint
-blueprint =
-  AppBlueprint
-    { blueprintApp = app
-    , blueprintHanging = hooks
-    }
+```text
+Domain.Ast.frameworkCoreAst
+Bootstrap.Blueprint.coreBootstrapBlueprint
 ```
 
-`app` 写 workflow：
+根 workflow 是：
 
-```haskell
-app :: App
-app =
-  chain AppFlow
-    [ lifecycleStart
-    , userModule
-    , reportModule
-    , lifecycleEnd
-    ]
+```text
+FrameworkCoreFlow
 ```
 
-`hooks` 写 hanging 外挂逻辑：
+AST 使用本地 DSL：
 
-```haskell
-hooks :: AppHanging
-hooks =
-  hanging
-    [ middleware ReportMiddleware reportModule
-    , callback ShutdownFlow reportModule
-    , suspense ReportModuleFlow
-    , loop reportModule
-    ]
+```text
+Bootstrap.Workflow
 ```
 
-## 2. 节点类型
+它定义：
 
-### WorkflowComponent
-
-主执行流节点属于 `WorkflowComponent`。
-
-可用节点：
-
-```haskell
+```text
+AppBlueprint
+Workflow
+FactExpr
+WorkflowFact
+WorkflowName
+Interceptor
 chain
 parallel
 fact
@@ -57,324 +39,146 @@ wait
 fallback
 race
 choice
-```
-
-### FactComponent
-
-`FactComponent` 表示 fact 条件。
-
-基本写法：
-
-```haskell
-[UserKnownFact]
-```
-
-`allOf` 表示全部满足：
-
-```haskell
-allOf [UserKnownFact, RuntimePreparedFact]
-```
-
-`anyOf` 表示任意满足：
-
-```haskell
-anyOf [UserKnownFact, ReportGeneratedFact]
-```
-
-`wait` 接收 `FactComponent`。`callback` 和 `suspense` 接收 workflow target。
-
-### HangingComponent
-
-`hanging` 里的节点属于 `HangingComponent`。
-
-可用节点：
-
-```haskell
+hanging
 middleware
 callback
 suspense
 loop
 ```
 
-`middleware`、`callback`、`suspense` 和 `loop` 属于 `hanging`，不能写进 `chain`、`parallel`、`fallback`。
+## 2. AST 只表达结构
 
-## 3. 节点语义
+AST 负责表达 framework core 的能力结构，而不是执行细节。
 
-### Chain
-
-顺序结构：
-
-```haskell
-chain SomeFlow
-  [ firstStep
-  , secondStep
-  ]
-```
-
-### Parallel
-
-并行结构：
-
-```haskell
-parallel SomeFlow
-  [ branchA
-  , branchB
-  ]
-```
-
-### Middleware
-
-作用域：`hanging`。
-
-结构：
-
-```haskell
-middleware SomeMiddleware body
-```
-
-语义：给 workflow body 叠加 middleware。
-
-```haskell
-middleware ReportMiddleware
-  (chain ReportFlow
-    [ fact [CalculationSectionOpenedFact]
-    , fact [ReportGeneratedFact]
-    ])
-```
-
-组合规则：
-
-- 多层 middleware 支持叠加。
-- 空 middleware 为 identity。
-- 叠加满足结合律。
-- runtime 在执行 body 前把 middleware 放入 active stack，body 结束后退出。
-- middleware enter/exit 留下结构化 runtime event；target 失败时也退出 stack。
-- middleware 只包住声明中的 body。主 workflow component identity 改写由 scheduler/registry 处理。
-- `FreeMonoid` 提供组合结构，顺序语义由 interpreter 决定。
-
-### Fact
-
-workflow 叶子节点，声明这里给出哪些 fact：
-
-```haskell
-fact [SomeFact]
-```
-
-### Wait
-
-等待 fact 条件满足，然后继续执行 body：
-
-```haskell
-wait [SomeFact] body
-```
-
-组合条件：
-
-```haskell
-wait
-  (allOf [UserKnownFact, RuntimePreparedFact])
-  body
-```
-
-### Fallback
-
-备用 workflow 分支：
-
-```haskell
-fallback [primaryWorkflow, backupWorkflow]
-```
-
-`fallback` 只能接收 workflow，不能接收 `middleware`、`callback`、`suspense` 或 fact 条件。
-
-### Race
-
-竞争分支：
-
-```haskell
-race [branchA, branchB]
-```
-
-### Choice
-
-按 key 选择分支：
-
-```haskell
-choice
-  (ChoiceKey "sms")
-  [ (ChoiceKey "sms", smsBranch)
-  , (ChoiceKey "email", emailBranch)
-  ]
-```
-
-### Callback
-
-作用域：`hanging`。
-
-```haskell
-callback SomeFlow body
-```
-
-语义：运行进入 `SomeFlow` 时，`body` 作为并行分支启动。
-
-### Suspense
-
-作用域：`hanging`。
-
-```haskell
-suspense SomeFlow
-```
-
-语义：记录对 `SomeFlow` 的暂停请求和当前状态。当前版本不执行真实取消。
-
-### Loop
-
-作用域：`hanging`。
-
-```haskell
-loop workflowComponent
-```
-
-语义：按 `forever` 重复执行一个 workflow component。retry、压测、次数控制由其他组件或 scheduler 表达。
-
-## 4. 新增插件流程
-
-示例：新增 `Payment` 组件。
-
-### 第一步：新建插件文件
-
-新建：
+AST 中可以出现：
 
 ```text
-domain-app/src/Plugins/Payment.hs
+workflow grouping
+capability grouping
+final atomic facts
+control-flow shape
+wait gates
+hanging hooks
 ```
 
-### 第二步：声明模块导出
-
-```haskell
-{-# OPTIONS_GHC -Wno-missing-export-lists #-}
-
-module Plugins.Payment where
-
-import Blueprint
-```
-
-### 第三步：写组件形状
-
-组件类型标记最外层节点。
-
-最外层为 `wait`：
-
-```haskell
-type PaymentModule = Wait
-```
-
-middleware hook：
-
-```haskell
-type PaymentHook = Middleware
-```
-
-完整示例：
-
-```haskell
-type PaymentModule = Wait
-
-type PaymentHook = Middleware
-
--- plugin: paymentModule
-paymentModule :: PaymentModule
-paymentModule =
-  wait
-    [ PaymentConfirmedFact ]
-    ( chain PaymentFlow
-        [ fact [PaymentCheckedFact]
-        , fact [PaymentFinishedFact]
-        ]
-    )
-
--- plugin: paymentHook
-paymentHook :: PaymentHook
-paymentHook =
-  middleware PaymentMiddleware paymentModule
-```
-
-结构说明：
-
-- `paymentModule` 是一个 `Wait` workflow component。
-- 它等待 `PaymentConfirmedFact`。
-- fact 满足后进入 `PaymentFlow`。
-- `PaymentFlow` 里声明两个 fact。
-- `paymentHook` 是 hanging component，声明 `paymentModule` 整体叠加 `PaymentMiddleware`。
-
-### 第四步：注册插件出口
-
-在需要导出的定义上方写：
-
-```haskell
--- plugin: paymentModule
--- plugin: paymentHook
-```
-
-构建时 `Setup.hs` 会扫描这个声明，并生成统一出口：
+AST 中不应该出现：
 
 ```text
-domain-app/src/Plugins.hs
+module scan implementation detail
+handler lookup detail
+intermediate catalog facts
+temporary classification facts
+proof construction steps that are not final capabilities
+runtime artifact plumbing
 ```
 
-新增 `domain-app/src/Plugins/Payment.hs` 后，把模块名加入 `domain-app/domain-app.cabal` 的 `exposed-modules`：
+这些中间事实进入 effect theory closure。
 
-```cabal
-                     , Plugins.Payment
-```
+## 3. Leaf Fact 规则
 
-### 第五步：插入 main workflow
+AST leaf fact 应该是最终原子能力。
 
-打开：
+当前核心 leaf facts：
 
 ```text
-domain-app/src/Domain/AppBlueprint.hs
+AstStructureExpressedFact
+EffectTheoryDslExpressedFact
+RuntimeInterpreterExpressedFact
+BuildAppValidationExpressedFact
+BoundaryChecksExpressedFact
+HyloRenderingProofSurfaceExpressedFact
+RuntimeFactClosureExpressedFact
+FrameworkCoreNativeValidatedFact
+FrameworkCoreExpressedFact
+FrameworkCoreReportPublishedFact
 ```
 
-文件头导入统一入口：
+示例：
 
 ```haskell
-import Blueprint
-import Plugins
+fact [AstStructureExpressedFact]
 ```
 
-插入 workflow 和 hook：
+不要把这些中间过程写成 AST leaf：
 
-```haskell
-app :: App
-app =
-  chain AppFlow
-    [ lifecycleStart
-    , userModule
-    , paymentModule
-    , reportModule
-    , lifecycleEnd
-    ]
-
-hooks :: AppHanging
-hooks =
-  hanging
-    [ paymentHook
-    ]
+```text
+PackageModulesDiscoveredFact
+FrameworkCoreModulesClassifiedFact
+CoreHostModulesClassifiedFact
+ImportGraphBuiltFact
+ConstraintIRBuiltFact
 ```
 
-`Domain.AppBlueprint` 通过 `Plugins` 统一出口引用插件。
+它们可以在 effect theory 中声明为 producers、needs、takes、makes 或 runtime artifacts。
 
-## 5. AST 只写结构
+## 4. Workflow 分组
 
-组件里不写：
+推荐分组：
 
-- IO
-- 数据库查询
-- HTTP 请求
-- 文件读写
-- 真实日志逻辑
-- handler 查找
-- service 注入
-- runtime state 修改
+```text
+FrameworkCoreFlow
+  CoreSurfaceFormalizationFlow
+  ValidateStaticContractsFlow
+  BuildProofFlow
+  ValidateRuntimeFlow
+  PublishFrameworkCoreReportFlow
+```
 
-这些由 interpreter 或后续 effect system 处理。
+并行检查使用 `parallel`：
+
+```text
+core boundary
+frontend boundary
+language spec
+elaboration contract
+```
+
+运行时 closure 使用独立 workflow：
+
+```text
+ValidateRuntimeFlow
+```
+
+## 5. Hanging
+
+Hanging 只表达附加控制结构。
+
+当前 production AST 不依赖复杂 scheduler。`middleware` 可以用于 trace/report 包装；`callback`、`suspense`、`loop` 保留为 DSL 能力，但不要把它们作为 framework core 主验证路径的必要条件。
+
+## 6. 渲染
+
+AST 渲染入口：
+
+```powershell
+stack exec ast-tree -- all
+```
+
+输出必须只显示 `framework-core` AST。
+
+负向规则：
+
+```text
+不得显示旧业务 fact
+不得显示旧 generated plugin/effect registry
+不得显示 current/demo registry aliases
+```
+
+## 7. 与 Effect Theory 的边界
+
+AST 说：
+
+```text
+framework core 需要表达哪些最终能力
+```
+
+Effect theory 说：
+
+```text
+这些能力需要哪些中间事实、artifact、send boundary、transform 和 handler
+```
+
+Runtime 说：
+
+```text
+这些声明是否闭合，是否可以执行，最终产生哪些 fact 和 artifact
+```
