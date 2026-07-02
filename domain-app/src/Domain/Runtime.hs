@@ -135,4 +135,3 @@ reportOutputValueText (ReportOutputValue text) =
 logMessageValueText :: LogMessageValue -> String
 logMessageValueText (LogMessageValue text) =
   text
-
