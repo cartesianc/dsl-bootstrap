@@ -58,6 +58,20 @@ stack exec workflow-semantics-witness
 stack exec self-artifact-witness
 ```
 
+## Current Architecture Notes
+
+Runtime architecture:
+
+[docs/RUNTIME_ARCHITECTURE.zh.md](docs/RUNTIME_ARCHITECTURE.zh.md)
+
+Project layout and frontend rules:
+
+[docs/PROJECT_LAYOUT.zh.md](docs/PROJECT_LAYOUT.zh.md)
+
+Domain app business flow:
+
+[domain-app/README.md](domain-app/README.md)
+
 期望结果：
 
 ```text

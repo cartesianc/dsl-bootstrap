@@ -7,8 +7,16 @@ module Bootstrap.Effects.CoreExpression.Facts.FrameworkCoreExpression
   , frameworkCoreNativeValidatedFact
   , hyloRenderingProofSurfaceExpressedFact
   , registryCodegenExpressedFact
+  , runtimeBackendAdapterExpressedFact
+  , runtimeBackendParityExpressedFact
+  , runtimeConcurrencySemanticsExpressedFact
+  , runtimeDiagnosisExpressedFact
+  , runtimeExecutionSemanticsExpressedFact
   , runtimeFactClosureExpressedFact
   , runtimeInterpreterExpressedFact
+  , runtimePlanBuildExpressedFact
+  , runtimeTypesExpressedFact
+  , runtimeValidationExpressedFact
   , selfArtifactManifestExpressedFact
   ) where
 
@@ -35,6 +43,64 @@ effectTheoryDslExpressedFact =
 runtimeInterpreterExpressedFact :: EffectSection
 runtimeInterpreterExpressedFact =
   fact RuntimeInterpreterExpressedFact
+    [ needs RuntimeTypesExpressedFact
+    , needs RuntimeExecutionSemanticsExpressedFact
+    , needs RuntimeConcurrencySemanticsExpressedFact
+    , needs RuntimeDiagnosisExpressedFact
+    , needs RuntimeBackendAdapterExpressedFact
+    , needs RuntimeBackendParityExpressedFact
+    , needs CoreSurfaceFormalizedFact
+    , needs RuntimeEvidencePassedFact
+    ]
+
+runtimeTypesExpressedFact :: EffectSection
+runtimeTypesExpressedFact =
+  fact RuntimeTypesExpressedFact
+    [ needs CoreSurfaceFormalizedFact
+    ]
+
+runtimePlanBuildExpressedFact :: EffectSection
+runtimePlanBuildExpressedFact =
+  fact RuntimePlanBuildExpressedFact
+    [ needs MinimalCoreReportBuiltFact
+    ]
+
+runtimeValidationExpressedFact :: EffectSection
+runtimeValidationExpressedFact =
+  fact RuntimeValidationExpressedFact
+    [ needs MinimalCoreReportBuiltFact
+    , needs ConstraintIRBuiltFact
+    , needs SmtProofPassedFact
+    ]
+
+runtimeExecutionSemanticsExpressedFact :: EffectSection
+runtimeExecutionSemanticsExpressedFact =
+  fact RuntimeExecutionSemanticsExpressedFact
+    [ needs RuntimeEvidencePassedFact
+    ]
+
+runtimeConcurrencySemanticsExpressedFact :: EffectSection
+runtimeConcurrencySemanticsExpressedFact =
+  fact RuntimeConcurrencySemanticsExpressedFact
+    [ needs RuntimeEvidencePassedFact
+    ]
+
+runtimeDiagnosisExpressedFact :: EffectSection
+runtimeDiagnosisExpressedFact =
+  fact RuntimeDiagnosisExpressedFact
+    [ needs RuntimeEvidencePassedFact
+    ]
+
+runtimeBackendAdapterExpressedFact :: EffectSection
+runtimeBackendAdapterExpressedFact =
+  fact RuntimeBackendAdapterExpressedFact
+    [ needs CoreSurfaceFormalizedFact
+    , needs RuntimeEvidencePassedFact
+    ]
+
+runtimeBackendParityExpressedFact :: EffectSection
+runtimeBackendParityExpressedFact =
+  fact RuntimeBackendParityExpressedFact
     [ needs CoreSurfaceFormalizedFact
     , needs RuntimeEvidencePassedFact
     ]
@@ -63,7 +129,10 @@ hyloRenderingProofSurfaceExpressedFact =
 runtimeFactClosureExpressedFact :: EffectSection
 runtimeFactClosureExpressedFact =
   fact RuntimeFactClosureExpressedFact
-    [ needs RuntimeEvidencePassedFact
+    [ needs RuntimePlanBuildExpressedFact
+    , needs RuntimeValidationExpressedFact
+    , needs RuntimeExecutionSemanticsExpressedFact
+    , needs RuntimeEvidencePassedFact
     , needs SmtProofPassedFact
     ]
 

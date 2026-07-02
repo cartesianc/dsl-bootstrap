@@ -3,7 +3,6 @@
 module Domain.EffectVocabulary
   ( pattern AskUserName
   , pattern ConsoleLogHandler
-  , pattern DemoEffect
   , pattern GenerateReport
   , pattern LogMessage
   , pattern LoggingEffect
@@ -47,9 +46,6 @@ pattern LoggingEffect = EffectName "LoggingEffect"
 
 pattern SystemEffect :: EffectName
 pattern SystemEffect = EffectName "SystemEffect"
-
-pattern DemoEffect :: EffectName
-pattern DemoEffect = EffectName "DemoEffect"
 
 pattern AskUserName :: SendName
 pattern AskUserName = SendName "AskUserName"

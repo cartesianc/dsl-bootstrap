@@ -35,8 +35,7 @@ pluginRegistryBindings =
 
 effectRegistryBindings :: [EffectRegistryBinding]
 effectRegistryBindings =
-  [ EffectRegistryBinding "Effects.Demo" "demoEffect"
-  , EffectRegistryBinding "Effects.Logging" "loggingEffect"
+  [ EffectRegistryBinding "Effects.Logging" "loggingEffect"
   , EffectRegistryBinding "Effects.Report" "reportEffect"
   , EffectRegistryBinding "Effects.System" "systemEffect"
   , EffectRegistryBinding "Effects.User" "userEffect"

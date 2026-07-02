@@ -1,4 +1,5 @@
 .stack-work/
+.stack-work-codex/
 .hls.log
 .hls-probe.log
 .tmp-build-watch.log

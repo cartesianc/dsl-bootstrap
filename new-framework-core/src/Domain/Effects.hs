@@ -188,8 +188,42 @@ coreExpressionEffect =
     , Effect.fact EffectTheoryDslExpressedFact
         [ Effect.needs CoreSurfaceEffectTheoryFormalizedFact
         ]
-    , Effect.fact RuntimeInterpreterExpressedFact
+    , Effect.fact RuntimeTypesExpressedFact
         [ Effect.needs CoreSurfaceFormalizedFact
+        ]
+    , Effect.fact RuntimePlanBuildExpressedFact
+        [ Effect.needs MinimalCoreReportBuiltFact
+        ]
+    , Effect.fact RuntimeValidationExpressedFact
+        [ Effect.needs MinimalCoreReportBuiltFact
+        , Effect.needs ConstraintIRBuiltFact
+        , Effect.needs SmtProofPassedFact
+        ]
+    , Effect.fact RuntimeExecutionSemanticsExpressedFact
+        [ Effect.needs RuntimeEvidencePassedFact
+        ]
+    , Effect.fact RuntimeConcurrencySemanticsExpressedFact
+        [ Effect.needs RuntimeEvidencePassedFact
+        ]
+    , Effect.fact RuntimeDiagnosisExpressedFact
+        [ Effect.needs RuntimeEvidencePassedFact
+        ]
+    , Effect.fact RuntimeBackendAdapterExpressedFact
+        [ Effect.needs CoreSurfaceFormalizedFact
+        , Effect.needs RuntimeEvidencePassedFact
+        ]
+    , Effect.fact RuntimeBackendParityExpressedFact
+        [ Effect.needs CoreSurfaceFormalizedFact
+        , Effect.needs RuntimeEvidencePassedFact
+        ]
+    , Effect.fact RuntimeInterpreterExpressedFact
+        [ Effect.needs RuntimeTypesExpressedFact
+        , Effect.needs RuntimeExecutionSemanticsExpressedFact
+        , Effect.needs RuntimeConcurrencySemanticsExpressedFact
+        , Effect.needs RuntimeDiagnosisExpressedFact
+        , Effect.needs RuntimeBackendAdapterExpressedFact
+        , Effect.needs RuntimeBackendParityExpressedFact
+        , Effect.needs CoreSurfaceFormalizedFact
         , Effect.needs RuntimeEvidencePassedFact
         ]
     , Effect.fact BuildAppValidationExpressedFact
@@ -205,7 +239,10 @@ coreExpressionEffect =
         , Effect.needs SmtProofPassedFact
         ]
     , Effect.fact RuntimeFactClosureExpressedFact
-        [ Effect.needs RuntimeEvidencePassedFact
+        [ Effect.needs RuntimePlanBuildExpressedFact
+        , Effect.needs RuntimeValidationExpressedFact
+        , Effect.needs RuntimeExecutionSemanticsExpressedFact
+        , Effect.needs RuntimeEvidencePassedFact
         , Effect.needs SmtProofPassedFact
         ]
     , Effect.fact RegistryCodegenExpressedFact

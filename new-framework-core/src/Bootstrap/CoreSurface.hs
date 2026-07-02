@@ -259,19 +259,15 @@ coreSurfaceSlices =
       , coreSurfaceSliceRole = "runtime-backend"
       , coreSurfaceSlicePhase = "self-bootstrap"
       , coreSurfaceSliceModules =
-          [ "Interpreter.Runtime.Types"
-          , "Interpreter.Runtime.Monad"
-          , "Interpreter.Runtime.Contextware"
-          , "Interpreter.Runtime.Algebra"
-          , "Interpreter.Runtime.FactResolution"
-          , "Interpreter.Runtime.Handlers"
-          , "Interpreter.Runtime.Middleware"
-          , "Interpreter.Runtime.Hanging.FreeMonoid"
-          , "Interpreter.Runtime.Workflow.*"
-          , "Interpreter.Runtime"
+          [ "Bootstrap.Runtime"
+          , "Bootstrap.Runtime.Boundary"
+          , "Bootstrap.Runtime.SourceGraph"
+          , "Bootstrap.Runtime.Types"
+          , "Framework.Runtime"
+          , "Framework.Background.RuntimeDiagnosis"
           ]
       , coreSurfaceSliceDependsOn = ["CoreRecursion", "CoreEffectTheory", "CoreAppBuild"]
-      , coreSurfaceSlicePurpose = "runtime adapter for executing the frozen core through RuntimeM, typed values, and handler dispatch"
+      , coreSurfaceSlicePurpose = "single runtime semantics exposed through bootstrap and typed backend adapters"
       }
   ]
 
@@ -313,11 +309,8 @@ supplementalCoreModuleSurfaces =
     , ("Interpreter.RecursionModel", "legacy interpreter facade")
     , ("Interpreter.Types", "legacy interpreter facade")
     , ("Interpreter.WorkflowAlgebra", "legacy interpreter facade")
-    , ("Interpreter.Runtime.Diagnosis", "runtime interpreter")
-    , ("Interpreter.Runtime.Facts", "runtime interpreter")
-    , ("Interpreter.Runtime.RecursionModel", "runtime interpreter")
-    , ("Interpreter.Runtime.Trace", "runtime interpreter")
-    , ("Interpreter.Runtime.WorkflowRunReport", "runtime interpreter")
+    , ("Bootstrap.Report", "runtime evidence and framework-core report")
+    , ("Framework.Domain", "domain runtime backend selection and reporting")
     , ("Interpreter.View.Algebra", "hylo/rendering/proof surface")
     , ("Interpreter.View.Hanging.FreeMonoid", "hylo/rendering/proof surface")
     , ("Interpreter.View.Program", "hylo/rendering/proof surface")

@@ -72,14 +72,23 @@ module Bootstrap.Vocabulary
   , pattern RunRegistryCodegenEvidence
   , pattern RunSelfArtifactManifestEvidence
   , pattern RuntimeEvidenceArtifact
+  , pattern RuntimeBackendAdapterExpressedFact
+  , pattern RuntimeBackendParityExpressedFact
+  , pattern RuntimeBranchExpressionFlow
+  , pattern RuntimeConcurrencySemanticsExpressedFact
   , pattern RunRuntimeEvidence
   , pattern RunSmtProof
+  , pattern RuntimeDiagnosisExpressedFact
   , pattern SelfArtifactManifestArtifact
   , pattern SelfArtifactManifestEvidencePassedFact
   , pattern SelfArtifactManifestExpressedFact
   , pattern SmtProofEvidence
   , pattern RuntimeEvidencePassedFact
+  , pattern RuntimeExecutionSemanticsExpressedFact
   , pattern SmtProofPassedFact
+  , pattern RuntimePlanBuildExpressedFact
+  , pattern RuntimeTypesExpressedFact
+  , pattern RuntimeValidationExpressedFact
   , pattern ValidateRuntimeFlow
   , pattern ValidateStaticContractsFlow
   ) where
@@ -112,6 +121,9 @@ pattern BuildProofFlow = WorkflowName "BuildProofFlow"
 
 pattern ValidateRuntimeFlow :: WorkflowName
 pattern ValidateRuntimeFlow = WorkflowName "ValidateRuntimeFlow"
+
+pattern RuntimeBranchExpressionFlow :: WorkflowName
+pattern RuntimeBranchExpressionFlow = WorkflowName "RuntimeBranchExpressionFlow"
 
 pattern PublishBootstrapReportFlow :: WorkflowName
 pattern PublishBootstrapReportFlow = WorkflowName "PublishFrameworkCoreReportFlow"
@@ -181,6 +193,30 @@ pattern EffectTheoryDslExpressedFact = WorkflowFact "EffectTheoryDslExpressedFac
 
 pattern RuntimeInterpreterExpressedFact :: WorkflowFact
 pattern RuntimeInterpreterExpressedFact = WorkflowFact "RuntimeInterpreterExpressedFact"
+
+pattern RuntimeTypesExpressedFact :: WorkflowFact
+pattern RuntimeTypesExpressedFact = WorkflowFact "RuntimeTypesExpressedFact"
+
+pattern RuntimePlanBuildExpressedFact :: WorkflowFact
+pattern RuntimePlanBuildExpressedFact = WorkflowFact "RuntimePlanBuildExpressedFact"
+
+pattern RuntimeValidationExpressedFact :: WorkflowFact
+pattern RuntimeValidationExpressedFact = WorkflowFact "RuntimeValidationExpressedFact"
+
+pattern RuntimeExecutionSemanticsExpressedFact :: WorkflowFact
+pattern RuntimeExecutionSemanticsExpressedFact = WorkflowFact "RuntimeExecutionSemanticsExpressedFact"
+
+pattern RuntimeConcurrencySemanticsExpressedFact :: WorkflowFact
+pattern RuntimeConcurrencySemanticsExpressedFact = WorkflowFact "RuntimeConcurrencySemanticsExpressedFact"
+
+pattern RuntimeDiagnosisExpressedFact :: WorkflowFact
+pattern RuntimeDiagnosisExpressedFact = WorkflowFact "RuntimeDiagnosisExpressedFact"
+
+pattern RuntimeBackendAdapterExpressedFact :: WorkflowFact
+pattern RuntimeBackendAdapterExpressedFact = WorkflowFact "RuntimeBackendAdapterExpressedFact"
+
+pattern RuntimeBackendParityExpressedFact :: WorkflowFact
+pattern RuntimeBackendParityExpressedFact = WorkflowFact "RuntimeBackendParityExpressedFact"
 
 pattern BuildAppValidationExpressedFact :: WorkflowFact
 pattern BuildAppValidationExpressedFact = WorkflowFact "BuildAppValidationExpressedFact"

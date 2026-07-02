@@ -21,7 +21,6 @@ library
                      , Domain.Runtime
                      , Domain.SemanticEvidence
                      , Domain.Vocabulary
-                     , Effects.Demo
                      , Effects.Logging
                      , Effects.Report
                      , Effects.System

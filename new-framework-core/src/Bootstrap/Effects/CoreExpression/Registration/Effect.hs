@@ -11,8 +11,16 @@ import Bootstrap.Effects.CoreExpression.Facts.FrameworkCoreExpression
   , frameworkCoreNativeValidatedFact
   , hyloRenderingProofSurfaceExpressedFact
   , registryCodegenExpressedFact
+  , runtimeBackendAdapterExpressedFact
+  , runtimeBackendParityExpressedFact
+  , runtimeConcurrencySemanticsExpressedFact
+  , runtimeDiagnosisExpressedFact
+  , runtimeExecutionSemanticsExpressedFact
   , runtimeFactClosureExpressedFact
   , runtimeInterpreterExpressedFact
+  , runtimePlanBuildExpressedFact
+  , runtimeTypesExpressedFact
+  , runtimeValidationExpressedFact
   , selfArtifactManifestExpressedFact
   )
 import Bootstrap.Vocabulary
@@ -26,6 +34,14 @@ coreExpressionEffect =
   effect CoreExpressionEffect
     [ astStructureExpressedFact
     , effectTheoryDslExpressedFact
+    , runtimeTypesExpressedFact
+    , runtimePlanBuildExpressedFact
+    , runtimeValidationExpressedFact
+    , runtimeExecutionSemanticsExpressedFact
+    , runtimeConcurrencySemanticsExpressedFact
+    , runtimeDiagnosisExpressedFact
+    , runtimeBackendAdapterExpressedFact
+    , runtimeBackendParityExpressedFact
     , runtimeInterpreterExpressedFact
     , buildAppValidationExpressedFact
     , boundaryChecksExpressedFact

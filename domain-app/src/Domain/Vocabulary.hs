@@ -1,8 +1,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 module Domain.Vocabulary
-  ( pattern Abc
-  , pattern AddCalculatedFact
+  ( pattern AddCalculatedFact
   , pattern AppConfiguredFact
   , pattern AppFinished
   , pattern AppFinishedFact
@@ -17,14 +16,6 @@ module Domain.Vocabulary
   , pattern ConfigurationFlow
   , pattern ConfigurationMiddleware
   , pattern FactorialCalculatedFact
-  , pattern Foo1
-  , pattern Foo2
-  , pattern Foo3
-  , pattern Foo4
-  , pattern Foo5
-  , pattern Foo5Fact
-  , pattern Foo6
-  , pattern Foo6Fact
   , pattern LifecycleStartFlow
   , pattern LoggingMiddleware
   , pattern OnboardingFlow
@@ -89,12 +80,6 @@ pattern ReportGeneratedFact = WorkflowFact "ReportGeneratedFact"
 pattern AppFinishedFact :: WorkflowFact
 pattern AppFinishedFact = WorkflowFact "AppFinishedFact"
 
-pattern Foo5Fact :: WorkflowFact
-pattern Foo5Fact = WorkflowFact "Foo5Fact"
-
-pattern Foo6Fact :: WorkflowFact
-pattern Foo6Fact = WorkflowFact "Foo6Fact"
-
 pattern AppFlow :: WorkflowName
 pattern AppFlow = WorkflowName "AppFlow"
 
@@ -124,27 +109,6 @@ pattern CalculationsFlow = WorkflowName "CalculationsFlow"
 
 pattern ShutdownFlow :: WorkflowName
 pattern ShutdownFlow = WorkflowName "ShutdownFlow"
-
-pattern Abc :: WorkflowName
-pattern Abc = WorkflowName "Abc"
-
-pattern Foo1 :: WorkflowName
-pattern Foo1 = WorkflowName "Foo1"
-
-pattern Foo2 :: WorkflowName
-pattern Foo2 = WorkflowName "Foo2"
-
-pattern Foo3 :: WorkflowName
-pattern Foo3 = WorkflowName "Foo3"
-
-pattern Foo4 :: WorkflowName
-pattern Foo4 = WorkflowName "Foo4"
-
-pattern Foo5 :: WorkflowName
-pattern Foo5 = WorkflowName "Foo5"
-
-pattern Foo6 :: WorkflowName
-pattern Foo6 = WorkflowName "Foo6"
 
 pattern ConfigurationMiddleware :: Interceptor
 pattern ConfigurationMiddleware = Interceptor "ConfigurationMiddleware"

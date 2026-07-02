@@ -1,19 +1,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 module Bootstrap.Runtime
-  ( HandlerBinding (..)
-  , HandlerRegistry (..)
-  , HandlerResult (..)
-  , NativeAppPlan (..)
-  , NativeConstraint (..)
-  , NativeFactRule (..)
-  , NativeHandler (..)
-  , NativeRuntime (..)
-  , RuntimeArtifact (..)
-  , RuntimeEffectEnvironment (..)
-  , SendContract (..)
-  , TransformBinding (..)
-  , TransformRegistry (..)
+  ( module Bootstrap.Runtime.Types
   , bootstrapHandlerRegistry
   , bootstrapRuntimeEffectEnvironment
   , bootstrapSendBoundaries
@@ -42,28 +30,23 @@ import Control.Exception
   ( SomeException
   , try
   )
-import Data.Char
-  ( isAlphaNum
-  )
-import Data.List
-  ( isPrefixOf
-  , isSuffixOf
-  , sort
-  )
-import System.Directory
-  ( doesDirectoryExist
-  , doesFileExist
-  , listDirectory
-  )
-import System.FilePath
-  ( normalise
-  , takeExtension
-  , (</>)
-  )
-
 import qualified Bootstrap.Blueprint as BootstrapBlueprint
 import qualified Bootstrap.CoreSurface as CoreSurface
 import qualified Bootstrap.Effects as BootstrapEffects
+import Bootstrap.Runtime.Boundary
+  ( checkNativeCoreBoundary
+  , checkNativeElaborationContract
+  , checkNativeFrontendBoundary
+  , checkNativeLanguageSpec
+  , frameworkCoreSourceRoots
+  , frontendBoundaryRoots
+  , packageSourceRoots
+  )
+import Bootstrap.Runtime.SourceGraph
+  ( readSourceImportGraph
+  , sourceImportModules
+  )
+import Bootstrap.Runtime.Types
 import Bootstrap.Vocabulary
 import qualified Bootstrap.Effect as Effect
 import Bootstrap.Effect
@@ -79,7 +62,6 @@ import Bootstrap.Effect
   , SendName (..)
   , SendPolicy (..)
   , SendSignature (..)
-  , TransformName (..)
   , TypeName (..)
   , pattern ErrorInput
   , pattern NoInput
@@ -101,103 +83,9 @@ import Bootstrap.Workflow
   )
 import qualified Bootstrap.Workflow as Workflow
 
-data HandlerRegistry = HandlerRegistry
-  { handlerRegistryBindings :: [HandlerBinding]
-  }
-
-data HandlerBinding = HandlerBinding
-  { handlerBindingSend :: SendName
-  , handlerBindingName :: HandlerName
-  , handlerBindingHandler :: NativeHandler
-  }
-
-newtype NativeHandler = NativeHandler
-  { runNativeHandler :: SendName -> [RuntimeArtifact] -> NativeRuntime -> IO HandlerResult
-  }
-
-data HandlerResult
-  = HandlerSucceeded [RuntimeArtifact]
-  | HandlerFailed String
-  deriving (Eq, Show)
-
-newtype TransformRegistry = TransformRegistry
-  { transformRegistryBindings :: [TransformBinding]
-  }
-
-data TransformBinding = TransformBinding
-  { transformBindingName :: TransformName
-  , transformBindingInput :: TypeName
-  , transformBindingOutput :: TypeName
-  }
-  deriving (Eq, Show)
-
-data RuntimeEffectEnvironment = RuntimeEffectEnvironment
-  { runtimeEffectHandlers :: HandlerRegistry
-  , runtimeEffectTransforms :: TransformRegistry
-  }
-
-data RuntimeArtifact = RuntimeArtifact
-  { artifactType :: TypeName
-  , artifactText :: String
-  }
-  deriving (Eq, Show)
-
-data NativeRuntime = NativeRuntime
-  { availableFacts :: [WorkflowFact]
-  , runtimeArtifacts :: [RuntimeArtifact]
-  , runtimeTrace :: [String]
-  , runtimeFailures :: [String]
-  }
-  deriving (Eq, Show)
-
 data NativeBranchResult
   = NativeBranchSucceeded Int NativeRuntime
   | NativeBranchFailed Int String NativeRuntime
-
-data NativeAppPlan = NativeAppPlan
-  { nativeAppPlanFacts :: [WorkflowFact]
-  , nativeAppPlanRootFacts :: [WorkflowFact]
-  , nativeAppPlanSendBoundaries :: [SendName]
-  , nativeAppPlanSendContracts :: [SendContract]
-  , nativeAppPlanFactRules :: [NativeFactRule]
-  , nativeAppPlanConstraints :: [NativeConstraint]
-  }
-
-data SendContract = SendContract
-  { sendContractName :: SendName
-  , sendContractSignature :: SendSignature
-  , sendContractIdempotency :: IdempotencyPolicy
-  , sendContractRetry :: RetryPolicy
-  }
-
-data NativeFactRule = NativeFactRule
-  { nativeRuleFact :: WorkflowFact
-  , nativeRuleNeeds :: [WorkflowFact]
-  , nativeRuleTakes :: [TypeName]
-  , nativeRuleMakes :: [TypeName]
-  , nativeRuleUses :: [SendName]
-  , nativeRuleTransforms :: [(TypeName, TypeName, TransformName)]
-  , nativeRuleErrors :: [SendName]
-  , nativeRuleExternal :: Bool
-  }
-  deriving (Eq, Show)
-
-data NativeConstraint = NativeConstraint
-  { nativeConstraintName :: String
-  , nativeConstraintPassed :: Bool
-  , nativeConstraintMessage :: String
-  }
-  deriving (Eq, Show)
-
-data SourceImportGraph = SourceImportGraph
-  { sourceImportModules :: [SourceModule]
-  }
-
-data SourceModule = SourceModule
-  { sourceModuleName :: String
-  , sourceModulePath :: FilePath
-  , sourceModuleImports :: [String]
-  }
 
 bootstrapRuntimeEffectEnvironment :: RuntimeEffectEnvironment
 bootstrapRuntimeEffectEnvironment =
@@ -973,7 +861,7 @@ runBootstrapNative RunRuntimeEvidence _ _ =
       pure (HandlerFailed message)
     Right plan
       | nativePlanPassed plan ->
-          pure (succeedArtifact RuntimeEvidenceArtifact "native runtime fact closure passed")
+          pure (succeedArtifact RuntimeEvidenceArtifact "bootstrap backend runtime fact closure passed")
       | otherwise ->
           pure (HandlerFailed (renderNativePlanErrors plan))
 runBootstrapNative PublishFrameworkCoreReport _ _ =
@@ -1289,339 +1177,6 @@ collectFactExpr expression =
     FactAny expressions ->
       unique (concatMap collectFactExpr expressions)
 
-readSourceImportGraph :: [FilePath] -> IO SourceImportGraph
-readSourceImportGraph roots = do
-  files <- concat <$> mapM collectHaskellFiles roots
-  modules <- mapM readSourceModule files
-  pure (SourceImportGraph modules)
-
-collectHaskellFiles :: FilePath -> IO [FilePath]
-collectHaskellFiles root = do
-  isFile <- doesFileExist root
-  isDirectory <- doesDirectoryExist root
-  if isFile
-    then pure [root | takeExtension root == ".hs"]
-    else
-      if isDirectory
-        then do
-          children <- listDirectory root
-          concat <$> mapM (collectHaskellFiles . (root </>)) children
-        else pure []
-
-readSourceModule :: FilePath -> IO SourceModule
-readSourceModule path = do
-  text <- readFile path
-  pure
-    SourceModule
-      { sourceModuleName = moduleNameFromFile path text
-      , sourceModulePath = normalise path
-      , sourceModuleImports = mapMaybeImport (lines text)
-      }
-
-moduleNameFromFile :: FilePath -> String -> String
-moduleNameFromFile path text =
-  case firstJust (map parseModuleLine (lines text)) of
-    Just name ->
-      name
-    Nothing ->
-      path
-
-parseModuleLine :: String -> Maybe String
-parseModuleLine line =
-  case words line of
-    ("module" : name : _) ->
-      Just (takeModuleName name)
-    _ ->
-      Nothing
-
-mapMaybeImport :: [String] -> [String]
-mapMaybeImport =
-  unique . foldr collect []
-  where
-    collect line imports =
-      case parseImportLine line of
-        Just currentImport ->
-          currentImport : imports
-        Nothing ->
-          imports
-
-parseImportLine :: String -> Maybe String
-parseImportLine line =
-  case words (stripLineComment line) of
-    ("import" : rest) ->
-      parseImportWords rest
-    _ ->
-      Nothing
-
-parseImportWords :: [String] -> Maybe String
-parseImportWords [] =
-  Nothing
-parseImportWords ("qualified" : rest) =
-  parseImportWords rest
-parseImportWords (name : _) =
-  Just (takeModuleName name)
-
-takeModuleName :: String -> String
-takeModuleName =
-  takeWhile (\char -> isAlphaNum char || char == '_' || char == '.')
-
-stripLineComment :: String -> String
-stripLineComment [] =
-  []
-stripLineComment ('-' : '-' : _) =
-  []
-stripLineComment (char : rest) =
-  char : stripLineComment rest
-
-checkNativeCoreBoundary :: SourceImportGraph -> [String]
-checkNativeCoreBoundary graph =
-  duplicateSliceErrors
-    ++ unknownDependencyErrors
-    ++ runtimeLeakErrors
-    ++ importBoundaryErrors graph
-
-duplicateSliceErrors :: [String]
-duplicateSliceErrors =
-  [ "duplicate core slice " ++ currentSlice
-  | currentSlice <- duplicates (map CoreSurface.coreSurfaceSliceName CoreSurface.coreSurfaceSlices)
-  ]
-
-unknownDependencyErrors :: [String]
-unknownDependencyErrors =
-  [ "unknown core dependency " ++ dependency ++ " required by " ++ CoreSurface.coreSurfaceSliceName currentSlice
-  | currentSlice <- CoreSurface.coreSurfaceSlices
-  , dependency <- CoreSurface.coreSurfaceSliceDependsOn currentSlice
-  , dependency `notElem` sliceNames
-  ]
-  where
-    sliceNames =
-      map CoreSurface.coreSurfaceSliceName CoreSurface.coreSurfaceSlices
-
-runtimeLeakErrors :: [String]
-runtimeLeakErrors =
-  [ "non-runtime slice " ++ CoreSurface.coreSurfaceSliceName currentSlice ++ " depends on runtime slice " ++ dependency
-  | currentSlice <- CoreSurface.coreSurfaceSlices
-  , CoreSurface.coreSurfaceSliceRole currentSlice /= "runtime-backend"
-  , dependency <- CoreSurface.coreSurfaceSliceDependsOn currentSlice
-  , dependency `elem` runtimeSliceNames
-  ]
-  where
-    runtimeSliceNames =
-      [ CoreSurface.coreSurfaceSliceName currentSlice
-      | currentSlice <- CoreSurface.coreSurfaceSlices
-      , CoreSurface.coreSurfaceSliceRole currentSlice == "runtime-backend"
-      ]
-
-importBoundaryErrors :: SourceImportGraph -> [String]
-importBoundaryErrors graph =
-  [ "undeclared core import "
-      ++ sourceModuleName currentModule
-      ++ " -> "
-      ++ currentImport
-      ++ " ("
-      ++ sourceSlice
-      ++ " cannot depend on "
-      ++ targetSlice
-      ++ ")"
-  | currentModule <- sourceImportModules graph
-  , Just sourceSlice <- [sliceForModule (sourceModuleName currentModule)]
-  , currentImport <- sourceModuleImports currentModule
-  , Just targetSlice <- [sliceForModule currentImport]
-  , sourceSlice /= targetSlice
-  , targetSlice `notElem` dependenciesForSlice sourceSlice
-  ]
-
-sliceForModule :: String -> Maybe String
-sliceForModule currentModule =
-  firstJust
-    [ Just (CoreSurface.coreSurfaceSliceName currentSlice)
-    | currentSlice <- CoreSurface.coreSurfaceSlices
-    , currentModule `elem` expandedSliceModules currentSlice
-    ]
-
-expandedSliceModules :: CoreSurface.CoreSurfaceSlice -> [String]
-expandedSliceModules currentSlice =
-  concatMap expandSliceModule (CoreSurface.coreSurfaceSliceModules currentSlice)
-
-expandSliceModule :: String -> [String]
-expandSliceModule "Interpreter.Runtime.Workflow.*" =
-  [ "Interpreter.Runtime.Workflow.Choice"
-  , "Interpreter.Runtime.Workflow.FreeAlternative"
-  , "Interpreter.Runtime.Workflow.FreeApplicative"
-  , "Interpreter.Runtime.Workflow.FreeMonad"
-  , "Interpreter.Runtime.Workflow.Node"
-  , "Interpreter.Runtime.Workflow.Wait"
-  ]
-expandSliceModule currentModule =
-  [currentModule]
-
-dependenciesForSlice :: String -> [String]
-dependenciesForSlice sliceName =
-  transitiveSliceDependencies [] (directDependenciesForSlice sliceName)
-
-transitiveSliceDependencies :: [String] -> [String] -> [String]
-transitiveSliceDependencies seen [] =
-  seen
-transitiveSliceDependencies seen (sliceName : rest)
-  | sliceName `elem` seen =
-      transitiveSliceDependencies seen rest
-  | otherwise =
-      transitiveSliceDependencies
-        (seen ++ [sliceName])
-        (rest ++ directDependenciesForSlice sliceName)
-
-directDependenciesForSlice :: String -> [String]
-directDependenciesForSlice sliceName =
-  concat
-    [ CoreSurface.coreSurfaceSliceDependsOn currentSlice
-    | currentSlice <- CoreSurface.coreSurfaceSlices
-    , CoreSurface.coreSurfaceSliceName currentSlice == sliceName
-    ]
-
-checkNativeFrontendBoundary :: SourceImportGraph -> [String]
-checkNativeFrontendBoundary graph =
-  [ "forbidden frontend import: "
-      ++ sourceModulePath currentModule
-      ++ " imports "
-      ++ currentImport
-  | currentModule <- sourceImportModules graph
-  , not (isExcludedFrontendPath (sourceModulePath currentModule))
-  , currentImport <- sourceModuleImports currentModule
-  , isForbiddenFrontendImportFor (sourceModulePath currentModule) currentImport
-      || not (isAllowedFrontendImportFor (sourceModulePath currentModule) currentImport)
-  ]
-
-checkNativeLanguageSpec :: [String]
-checkNativeLanguageSpec =
-  missingCapabilities
-    "language spec"
-    [ "chain"
-    , "parallel"
-    , "wait"
-    , "fact"
-    , "externalMake"
-    , "take"
-    , "make"
-    , "buildApp"
-    ]
-
-checkNativeElaborationContract :: [String]
-checkNativeElaborationContract =
-  missingCapabilities
-    "elaboration contract"
-    [ "Framework.Workflow"
-    , "Framework.Effect"
-    , "Framework.Hylo"
-    , "Interpreter.Runtime"
-    , "Core.App"
-    ]
-
-missingCapabilities :: String -> [String] -> [String]
-missingCapabilities label names =
-  [ label ++ " missing expressed capability " ++ name
-  | name <- names
-  , not (any (contains name) expressedNames)
-  ]
-  where
-    expressedNames =
-      map (CoreSurface.capabilityName . snd) CoreSurface.coreSurfaceCapabilities
-        ++ map CoreSurface.surfaceModuleName CoreSurface.coreSurfaceModules
-
-packageSourceRoots :: [FilePath]
-packageSourceRoots =
-  [ "new-framework-core/src"
-  , "domain-app/src"
-  ]
-
-frameworkCoreSourceRoots :: [FilePath]
-frameworkCoreSourceRoots =
-  [ "new-framework-core/src"
-  ]
-
-frontendBoundaryRoots :: [FilePath]
-frontendBoundaryRoots =
-  [ "new-framework-core/app/Main.hs"
-  , "new-framework-core/src/Bootstrap"
-  , "new-framework-core/src/Domain"
-  ]
-
-isExcludedFrontendPath :: FilePath -> Bool
-isExcludedFrontendPath path =
-  any (`isSuffixOf` normalise path)
-    [ normalise "new-framework-core/src/Bootstrap/Runtime.hs"
-    , normalise "new-framework-core/src/Bootstrap/Report.hs"
-    , normalise "new-framework-core/src/Domain/EffectHandlers.hs"
-    , normalise "new-framework-core/src/Domain/Interpreter.hs"
-    , normalise "new-framework-core/src/Domain/Registry.hs"
-    ]
-
-isAllowedFrontendImport :: String -> Bool
-isAllowedFrontendImport currentImport =
-  currentImport
-    `elem`
-      [ "Bootstrap.Blueprint"
-      , "Bootstrap.CoreSurface"
-      , "Bootstrap.Effect"
-      , "Bootstrap.Effects"
-      , "Bootstrap.Vocabulary"
-      , "Bootstrap.Workflow"
-      , "Blueprint"
-      , "Domain.Ast"
-      , "Domain.AppBlueprint"
-      , "Domain.Effects"
-      , "Domain.Registry"
-      , "Domain.Vocabulary"
-      , "Prelude"
-      ]
-    || "Bootstrap.Effects." `isPrefixOf` currentImport
-
-isAllowedFrontendImportFor :: FilePath -> String -> Bool
-isAllowedFrontendImportFor path currentImport =
-  isAllowedFrontendImport currentImport
-    || (isSelfDomainExpressionPath path && currentImport `elem` selfDomainFacadeImports)
-
-isForbiddenFrontendImport :: String -> Bool
-isForbiddenFrontendImport currentImport =
-  any (`matchesModule` currentImport)
-    [ "Core"
-    , "Core."
-    , "AST"
-    , "AST."
-    , "Interpreter"
-    , "Interpreter."
-    , "Framework.Workflow"
-    , "Framework.Effect"
-    , "Framework.Background"
-    , "Framework.Background."
-    , "Effects.EffectTheory"
-    , "Effects.Names"
-    ]
-
-isForbiddenFrontendImportFor :: FilePath -> String -> Bool
-isForbiddenFrontendImportFor path currentImport
-  | isSelfDomainExpressionPath path && currentImport `elem` selfDomainFacadeImports =
-      False
-  | otherwise =
-      isForbiddenFrontendImport currentImport
-
-selfDomainFacadeImports :: [String]
-selfDomainFacadeImports =
-  [ "Framework.Workflow"
-  , "Framework.Effect"
-  , "Domain.Vocabulary"
-  ]
-
-isSelfDomainExpressionPath :: FilePath -> Bool
-isSelfDomainExpressionPath path =
-  normalise "new-framework-core/src/Domain" `isPrefixOf` normalise path
-
-matchesModule :: String -> String -> Bool
-matchesModule modulePattern currentImport
-  | "." `isSuffixOf` modulePattern =
-      modulePattern `isPrefixOf` currentImport
-  | otherwise =
-      modulePattern == currentImport
-
 succeedArtifact :: TypeName -> String -> HandlerResult
 succeedArtifact currentType text =
   HandlerSucceeded [RuntimeArtifact currentType text]
@@ -1673,38 +1228,6 @@ appendUnique items item
       items
   | otherwise =
       items ++ [item]
-
-duplicates :: Ord item => [item] -> [item]
-duplicates =
-  map head . filter multiple . groupSorted . sort
-  where
-    multiple (_ : _ : _) =
-      True
-    multiple _ =
-      False
-
-groupSorted :: Eq item => [item] -> [[item]]
-groupSorted [] =
-  []
-groupSorted (item : rest) =
-  let (same, different) =
-        span (== item) rest
-   in (item : same) : groupSorted different
-
-contains :: String -> String -> Bool
-contains needle haystack =
-  needle `isPrefixOf` haystack || containsInfix needle haystack
-
-containsInfix :: String -> String -> Bool
-containsInfix needle haystack
-  | needle == haystack =
-      True
-  | null haystack =
-      False
-  | needle `isPrefixOf` haystack =
-      True
-  | otherwise =
-      containsInfix needle (tail haystack)
 
 joinLines :: [String] -> String
 joinLines [] =

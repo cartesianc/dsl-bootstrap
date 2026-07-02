@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module Framework.Domain
   ( DomainEffectHandlerRegistration (..)
   , DomainHandlerCoverage (..)
@@ -5,6 +7,8 @@ module Framework.Domain
   , DomainReportStatus (..)
   , DomainRegistration (..)
   , DomainRuntimeBackend (..)
+  , pattern DomainFrameworkRuntime
+  , pattern DomainNativeRuntime
   , DomainSemanticCheck (..)
   , DomainSemanticEvidence (..)
   , DomainSemanticEvidenceStatus (..)
@@ -55,8 +59,16 @@ import qualified Framework.Background.ConstraintProof as Proof
 import qualified Framework.Runtime as Runtime
 
 data DomainRuntimeBackend
-  = DomainNativeRuntime Native.RuntimeEffectEnvironment
-  | DomainFrameworkRuntime Runtime.RuntimeEffectEnvironment
+  = DomainBootstrapBackend Native.RuntimeEffectEnvironment
+  | DomainTypedRuntimeBackend Runtime.RuntimeEffectEnvironment
+
+pattern DomainNativeRuntime :: Native.RuntimeEffectEnvironment -> DomainRuntimeBackend
+pattern DomainNativeRuntime environment = DomainBootstrapBackend environment
+
+pattern DomainFrameworkRuntime :: Runtime.RuntimeEffectEnvironment -> DomainRuntimeBackend
+pattern DomainFrameworkRuntime environment = DomainTypedRuntimeBackend environment
+
+{-# COMPLETE DomainBootstrapBackend, DomainTypedRuntimeBackend #-}
 
 data DomainEffectHandlerRegistration = DomainEffectHandlerRegistration
   { effectHandlerRegistrationName :: String
@@ -165,7 +177,7 @@ domainWithRuntimeAndEvidence name ast effects handlers semanticChecks =
     , domainEffectHandlers =
         DomainEffectHandlerRegistration
           { effectHandlerRegistrationName = name ++ "-runtime"
-          , effectHandlerRuntime = DomainFrameworkRuntime handlers
+          , effectHandlerRuntime = DomainTypedRuntimeBackend handlers
           }
     , domainInterpreterName = "runtime"
     , domainSemanticChecks = semanticChecks
@@ -191,7 +203,7 @@ nativeDomainFromRegistry name registration =
               RegistryHandlers.effectHandlerRegistrationName
                 (Registry.domainEffectHandlers registration)
           , effectHandlerRuntime =
-              DomainNativeRuntime
+              DomainBootstrapBackend
                 (RegistryHandlers.effectHandlerEnvironment (Registry.domainEffectHandlers registration))
           }
     , domainInterpreterName =
@@ -202,9 +214,9 @@ nativeDomainFromRegistry name registration =
 runDomain :: DomainRegistration -> IO ()
 runDomain registration =
   case effectHandlerRuntime (domainEffectHandlers registration) of
-    DomainNativeRuntime environment ->
+    DomainBootstrapBackend environment ->
       Native.runNativeBlueprintWithEffectEnvironment environment effects blueprint
-    DomainFrameworkRuntime environment ->
+    DomainTypedRuntimeBackend environment ->
       Runtime.runBlueprintWithEffectEnvironment environment effects blueprint
   where
     blueprint =
@@ -272,7 +284,7 @@ runDomainRuntime ::
   IO DomainRuntimeResult
 runDomainRuntime backend effects blueprint =
   case backend of
-    DomainNativeRuntime environment -> do
+    DomainBootstrapBackend environment -> do
       result <- Native.runNativeBlueprintWithEffectEnvironmentResult environment effects blueprint
       pure
         ( case result of
@@ -284,7 +296,7 @@ runDomainRuntime backend effects blueprint =
                 (Native.runtimeArtifacts runtime)
                 (Native.runtimeFailures runtime)
         )
-    DomainFrameworkRuntime environment -> do
+    DomainTypedRuntimeBackend environment -> do
       result <- Runtime.runBlueprintWithEffectEnvironmentResult environment effects blueprint
       pure
         ( case result of
@@ -557,9 +569,9 @@ domainReportSemanticEvidencePassed report =
 handlerCoverageReport :: NativeAppPlan -> DomainRuntimeBackend -> [DomainHandlerCoverage]
 handlerCoverageReport plan backend =
   case backend of
-    DomainNativeRuntime environment ->
+    DomainBootstrapBackend environment ->
       nativeHandlerCoverageReport plan environment
-    DomainFrameworkRuntime environment ->
+    DomainTypedRuntimeBackend environment ->
       frameworkHandlerCoverageReport plan environment
 
 nativeHandlerCoverageReport :: NativeAppPlan -> Native.RuntimeEffectEnvironment -> [DomainHandlerCoverage]

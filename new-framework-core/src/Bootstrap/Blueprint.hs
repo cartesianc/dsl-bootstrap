@@ -9,8 +9,17 @@ module Bootstrap.Blueprint
   , expressEffectTheoryDsl
   , expressHyloRenderingProofSurface
   , expressRegistryCodegen
+  , expressRuntimeBackendAdapter
+  , expressRuntimeBackendParity
+  , expressRuntimeBranch
+  , expressRuntimeConcurrencySemantics
+  , expressRuntimeDiagnosis
+  , expressRuntimeExecutionSemantics
   , expressRuntimeFactClosure
   , expressRuntimeInterpreter
+  , expressRuntimePlanBuild
+  , expressRuntimeTypes
+  , expressRuntimeValidation
   , expressSelfArtifactManifest
   , publishBootstrapReport
   , validateFrameworkCoreNative
@@ -48,11 +57,10 @@ coreBootstrapApp =
         ValidateStaticContractsFlow
         [ expressAstStructure
         , expressEffectTheoryDsl
-        , expressRuntimeInterpreter
+        , expressRuntimeBranch
         , expressBuildAppValidation
         , expressBoundaryChecks
         , expressHyloRenderingProofSurface
-        , expressRuntimeFactClosure
         , expressRegistryCodegen
         , expressSelfArtifactManifest
         ]
@@ -69,9 +77,62 @@ expressEffectTheoryDsl :: App
 expressEffectTheoryDsl =
   factNode [EffectTheoryDslExpressedFact]
 
+expressRuntimeBranch :: App
+expressRuntimeBranch =
+  chain
+    RuntimeBranchExpressionFlow
+    [ parallel
+        ValidateRuntimeFlow
+        [ expressRuntimeTypes
+        , expressRuntimePlanBuild
+        , expressRuntimeValidation
+        , expressRuntimeExecutionSemantics
+        , expressRuntimeConcurrencySemantics
+        , expressRuntimeDiagnosis
+        , expressRuntimeBackendAdapter
+        , expressRuntimeBackendParity
+        ]
+    , expressRuntimeInterpreter
+    , expressRuntimeFactClosure
+    ]
+
+expressRuntimeTypes :: App
+expressRuntimeTypes =
+  factNode [RuntimeTypesExpressedFact]
+
+expressRuntimePlanBuild :: App
+expressRuntimePlanBuild =
+  factNode [RuntimePlanBuildExpressedFact]
+
+expressRuntimeValidation :: App
+expressRuntimeValidation =
+  factNode [RuntimeValidationExpressedFact]
+
+expressRuntimeExecutionSemantics :: App
+expressRuntimeExecutionSemantics =
+  factNode [RuntimeExecutionSemanticsExpressedFact]
+
+expressRuntimeConcurrencySemantics :: App
+expressRuntimeConcurrencySemantics =
+  factNode [RuntimeConcurrencySemanticsExpressedFact]
+
+expressRuntimeDiagnosis :: App
+expressRuntimeDiagnosis =
+  factNode [RuntimeDiagnosisExpressedFact]
+
+expressRuntimeBackendAdapter :: App
+expressRuntimeBackendAdapter =
+  factNode [RuntimeBackendAdapterExpressedFact]
+
+expressRuntimeBackendParity :: App
+expressRuntimeBackendParity =
+  factNode [RuntimeBackendParityExpressedFact]
+
 expressRuntimeInterpreter :: App
 expressRuntimeInterpreter =
-  factNode [RuntimeInterpreterExpressedFact]
+  wait
+    (allFacts runtimeInterpreterInputs)
+    (factNode [RuntimeInterpreterExpressedFact])
 
 expressBuildAppValidation :: App
 expressBuildAppValidation =
@@ -87,7 +148,9 @@ expressHyloRenderingProofSurface =
 
 expressRuntimeFactClosure :: App
 expressRuntimeFactClosure =
-  factNode [RuntimeFactClosureExpressedFact]
+  wait
+    (allFacts runtimeClosureInputs)
+    (factNode [RuntimeFactClosureExpressedFact])
 
 expressRegistryCodegen :: App
 expressRegistryCodegen =
@@ -128,6 +191,14 @@ expressedFacts :: [WorkflowFact]
 expressedFacts =
   [ AstStructureExpressedFact
   , EffectTheoryDslExpressedFact
+  , RuntimeTypesExpressedFact
+  , RuntimePlanBuildExpressedFact
+  , RuntimeValidationExpressedFact
+  , RuntimeExecutionSemanticsExpressedFact
+  , RuntimeConcurrencySemanticsExpressedFact
+  , RuntimeDiagnosisExpressedFact
+  , RuntimeBackendAdapterExpressedFact
+  , RuntimeBackendParityExpressedFact
   , RuntimeInterpreterExpressedFact
   , BuildAppValidationExpressedFact
   , BoundaryChecksExpressedFact
@@ -135,6 +206,23 @@ expressedFacts =
   , RuntimeFactClosureExpressedFact
   , RegistryCodegenExpressedFact
   , SelfArtifactManifestExpressedFact
+  ]
+
+runtimeInterpreterInputs :: [WorkflowFact]
+runtimeInterpreterInputs =
+  [ RuntimeTypesExpressedFact
+  , RuntimeExecutionSemanticsExpressedFact
+  , RuntimeConcurrencySemanticsExpressedFact
+  , RuntimeDiagnosisExpressedFact
+  , RuntimeBackendAdapterExpressedFact
+  , RuntimeBackendParityExpressedFact
+  ]
+
+runtimeClosureInputs :: [WorkflowFact]
+runtimeClosureInputs =
+  [ RuntimePlanBuildExpressedFact
+  , RuntimeValidationExpressedFact
+  , RuntimeExecutionSemanticsExpressedFact
   ]
 
 reportInputs :: [WorkflowFact]

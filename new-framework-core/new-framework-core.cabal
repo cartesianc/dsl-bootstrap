@@ -51,6 +51,9 @@ library
                      , Bootstrap.Effects.CoreSurface.Registration.Effect
                      , Bootstrap.Report
                      , Bootstrap.Runtime
+                     , Bootstrap.Runtime.Boundary
+                     , Bootstrap.Runtime.SourceGraph
+                     , Bootstrap.Runtime.Types
                      , Bootstrap.Vocabulary
                      , Bootstrap.Workflow
                      , Domain.Ast

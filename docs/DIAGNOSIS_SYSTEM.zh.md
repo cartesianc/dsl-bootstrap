@@ -1,8 +1,8 @@
-# 诊断系统
+# Diagnosis System
 
-本文描述新的 runtime fact closure 和 failure diagnosis 方向。旧 runtime 文档退出 production 说明。
+本文记录 runtime failure diagnosis 的当前职责和边界。
 
-## 1. 诊断目标
+## 1. 目标
 
 Diagnosis 回答三个问题：
 
@@ -12,11 +12,11 @@ Diagnosis 回答三个问题：
 哪些 send 可以安全 probe，哪些必须阻止？
 ```
 
-它建立在 effect theory 之上，并从 runtime witness 收集业务执行证据。
+Diagnosis 建立在 `Workflow AST + EffectTheory + NativeAppPlan` 上，并使用 runtime witness 产生的执行证据。
 
 ## 2. 输入
 
-Diagnosis 输入来自 native runtime：
+Diagnosis 输入来自 bootstrap backend runtime evidence：
 
 ```text
 NativeAppPlan
@@ -27,59 +27,23 @@ NativeRuntime
 RuntimeArtifact
 ```
 
-关键关系：
+这些名字属于 bootstrap backend 的证据模型，不表示项目存在两套运行时。typed runtime backend 也解释同一套 plan。
+
+## 3. 关键关系
 
 ```text
-fact 依赖 fact
-fact 读取 artifact type
-fact 产生 artifact type
-fact 使用 send
-send 拥有 input/output contract
-send 拥有 idempotency/retry policy
-handler 可成功或失败
-```
-
-## 3. 输出
-
-目标诊断报告应包含：
-
-```text
-root fact
-root send
-root error
-因果上游 facts
-已阻止 probes
-允许 probes
-已执行 probes
-被污染下游 facts
-缺失 handlers
-缺失 artifacts
-缺失 producers
-建议检查点
+fact depends on fact
+fact takes artifact type
+fact makes artifact type
+fact uses send
+send has input/output contract
+send has idempotency/retry policy
+handler succeeds or fails
 ```
 
 ## 4. Probe 策略
 
-Probe 不等于 retry。Probe 是为了定位错误而重新执行某个 boundary。
-
-默认规则：
-
-```text
-Idempotent + Replayable
-  可以 probe
-
-NonReplayable
-  禁止 probe
-
-Linear
-  禁止重复消费
-
-Affine
-  如果已消费则禁止再次执行
-
-未声明策略
-  默认保守禁止 probe
-```
+Probe 不是普通 retry。Probe 用于定位错误，因此只允许对 replay-safe 的边界执行。
 
 当前 effect DSL 已有：
 
@@ -88,86 +52,52 @@ idempotent
 retry
 ```
 
-后续需要扩展：
+当前诊断 evidence 覆盖：
 
 ```text
-ReplayPolicy
-UsagePolicy
-FailurePolicy
-ProbePolicy
+error handler dispatch with ErrorInput
+idempotent RetryOnce failed probe
+non-idempotent replay blocker
 ```
 
 ## 5. 污染范围
 
-如果一个 root fact 失败，所有依赖它且已经进入 claim/plan 的下游 fact 都可能被污染。
+如果 root fact 失败，所有依赖它且已经进入 claim/plan 的下游 fact 都可能被污染。
 
 传播依据：
 
 ```text
-needs 依赖
-take/make artifact 依赖
-transform 依赖
-send output 依赖
+needs dependency
+take/make artifact dependency
+transform dependency
+send output dependency
 workflow wait gate
 ```
 
-报告要区分：
+## 6. 分层
 
 ```text
-确定污染
-可能污染
-执行前阻断
-当前 root closure 不可达
-```
+Framework.Runtime
+  typed runtime backend and public diagnosis data types
 
-## 6. Runtime 闭包
+Framework.Background.RuntimeDiagnosis
+  public diagnosis facade
 
-`bootstrap-runtime-smoke` 当前验证 framework-core runtime closure。
-
-后续报告应稳定输出：
-
-```text
-声明 facts
-可达 facts
-最终 facts
-不可达 facts
-send boundaries
-已使用 handlers
-已产生 artifacts
-已检查 constraints
-```
-
-这会让 runtime smoke 从“能跑”升级为“能解释为什么跑完”。
-
-## 7. 分层
-
-推荐分层：
-
-```text
 Bootstrap.Runtime
-  runtime 执行和 native app plan
-
-Bootstrap.Diagnosis.Policy
-  纯 probe/retry/usage 规则
-
-Bootstrap.Diagnosis.Graph
-  上游/下游因果图
-
-Bootstrap.Diagnosis.Report
-  稳定人读和机器读 report
+  bootstrap backend closure evidence
 ```
 
-真实 handler execution 只留在 runtime 层。纯诊断图不执行 IO。
+真实 handler execution 留在 runtime backend。纯诊断图不应执行 IO。
 
-## 8. 成功标准
+## 7. 成功标准
 
-Diagnosis 完成后，应能在 framework 自举失败时指出：
+诊断应能指出：
 
 ```text
-哪个 final atomic capability 未闭合
-缺哪个 producer 或 handler
-哪个 artifact type 没有 maker
-哪个 send boundary 没有实现
-哪个 probe 被策略阻止
-哪个下游 fact 已被污染
+which fact failed
+which producer or handler is missing
+which artifact type has no maker
+which send boundary has no implementation
+which probe is blocked by policy
+which downstream facts were polluted
 ```
