@@ -14,6 +14,8 @@ cradle:
       component: "domain-app:exe:mytest"
     - path: "./domain-app/app/RuntimeSmoke.hs"
       component: "domain-app:exe:runtime-smoke"
+    - path: "./domain-app/app/Runtime"
+      component: "domain-app:exe:runtime-smoke"
     - path: "./domain-app/app/FrontendBoundarySmoke.hs"
       component: "domain-app:exe:frontend-boundary-smoke"
     - path: "./domain-app/app/CoreBoundarySmoke.hs"
