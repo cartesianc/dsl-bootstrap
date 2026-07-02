@@ -30,6 +30,7 @@ module Framework.Runtime
   , RuntimeM (..)
   , RuntimeMiddlewareEvent (..)
   , RuntimeResult (..)
+  , RuntimeSnapshot (..)
   , RuntimeState
   , RuntimeSuspenseEvent (..)
   , RuntimeTransform (..)
@@ -57,6 +58,7 @@ module Framework.Runtime
   , putRuntimeState
   , renderRuntimeError
   , renderRuntimeFailureDiagnosis
+  , renderRuntimeSnapshot
   , recordRuntimeDiagnosis
   , runBlueprintWithEffectEnvironment
   , runBlueprintWithEffectEnvironmentResult
@@ -66,6 +68,7 @@ module Framework.Runtime
   , runtimeEffectEnvironment
   , runtimeEffectEnvironmentWithTransforms
   , runtimeEnv
+  , runtimeSnapshot
   , runtimeTransformInput
   , runtimeTransformOutput
   , runtimeTypedValueText
@@ -87,6 +90,15 @@ module Framework.Runtime
   , withRuntimeMiddleware
   ) where
 
+import Control.Concurrent
+  ( MVar
+  , ThreadId
+  , forkIO
+  , killThread
+  , newEmptyMVar
+  , putMVar
+  , takeMVar
+  )
 import Control.Exception
   ( SomeException
   , try
@@ -121,6 +133,7 @@ import qualified Bootstrap.Runtime as Native
 import Bootstrap.Workflow
   ( AppBlueprint (..)
   , Callback (..)
+  , ChoiceKey (..)
   , Fact (..)
   , FactExpr (..)
   , HangingAction (..)
@@ -160,6 +173,18 @@ data Runtime = Runtime
   deriving (Eq, Show)
 
 type RuntimeState = Runtime
+
+data RuntimeSnapshot = RuntimeSnapshot
+  { snapshotAvailableFacts :: [WorkflowFact]
+  , snapshotAvailablePipeTypes :: [TypeName]
+  , snapshotRuntimeValues :: [RuntimeValue]
+  , snapshotRuntimeTypedValues :: [SomeRuntimeValue]
+  , snapshotRuntimeFactClaims :: [RuntimeFactClaim]
+  , snapshotRuntimeActiveComponents :: [WorkflowName]
+  , snapshotRuntimeCompletedComponents :: [WorkflowName]
+  , snapshotRuntimeTrace :: [String]
+  }
+  deriving (Eq, Show)
 
 data RuntimeComponentStatus
   = RuntimeComponentNotStarted
@@ -248,7 +273,7 @@ data RuntimeCallbackEvent
   deriving (Eq, Show)
 
 data RuntimeSuspenseEvent
-  = RuntimeSuspenseRequested WorkflowName RuntimeComponentStatus
+  = RuntimeSuspenseRequested WorkflowName RuntimeComponentStatus RuntimeSnapshot
   deriving (Eq, Show)
 
 data RuntimeMiddlewareEvent
@@ -361,11 +386,18 @@ data RuntimeError
   | RuntimeTransformSignatureMismatch TransformName TypeName TypeName TypeName TypeName
   | RuntimeWaitBlocked String
   | RuntimeChoiceMissingBranch String
+  | RuntimeParallelBranchFailed Int RuntimeError
+  | RuntimeParallelMergeConflict String
   | RuntimeFallbackExhausted
   | RuntimeRaceEmpty
   | RuntimeRaceExhausted
+  | RuntimeLoopExceeded Int
   | RuntimeIoException String
   deriving (Eq, Show)
+
+data WorkflowBranchResult
+  = WorkflowBranchSucceeded Int Runtime
+  | WorkflowBranchFailed Int RuntimeError Runtime
 
 data RuntimeResult a
   = RuntimeSucceeded a RuntimeState
@@ -428,6 +460,32 @@ emptyRuntime =
     , runtimeMiddlewareEvents = []
     , runtimeFailureDiagnoses = []
     }
+
+runtimeSnapshot :: Runtime -> RuntimeSnapshot
+runtimeSnapshot runtime =
+  RuntimeSnapshot
+    { snapshotAvailableFacts = availableFacts runtime
+    , snapshotAvailablePipeTypes = availablePipeTypes runtime
+    , snapshotRuntimeValues = runtimeValues runtime
+    , snapshotRuntimeTypedValues = runtimeTypedValues runtime
+    , snapshotRuntimeFactClaims = runtimeFactClaims runtime
+    , snapshotRuntimeActiveComponents = runtimeActiveComponents runtime
+    , snapshotRuntimeCompletedComponents = runtimeCompletedComponents runtime
+    , snapshotRuntimeTrace = runtimeTrace runtime
+    }
+
+renderRuntimeSnapshot :: RuntimeSnapshot -> [String]
+renderRuntimeSnapshot snapshot =
+  [ "runtime snapshot"
+  , "  facts: " ++ show (snapshotAvailableFacts snapshot)
+  , "  pipe types: " ++ show (snapshotAvailablePipeTypes snapshot)
+  , "  values: " ++ show (snapshotRuntimeValues snapshot)
+  , "  typed values: " ++ show (snapshotRuntimeTypedValues snapshot)
+  , "  fact claims: " ++ show (snapshotRuntimeFactClaims snapshot)
+  , "  active components: " ++ show (snapshotRuntimeActiveComponents snapshot)
+  , "  completed components: " ++ show (snapshotRuntimeCompletedComponents snapshot)
+  , "  trace lines: " ++ show (length (snapshotRuntimeTrace snapshot))
+  ]
 
 emptyHandlerRegistry :: HandlerRegistry
 emptyHandlerRegistry =
@@ -603,17 +661,13 @@ runWorkflow workflow =
     ChainWorkflow name steps ->
       runNamedWorkflow "chain" name (mapM_ runWorkflow (chainItems steps))
     ParallelWorkflow name branches ->
-      runNamedWorkflow "parallel" name (mapM_ runWorkflow (parallelItems branches))
+      runNamedWorkflow "parallel" name (runParallel (parallelItems branches))
     FallbackWorkflow branches ->
       runFallback (fallbackItems branches)
     RaceWorkflow branches ->
       runRace (raceItems branches)
-    ChoiceWorkflow _ branches ->
-      case choiceItems branches of
-        [] ->
-          throwRuntimeError (RuntimeChoiceMissingBranch "empty choice")
-        ((_, branch) : _) ->
-          runWorkflow branch
+    ChoiceWorkflow selectedKey branches ->
+      runChoice selectedKey (choiceItems branches)
     WaitWorkflow wait body -> do
       runFactExpr (Workflow.waitFacts wait)
       runWorkflow body
@@ -623,8 +677,13 @@ runNamedWorkflow label name body = do
   enterComponent name
   traceRuntimeM (label ++ " " ++ show name)
   runWorkflowCallbacks name
-  body
+  result <- catchRuntime body
   exitComponent name
+  case result of
+    Right _ ->
+      pure ()
+    Left errorReport ->
+      throwRuntimeError errorReport
 
 runWorkflowCallbacks :: WorkflowName -> RuntimeM ()
 runWorkflowCallbacks name = do
@@ -650,21 +709,66 @@ runWorkflowCallback callback = do
       traceRuntimeM ("callback " ++ show (runtimeCallbackTarget callback) ++ " completed")
 
 runFallback :: [Workflow WorkflowFact Interceptor] -> RuntimeM ()
-runFallback [] =
+runFallback branches = do
+  runtime <- getRuntimeState
+  runFallbackFrom runtime branches
+
+runFallbackFrom :: Runtime -> [Workflow WorkflowFact Interceptor] -> RuntimeM ()
+runFallbackFrom runtime [] = do
+  putRuntimeState runtime
   throwRuntimeError RuntimeFallbackExhausted
-runFallback (branch : rest) = do
+runFallbackFrom runtime (branch : rest) = do
+  putRuntimeState runtime
   result <- catchRuntime (runWorkflow branch)
   case result of
     Right _ ->
       pure ()
     Left _ ->
-      runFallback rest
+      runFallbackFrom runtime rest
 
 runRace :: [Workflow WorkflowFact Interceptor] -> RuntimeM ()
 runRace [] =
   throwRuntimeError RuntimeRaceEmpty
-runRace branches =
-  runFallback branches
+runRace branches = do
+  environment <- askRuntimeEnv
+  runtime <- getRuntimeState
+  result <- liftRuntimeIO (runRaceBranches environment runtime (zip [0 ..] branches))
+  case result of
+    Nothing -> do
+      putRuntimeState runtime
+      throwRuntimeError RuntimeRaceExhausted
+    Just winnerRuntime ->
+      putRuntimeState winnerRuntime
+
+runChoice :: ChoiceKey -> [(ChoiceKey, Workflow WorkflowFact Interceptor)] -> RuntimeM ()
+runChoice selectedKey branches =
+  case firstJust (map selectedBranch branches) of
+    Just branch ->
+      runWorkflow branch
+    Nothing ->
+      throwRuntimeError (RuntimeChoiceMissingBranch ("missing choice branch " ++ choiceKeyText selectedKey))
+  where
+    selectedBranch (currentKey, branch)
+      | currentKey == selectedKey =
+          Just branch
+      | otherwise =
+          Nothing
+
+runParallel :: [Workflow WorkflowFact Interceptor] -> RuntimeM ()
+runParallel branches = do
+  environment <- askRuntimeEnv
+  runtime <- getRuntimeState
+  results <- liftRuntimeIO (runParallelBranches environment runtime (zip [0 ..] branches))
+  case firstBranchFailure results of
+    Just (index, errorReport, failedRuntime) -> do
+      putRuntimeState failedRuntime
+      throwRuntimeError (RuntimeParallelBranchFailed index errorReport)
+    Nothing ->
+      case mergeParallelRuntimes runtime (branchSuccessRuntimesInOrder (length branches) results) of
+        Left message ->
+          throwRuntimeError (RuntimeParallelMergeConflict message)
+        Right mergedRuntime ->
+          putRuntimeState mergedRuntime
 
 runFactExpr :: FactExpr WorkflowFact -> RuntimeM ()
 runFactExpr expression =
@@ -675,8 +779,291 @@ runFactExpr expression =
       mapM_ runFactExpr expressions
     FactAny [] ->
       throwRuntimeError (RuntimeWaitBlocked "empty anyOf")
-    FactAny (firstExpression : _) ->
-      runFactExpr firstExpression
+    FactAny expressions -> do
+      runtime <- getRuntimeState
+      runFactAnyFrom runtime expressions
+
+runFactAnyFrom :: Runtime -> [FactExpr WorkflowFact] -> RuntimeM ()
+runFactAnyFrom runtime [] = do
+  putRuntimeState runtime
+  throwRuntimeError (RuntimeWaitBlocked "anyOf could not be satisfied")
+runFactAnyFrom runtime (expression : rest) = do
+  putRuntimeState runtime
+  result <- catchRuntime (runFactExpr expression)
+  case result of
+    Right _ ->
+      pure ()
+    Left _ ->
+      runFactAnyFrom runtime rest
+
+runParallelBranches ::
+  RuntimeEnv ->
+  Runtime ->
+  [(Int, Workflow WorkflowFact Interceptor)] ->
+  IO [WorkflowBranchResult]
+runParallelBranches environment runtime branches = do
+  resultVars <- mapM (forkWorkflowBranch environment runtime) branches
+  mapM takeMVar resultVars
+
+runRaceBranches ::
+  RuntimeEnv ->
+  Runtime ->
+  [(Int, Workflow WorkflowFact Interceptor)] ->
+  IO (Maybe Runtime)
+runRaceBranches environment runtime branches = do
+  resultVar <- newEmptyMVar
+  threadIds <- mapM (forkRaceWorkflowBranch environment runtime resultVar) branches
+  waitForRaceWinner (length branches) 0 threadIds resultVar
+
+forkWorkflowBranch ::
+  RuntimeEnv ->
+  Runtime ->
+  (Int, Workflow WorkflowFact Interceptor) ->
+  IO (MVar WorkflowBranchResult)
+forkWorkflowBranch environment runtime branch = do
+  resultVar <- newEmptyMVar
+  _ <- forkWorkflowBranchInto environment runtime resultVar branch
+  pure resultVar
+
+forkRaceWorkflowBranch ::
+  RuntimeEnv ->
+  Runtime ->
+  MVar WorkflowBranchResult ->
+  (Int, Workflow WorkflowFact Interceptor) ->
+  IO (Int, ThreadId)
+forkRaceWorkflowBranch environment runtime resultVar branch@(index, _) = do
+  threadId <- forkWorkflowBranchInto environment runtime resultVar branch
+  pure (index, threadId)
+
+forkWorkflowBranchInto ::
+  RuntimeEnv ->
+  Runtime ->
+  MVar WorkflowBranchResult ->
+  (Int, Workflow WorkflowFact Interceptor) ->
+  IO ThreadId
+forkWorkflowBranchInto environment runtime resultVar (index, branch) =
+  forkIO $ do
+    result <- tryRuntimeBranch (runRuntimeM environment runtime (runWorkflow branch))
+    putMVar resultVar (branchResultFromRuntimeResult index runtime result)
+
+tryRuntimeBranch :: IO (RuntimeResult ()) -> IO (Either SomeException (RuntimeResult ()))
+tryRuntimeBranch =
+  try
+
+branchResultFromRuntimeResult ::
+  Int ->
+  Runtime ->
+  Either SomeException (RuntimeResult ()) ->
+  WorkflowBranchResult
+branchResultFromRuntimeResult index runtime result =
+  case result of
+    Left exception ->
+      WorkflowBranchFailed index (RuntimeIoException (show exception)) runtime
+    Right (RuntimeSucceeded _ nextRuntime) ->
+      WorkflowBranchSucceeded index nextRuntime
+    Right (RuntimeFailed errorReport failedRuntime) ->
+      WorkflowBranchFailed index errorReport failedRuntime
+
+waitForRaceWinner ::
+  Int ->
+  Int ->
+  [(Int, ThreadId)] ->
+  MVar WorkflowBranchResult ->
+  IO (Maybe Runtime)
+waitForRaceWinner totalFailures failedCount threadIds resultVar = do
+  result <- takeMVar resultVar
+  case result of
+    WorkflowBranchSucceeded winnerIndex winnerRuntime -> do
+      killRaceLosers winnerIndex threadIds
+      pure (Just winnerRuntime)
+    WorkflowBranchFailed _ _ _ ->
+      if failedCount + 1 >= totalFailures
+        then pure Nothing
+        else waitForRaceWinner totalFailures (failedCount + 1) threadIds resultVar
+
+killRaceLosers :: Int -> [(Int, ThreadId)] -> IO ()
+killRaceLosers winnerIndex threadIds =
+  mapM_ killThread
+    [ threadId
+    | (index, threadId) <- threadIds
+    , index /= winnerIndex
+    ]
+
+firstBranchFailure :: [WorkflowBranchResult] -> Maybe (Int, RuntimeError, Runtime)
+firstBranchFailure results =
+  firstJust
+    [ branchFailureFor index results
+    | index <- [0 .. length results - 1]
+    ]
+
+branchFailureFor :: Int -> [WorkflowBranchResult] -> Maybe (Int, RuntimeError, Runtime)
+branchFailureFor _ [] =
+  Nothing
+branchFailureFor expectedIndex (result : rest) =
+  case result of
+    WorkflowBranchFailed index errorReport runtime
+      | index == expectedIndex ->
+          Just (index, errorReport, runtime)
+    _ ->
+      branchFailureFor expectedIndex rest
+
+branchSuccessRuntimesInOrder :: Int -> [WorkflowBranchResult] -> [Runtime]
+branchSuccessRuntimesInOrder branchCount results =
+  [ runtime
+  | index <- [0 .. branchCount - 1]
+  , Just runtime <- [branchSuccessFor index results]
+  ]
+
+branchSuccessFor :: Int -> [WorkflowBranchResult] -> Maybe Runtime
+branchSuccessFor _ [] =
+  Nothing
+branchSuccessFor expectedIndex (result : rest) =
+  case result of
+    WorkflowBranchSucceeded index runtime
+      | index == expectedIndex ->
+          Just runtime
+    _ ->
+      branchSuccessFor expectedIndex rest
+
+mergeParallelRuntimes :: Runtime -> [Runtime] -> Either String Runtime
+mergeParallelRuntimes baseRuntime =
+  mergeParallelRuntimesFrom baseRuntime baseRuntime
+
+mergeParallelRuntimesFrom :: Runtime -> Runtime -> [Runtime] -> Either String Runtime
+mergeParallelRuntimesFrom _ mergedRuntime [] =
+  Right mergedRuntime
+mergeParallelRuntimesFrom baseRuntime mergedRuntime (branchRuntime : rest) =
+  case mergeParallelRuntime baseRuntime mergedRuntime branchRuntime of
+    Left message ->
+      Left message
+    Right nextRuntime ->
+      mergeParallelRuntimesFrom baseRuntime nextRuntime rest
+
+mergeParallelRuntime :: Runtime -> Runtime -> Runtime -> Either String Runtime
+mergeParallelRuntime baseRuntime mergedRuntime branchRuntime
+  | runtimeActiveComponents branchRuntime /= runtimeActiveComponents baseRuntime =
+      Left "branch left active components behind"
+  | runtimeMiddlewareStack branchRuntime /= runtimeMiddlewareStack baseRuntime =
+      Left "branch left middleware stack behind"
+  | otherwise = do
+      mergedValues <- mergeRuntimeValuesChecked (runtimeValues mergedRuntime) (runtimeValues branchRuntime)
+      mergedTypedValues <- mergeRuntimeTypedValuesChecked (runtimeTypedValues mergedRuntime) (runtimeTypedValues branchRuntime)
+      mergedClaims <- mergeRuntimeFactClaimsChecked (runtimeFactClaims mergedRuntime) (runtimeFactClaims branchRuntime)
+      pure
+        mergedRuntime
+          { availableFacts = unique (availableFacts mergedRuntime ++ availableFacts branchRuntime)
+          , availablePipeTypes = unique (availablePipeTypes mergedRuntime ++ availablePipeTypes branchRuntime)
+          , runtimeValues = mergedValues
+          , runtimeTypedValues = mergedTypedValues
+          , runtimeFactClaims = mergedClaims
+          , runtimeTrace = runtimeTrace mergedRuntime ++ listDelta (runtimeTrace baseRuntime) (runtimeTrace branchRuntime)
+          , runtimeCompletedComponents = unique (runtimeCompletedComponents mergedRuntime ++ runtimeCompletedComponents branchRuntime)
+          , runtimeComponentEvents =
+              runtimeComponentEvents mergedRuntime
+                ++ listDelta (runtimeComponentEvents baseRuntime) (runtimeComponentEvents branchRuntime)
+          , runtimeCallbackEvents =
+              runtimeCallbackEvents mergedRuntime
+                ++ listDelta (runtimeCallbackEvents baseRuntime) (runtimeCallbackEvents branchRuntime)
+          , runtimeSuspenseEvents =
+              runtimeSuspenseEvents mergedRuntime
+                ++ listDelta (runtimeSuspenseEvents baseRuntime) (runtimeSuspenseEvents branchRuntime)
+          , runtimeMiddlewareEvents =
+              runtimeMiddlewareEvents mergedRuntime
+                ++ listDelta (runtimeMiddlewareEvents baseRuntime) (runtimeMiddlewareEvents branchRuntime)
+          , runtimeFailureDiagnoses =
+              runtimeFailureDiagnoses mergedRuntime
+                ++ listDelta (runtimeFailureDiagnoses baseRuntime) (runtimeFailureDiagnoses branchRuntime)
+          }
+
+mergeRuntimeValuesChecked :: [RuntimeValue] -> [RuntimeValue] -> Either String [RuntimeValue]
+mergeRuntimeValuesChecked =
+  foldlEither mergeRuntimeValueChecked
+
+mergeRuntimeValueChecked :: [RuntimeValue] -> RuntimeValue -> Either String [RuntimeValue]
+mergeRuntimeValueChecked [] currentValue =
+  Right [currentValue]
+mergeRuntimeValueChecked (existingValue : rest) currentValue
+  | runtimeValueType existingValue == runtimeValueType currentValue =
+      if existingValue == currentValue
+        then Right (existingValue : rest)
+        else Left ("runtime value conflict for " ++ show (runtimeValueType currentValue))
+  | otherwise =
+      case mergeRuntimeValueChecked rest currentValue of
+        Left message ->
+          Left message
+        Right mergedRest ->
+          Right (existingValue : mergedRest)
+
+mergeRuntimeTypedValuesChecked :: [SomeRuntimeValue] -> [SomeRuntimeValue] -> Either String [SomeRuntimeValue]
+mergeRuntimeTypedValuesChecked =
+  foldlEither mergeRuntimeTypedValueChecked
+
+mergeRuntimeTypedValueChecked :: [SomeRuntimeValue] -> SomeRuntimeValue -> Either String [SomeRuntimeValue]
+mergeRuntimeTypedValueChecked [] currentValue =
+  Right [currentValue]
+mergeRuntimeTypedValueChecked (existingValue : rest) currentValue
+  | someRuntimeValueType existingValue == someRuntimeValueType currentValue =
+      if existingValue == currentValue
+        then Right (existingValue : rest)
+        else Left ("runtime typed value conflict for " ++ show (someRuntimeValueType currentValue))
+  | otherwise =
+      case mergeRuntimeTypedValueChecked rest currentValue of
+        Left message ->
+          Left message
+        Right mergedRest ->
+          Right (existingValue : mergedRest)
+
+mergeRuntimeFactClaimsChecked :: [RuntimeFactClaim] -> [RuntimeFactClaim] -> Either String [RuntimeFactClaim]
+mergeRuntimeFactClaimsChecked =
+  foldlEither mergeRuntimeFactClaimChecked
+
+mergeRuntimeFactClaimChecked :: [RuntimeFactClaim] -> RuntimeFactClaim -> Either String [RuntimeFactClaim]
+mergeRuntimeFactClaimChecked [] currentClaim =
+  Right [currentClaim]
+mergeRuntimeFactClaimChecked (existingClaim : rest) currentClaim
+  | runtimeFactClaimFact existingClaim == runtimeFactClaimFact currentClaim =
+      if existingClaim == currentClaim
+        then Right (existingClaim : rest)
+        else Left ("runtime fact claim conflict for " ++ show (runtimeFactClaimFact currentClaim))
+  | otherwise =
+      case mergeRuntimeFactClaimChecked rest currentClaim of
+        Left message ->
+          Left message
+        Right mergedRest ->
+          Right (existingClaim : mergedRest)
+
+foldlEither :: (accumulator -> item -> Either error accumulator) -> accumulator -> [item] -> Either error accumulator
+foldlEither _ accumulator [] =
+  Right accumulator
+foldlEither step accumulator (item : rest) =
+  case step accumulator item of
+    Left errorReport ->
+      Left errorReport
+    Right nextAccumulator ->
+      foldlEither step nextAccumulator rest
+
+listDelta :: Eq item => [item] -> [item] -> [item]
+listDelta prefix items =
+  case stripListPrefix prefix items of
+    Just rest ->
+      rest
+    Nothing ->
+      items
+
+stripListPrefix :: Eq item => [item] -> [item] -> Maybe [item]
+stripListPrefix [] items =
+  Just items
+stripListPrefix (_ : _) [] =
+  Nothing
+stripListPrefix (prefixItem : prefixRest) (item : rest)
+  | prefixItem == item =
+      stripListPrefix prefixRest rest
+  | otherwise =
+      Nothing
+
+choiceKeyText :: ChoiceKey -> String
+choiceKeyText (ChoiceKey text) =
+  text
 
 ensureFact :: [WorkflowFact] -> WorkflowFact -> RuntimeM ()
 ensureFact stack currentFact = do
@@ -1119,25 +1506,55 @@ requestSuspense :: WorkflowName -> RuntimeM ()
 requestSuspense target = do
   runtime <- getRuntimeState
   let status = componentStatus target runtime
+      snapshot = runtimeSnapshot runtime
   modifyRuntimeState
     ( \currentRuntime ->
         currentRuntime
           { runtimeSuspenseEvents =
-              runtimeSuspenseEvents currentRuntime ++ [RuntimeSuspenseRequested target status]
+              runtimeSuspenseEvents currentRuntime ++ [RuntimeSuspenseRequested target status snapshot]
           }
     )
   traceRuntimeM ("suspense requested " ++ show target ++ " " ++ show status)
 
 runLoop :: Loop (Workflow WorkflowFact Interceptor) -> RuntimeM ()
-runLoop _ =
-  traceRuntimeM "loop forever start"
+runLoop (Loop body) =
+  runLoopUntilFixedPoint 0 body
+
+runLoopUntilFixedPoint :: Int -> Workflow WorkflowFact Interceptor -> RuntimeM ()
+runLoopUntilFixedPoint iteration body
+  | iteration >= maxLoopIterations =
+      throwRuntimeError (RuntimeLoopExceeded maxLoopIterations)
+  | otherwise = do
+      before <- getRuntimeState
+      runWorkflow body
+      after <- getRuntimeState
+      if runtimeFixedPointSignature before == runtimeFixedPointSignature after
+        then traceRuntimeM ("loop fixed point " ++ show (iteration + 1))
+        else runLoopUntilFixedPoint (iteration + 1) body
+
+maxLoopIterations :: Int
+maxLoopIterations =
+  16
+
+runtimeFixedPointSignature :: Runtime -> ([WorkflowFact], [RuntimeValue], [String])
+runtimeFixedPointSignature runtime =
+  (availableFacts runtime, runtimeValues runtime, map someRuntimeValueSignature (runtimeTypedValues runtime))
+
+someRuntimeValueSignature :: SomeRuntimeValue -> String
+someRuntimeValueSignature value =
+  show (someRuntimeValueType value) ++ ":" ++ someRuntimeValueText value
 
 runMiddleware :: Middleware Interceptor -> Workflow WorkflowFact Interceptor -> RuntimeM ()
 runMiddleware middleware body =
   withRuntimeMiddleware (middlewareHook middleware) $ do
     traceRuntimeM ("middleware " ++ show (middlewareHook middleware) ++ " begin")
-    runWorkflow body
+    result <- catchRuntime (runWorkflow body)
     traceRuntimeM ("middleware " ++ show (middlewareHook middleware) ++ " end")
+    case result of
+      Right _ ->
+        pure ()
+      Left errorReport ->
+        throwRuntimeError errorReport
 
 enterComponent :: WorkflowName -> RuntimeM ()
 enterComponent name =

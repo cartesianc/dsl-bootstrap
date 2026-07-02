@@ -46,6 +46,12 @@ Run the framework fixed point:
 stack exec fixed-point-smoke
 ```
 
+Run the workflow semantics witness:
+
+```powershell
+stack exec workflow-semantics-witness
+```
+
 Build and validate an isolated Stage 1 artifact:
 
 ```powershell
@@ -58,6 +64,7 @@ Expected headline results:
 domain-app-report: status passed
 bootstrap-report: status passed
 fixed-point-smoke: diffs: 0
+workflow-semantics-witness: ok workflow semantics evidence
 self-artifact-witness: passed
 ```
 
@@ -153,6 +160,22 @@ middleware
 callback
 suspense
 loop
+```
+
+Workflow runtime semantics:
+
+```text
+chain      runs steps in order and stops on the first failure
+parallel   starts all branches concurrently from the same input runtime, then merges successful branch state deterministically
+race       starts all branches concurrently, keeps the first successful branch, and cancels the remaining branches
+fallback   tries branches in order; failed branch state is discarded before trying the next branch
+choice     runs only the branch matching the selected ChoiceKey
+wait       satisfies the fact expression before running the body
+factAny    tries alternatives in order and keeps the first successful alternative
+loop       runs until facts/runtime values reach a fixed point, capped at 16 iterations
+callback   runs when the target component is entered; callback failure is recorded but does not fail the target flow
+middleware records entered/exited events around the body, including failure paths
+suspense   records target status plus a lightweight RuntimeSnapshot; it is not database persistence
 ```
 
 Example shape:
@@ -364,6 +387,7 @@ stack exec self-artifact-witness
 ```
 
 Detailed gate rules are in [docs/SELF_BOOTSTRAP_GATE.md](docs/SELF_BOOTSTRAP_GATE.md).
+Workflow runtime rules are in [docs/WORKFLOW_SEMANTICS.md](docs/WORKFLOW_SEMANTICS.md).
 
 ## Command Reference
 
@@ -390,6 +414,7 @@ Witnesses:
 ```powershell
 stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness
+stack exec workflow-semantics-witness
 stack exec registry-codegen-witness
 stack exec self-artifact-witness
 ```
@@ -406,6 +431,7 @@ stack exec bootstrap-smoke
 stack exec bootstrap-runtime-smoke
 stack exec bootstrap-report
 stack exec fixed-point-smoke
+stack exec workflow-semantics-witness
 stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness
 stack exec registry-codegen-witness
