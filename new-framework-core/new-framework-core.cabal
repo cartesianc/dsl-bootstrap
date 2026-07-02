@@ -55,6 +55,7 @@ library
                      , Domain.AppBlueprint
                      , Domain.Interpreter
                      , Domain.Registry
+                     , Domain.Vocabulary
                      , Framework.Background
                      , Framework.Domain
                      , Framework.Effect
@@ -75,7 +76,7 @@ library
                        -Wpartial-fields
                        -Wredundant-constraints
 
-executable mytest
+executable framework-core-mytest
   hs-source-dirs:      app
   main-is:             Main.hs
   default-language:    Haskell2010

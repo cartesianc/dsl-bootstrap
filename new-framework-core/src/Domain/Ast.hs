@@ -6,8 +6,9 @@ module Domain.Ast
   , registeredAsts
   ) where
 
-import qualified Bootstrap.Blueprint
-import Bootstrap.Workflow
+import Domain.AppBlueprint
+  ( frameworkCoreBlueprint )
+import Framework.Workflow
   ( AppBlueprint
   )
 
@@ -20,7 +21,7 @@ frameworkCoreAstRegistration :: AstRegistration
 frameworkCoreAstRegistration =
   AstRegistration
     { astRegistrationName = "framework-core"
-    , astRegistrationBlueprint = Bootstrap.Blueprint.coreBootstrapBlueprint
+    , astRegistrationBlueprint = frameworkCoreBlueprint
     }
 
 registeredAsts :: [AstRegistration]

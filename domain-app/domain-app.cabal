@@ -2,23 +2,38 @@ cabal-version:       2.2
 
 name:                domain-app
 version:             0.1.0.0
-synopsis:            Self-hosted framework-core domain app
-description:         Minimal domain app whose content is the new framework core itself.
+synopsis:            Domain application built on new-framework-core facades
+description:         Current domain app, concrete blueprint, plugins, effects, handlers, and framework compile smoke executables.
 license:             BSD-3-Clause
 license-file:        ../LICENSE
 author:              onetime
 maintainer:          1018248628@qq.com
 copyright:           2026 onetime
 category:            Application
-build-type:          Custom
-
-custom-setup
-  setup-depends:      base >= 4.7 && < 5
-                    , Cabal >= 2.2
+build-type:          Simple
 
 library
   hs-source-dirs:      src
-  exposed-modules:     SelfDomainApp
+  exposed-modules:     Blueprint
+                     , Domain.EffectVocabulary
+                     , Domain.AppBlueprint
+                     , Domain.Runtime
+                     , Domain.Vocabulary
+                     , Effects.Demo
+                     , Effects.Logging
+                     , Effects.Report
+                     , Effects.System
+                     , Effects.Theory
+                     , Effects.User
+                     , Plugins
+                     , Plugins.Boot
+                     , Plugins.Configuration
+                     , Plugins.Handle
+                     , Plugins.Lifecycle
+                     , Plugins.Logging
+                     , Plugins.Report
+                     , Plugins.Shutdown
+                     , SelfDomainApp
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , new-framework-core
@@ -32,9 +47,12 @@ library
                        -Wpartial-fields
                        -Wredundant-constraints
 
-executable domain-app-self-smoke
+executable mytest
   hs-source-dirs:      app
   main-is:             Main.hs
+  other-modules:       CurrentAst
+                     , CurrentEffects
+                     , InterpretConfig
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , domain-app
@@ -45,6 +63,41 @@ executable domain-app-self-smoke
                        -Wincomplete-record-updates
                        -Wincomplete-uni-patterns
                        -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable domain-app-report
+  hs-source-dirs:      app
+  main-is:             DomainReport.hs
+  other-modules:       CurrentAst
+                     , CurrentEffects
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , domain-app
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable domain-app-self-smoke
+  hs-source-dirs:      app
+  main-is:             SelfSmoke.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , domain-app
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
                        -Wmissing-home-modules
                        -Wpartial-fields
                        -Wredundant-constraints

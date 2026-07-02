@@ -36,7 +36,7 @@ module Blueprint
   , WorkflowName (..)
   ) where
 
-import Bootstrap.Workflow
+import Framework.Workflow
   ( ChoiceKey (..)
   , Interceptor (..)
   , LogEvent (..)
@@ -44,7 +44,7 @@ import Bootstrap.Workflow
   , WorkflowFact (..)
   , WorkflowName (..)
   )
-import qualified Bootstrap.Workflow as Architecture
+import qualified Framework.Workflow as Architecture
 
 type WorkflowComponent = Workflow WorkflowFact Interceptor
 

@@ -4,7 +4,7 @@ module CurrentAst
   ( currentAst
   ) where
 
-import "demo-domain-app" Domain.AppBlueprint
+import "domain-app" Domain.AppBlueprint
   ( AppBlueprint
   , blueprint
   )

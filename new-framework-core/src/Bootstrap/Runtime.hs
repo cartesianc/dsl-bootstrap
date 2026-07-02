@@ -1170,7 +1170,8 @@ checkNativeFrontendBoundary graph =
   | currentModule <- sourceImportModules graph
   , not (isExcludedFrontendPath (sourceModulePath currentModule))
   , currentImport <- sourceModuleImports currentModule
-  , isForbiddenFrontendImport currentImport || not (isAllowedFrontendImport currentImport)
+  , isForbiddenFrontendImportFor (sourceModulePath currentModule) currentImport
+      || not (isAllowedFrontendImportFor (sourceModulePath currentModule) currentImport)
   ]
 
 checkNativeLanguageSpec :: [String]
@@ -1252,9 +1253,15 @@ isAllowedFrontendImport currentImport =
       , "Domain.AppBlueprint"
       , "Domain.Effects"
       , "Domain.Registry"
+      , "Domain.Vocabulary"
       , "Prelude"
       ]
     || "Bootstrap.Effects." `isPrefixOf` currentImport
+
+isAllowedFrontendImportFor :: FilePath -> String -> Bool
+isAllowedFrontendImportFor path currentImport =
+  isAllowedFrontendImport currentImport
+    || (isSelfDomainExpressionPath path && currentImport `elem` selfDomainFacadeImports)
 
 isForbiddenFrontendImport :: String -> Bool
 isForbiddenFrontendImport currentImport =
@@ -1272,6 +1279,24 @@ isForbiddenFrontendImport currentImport =
     , "Effects.EffectTheory"
     , "Effects.Names"
     ]
+
+isForbiddenFrontendImportFor :: FilePath -> String -> Bool
+isForbiddenFrontendImportFor path currentImport
+  | isSelfDomainExpressionPath path && currentImport `elem` selfDomainFacadeImports =
+      False
+  | otherwise =
+      isForbiddenFrontendImport currentImport
+
+selfDomainFacadeImports :: [String]
+selfDomainFacadeImports =
+  [ "Framework.Workflow"
+  , "Framework.Effect"
+  , "Domain.Vocabulary"
+  ]
+
+isSelfDomainExpressionPath :: FilePath -> Bool
+isSelfDomainExpressionPath path =
+  normalise "new-framework-core/src/Domain" `isPrefixOf` normalise path
 
 matchesModule :: String -> String -> Bool
 matchesModule modulePattern currentImport

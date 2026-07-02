@@ -19,10 +19,9 @@ main = do
   report <-
     buildDomainReport
       ( domainWithRuntime
-          "demo-domain-app"
+          "domain-app"
           currentAst
           currentEffects
           domainRuntimeEffectEnvironment
       )
   mapM_ putStrLn (renderDomainReport report)
-

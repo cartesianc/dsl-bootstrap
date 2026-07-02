@@ -1,56 +1,69 @@
 module SelfDomainApp
-  ( renderSelfDomainAppReport
+  ( domainAppDomain
+  , renderSelfDomainAppReport
   , runSelfDomainApp
-  , selfDomainAppDomain
   , selfDomainAppName
   ) where
 
-import Bootstrap.Report
-  ( FrameworkCoreReport
-  , buildFrameworkCoreReport
-  , frameworkCoreReportPassed
-  , renderFrameworkCoreReport
-  )
-import Domain.Registry
-  ( DomainRegistration (..)
-  , frameworkCoreDomain
+import Domain.AppBlueprint
+  ( blueprint )
+import Domain.Runtime
+  ( domainRuntimeEffectEnvironment )
+import Effects.Theory
+  ( effectTheory )
+import Framework.Domain
+  ( DomainRegistration
+  , DomainReport (..)
+  , DomainReportStatus (..)
+  , buildDomainReport
+  , domainWithRuntime
+  , renderDomainReport
   )
 
 selfDomainAppName :: String
 selfDomainAppName =
-  "domain-app:self-framework-core"
+  "domain-app"
 
-selfDomainAppDomain :: DomainRegistration
-selfDomainAppDomain =
-  frameworkCoreDomain
-    { domainRegistrationName = selfDomainAppName
-    }
+domainAppDomain :: DomainRegistration
+domainAppDomain =
+  domainWithRuntime
+    selfDomainAppName
+    blueprint
+    effectTheory
+    domainRuntimeEffectEnvironment
 
 runSelfDomainApp :: IO ()
 runSelfDomainApp = do
-  report <- buildFrameworkCoreReport
-  if frameworkCoreReportPassed report
+  report <- buildDomainReport domainAppDomain
+  if domainReportPassed report
     then mapM_ putStrLn (renderSelfDomainAppReport report)
     else
       ioError
         ( userError
-            ( "[domain-app] self framework-core compile failed:\n"
+            ( "[domain-app] framework compile failed:\n"
                 ++ unlines (renderSelfDomainAppReport report)
             )
         )
 
-renderSelfDomainAppReport :: FrameworkCoreReport -> [String]
+renderSelfDomainAppReport :: DomainReport -> [String]
 renderSelfDomainAppReport report =
-  [ "domain-app self compile"
-  , "domain: " ++ domainRegistrationName selfDomainAppDomain
-  , "content: " ++ domainRegistrationName frameworkCoreDomain
+  [ "domain-app framework compile"
+  , "domain: " ++ selfDomainAppName
   , "status: " ++ renderStatus report
   ]
-    ++ renderFrameworkCoreReport report
+    ++ renderDomainReport report
 
-renderStatus :: FrameworkCoreReport -> String
+domainReportPassed :: DomainReport -> Bool
+domainReportPassed report =
+  case domainReportStatus report of
+    DomainReportPassed ->
+      True
+    DomainReportFailed _ ->
+      False
+
+renderStatus :: DomainReport -> String
 renderStatus report
-  | frameworkCoreReportPassed report =
+  | domainReportPassed report =
       "passed"
   | otherwise =
       "failed"
