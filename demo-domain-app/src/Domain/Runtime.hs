@@ -1,7 +1,19 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module Domain.Runtime
-  ( domainHandlerRegistry
+  ( LogMessageValue (..)
+  , ReportInputValue (..)
+  , ReportOutputValue (..)
+  , UserNameValue (..)
+  , UserRecordValue (..)
+  , domainHandlerRegistry
   , domainRuntimeEffectEnvironment
   , domainTransformRegistry
+  , pattern LogMessageTag
+  , pattern ReportInputTag
+  , pattern ReportOutputTag
+  , pattern UserNameTag
+  , pattern UserRecordTag
   ) where
 
 import Domain.EffectVocabulary
@@ -9,15 +21,58 @@ import Framework.Background
   ( HandlerBinding (..)
   , HandlerRegistry (..)
   , HandlerResult (..)
-  , NativeHandler (..)
-  , RuntimeArtifact (..)
   , RuntimeEffectEnvironment
-  , TransformRegistry
-  , emptyTransformRegistry
+  , RuntimeHandler (..)
+  , RuntimeTypedValue (..)
+  , RuntimeTransform (..)
+  , SomeRuntimeValue (..)
+  , TransformBinding (..)
+  , TransformRegistry (..)
+  , ValueTag (..)
   , runtimeEffectEnvironmentWithTransforms
   )
 import Framework.Effect
   ( SendName )
+
+newtype UserNameValue = UserNameValue String
+  deriving (Eq, Show)
+
+newtype UserRecordValue = UserRecordValue String
+  deriving (Eq, Show)
+
+newtype ReportInputValue = ReportInputValue String
+  deriving (Eq, Show)
+
+newtype ReportOutputValue = ReportOutputValue String
+  deriving (Eq, Show)
+
+newtype LogMessageValue = LogMessageValue String
+  deriving (Eq, Show)
+
+pattern UserNameTag :: ValueTag UserNameValue
+pattern UserNameTag <- ValueTag UserName _
+  where
+    UserNameTag = ValueTag UserName userNameValueText
+
+pattern UserRecordTag :: ValueTag UserRecordValue
+pattern UserRecordTag <- ValueTag UserRecord _
+  where
+    UserRecordTag = ValueTag UserRecord userRecordValueText
+
+pattern ReportInputTag :: ValueTag ReportInputValue
+pattern ReportInputTag <- ValueTag ReportInput _
+  where
+    ReportInputTag = ValueTag ReportInput reportInputValueText
+
+pattern ReportOutputTag :: ValueTag ReportOutputValue
+pattern ReportOutputTag <- ValueTag ReportOutput _
+  where
+    ReportOutputTag = ValueTag ReportOutput reportOutputValueText
+
+pattern LogMessageTag :: ValueTag LogMessageValue
+pattern LogMessageTag <- ValueTag LogMessage _
+  where
+    LogMessageTag = ValueTag LogMessage logMessageValueText
 
 domainRuntimeEffectEnvironment :: RuntimeEffectEnvironment
 domainRuntimeEffectEnvironment =
@@ -35,19 +90,49 @@ domainHandlerRegistry =
 
 domainTransformRegistry :: TransformRegistry
 domainTransformRegistry =
-  emptyTransformRegistry
+  TransformRegistry
+    [ TransformBinding
+        UserNameToReportInput
+        ( RuntimeTransform
+            UserNameTag
+            ReportInputTag
+            ( \(UserNameValue text) ->
+                ReportInputValue ("report-input:" ++ text)
+            )
+        )
+    ]
 
-domainSucceedHandler :: NativeHandler
+domainSucceedHandler :: RuntimeHandler
 domainSucceedHandler =
-  NativeHandler (\currentSend _ _ -> pure (domainDefaultHandlerResult currentSend))
+  RuntimeHandler (\currentSend _ _ -> pure (domainDefaultHandlerResult currentSend))
 
 domainDefaultHandlerResult :: SendName -> HandlerResult
 domainDefaultHandlerResult AskUserName =
-  HandlerSucceeded
-    [RuntimeArtifact UserName "runtime-user"]
+  HandlerSucceededTyped
+    [SomeRuntimeValue (RuntimeTypedValue UserNameTag (UserNameValue "runtime-user"))]
 domainDefaultHandlerResult GenerateReport =
-  HandlerSucceeded
-    [RuntimeArtifact ReportOutput "runtime-report"]
+  HandlerSucceededTyped
+    [SomeRuntimeValue (RuntimeTypedValue ReportOutputTag (ReportOutputValue "runtime-report"))]
 domainDefaultHandlerResult _ =
   HandlerSucceeded []
+
+userNameValueText :: UserNameValue -> String
+userNameValueText (UserNameValue text) =
+  text
+
+userRecordValueText :: UserRecordValue -> String
+userRecordValueText (UserRecordValue text) =
+  text
+
+reportInputValueText :: ReportInputValue -> String
+reportInputValueText (ReportInputValue text) =
+  text
+
+reportOutputValueText :: ReportOutputValue -> String
+reportOutputValueText (ReportOutputValue text) =
+  text
+
+logMessageValueText :: LogMessageValue -> String
+logMessageValueText (LogMessageValue text) =
+  text
 

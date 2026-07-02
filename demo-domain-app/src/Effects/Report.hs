@@ -26,7 +26,9 @@ reportEffect =
         [ needs AddCalculatedFact
         , needs FactorialCalculatedFact
         , needs SquaresCalculatedFact
+        , needs UserNameAskedFact
+        , transform UserName ReportInput UserNameToReportInput
         , uses GenerateReport
         ]
-    , externalMake GenerateReport NoInput ReportOutput
+    , externalMake GenerateReport ReportInput ReportOutput
     ]

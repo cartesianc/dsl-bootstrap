@@ -1,8 +1,10 @@
 module Framework.Domain
-  ( DomainHandlerCoverage (..)
+  ( DomainEffectHandlerRegistration (..)
+  , DomainHandlerCoverage (..)
   , DomainReport (..)
   , DomainReportStatus (..)
   , DomainRegistration (..)
+  , DomainRuntimeBackend (..)
   , buildDomainReport
   , domain
   , domainWithRuntime
@@ -20,17 +22,13 @@ import Bootstrap.Effect
   ( EffectTheory
   , SendName
   )
+import qualified Bootstrap.Runtime as Native
 import Bootstrap.Runtime
-  ( HandlerBinding (..)
-  , HandlerRegistry (..)
-  , NativeAppPlan (..)
+  ( NativeAppPlan (..)
   , NativeConstraint (..)
   , NativeFactRule (..)
-  , NativeRuntime (..)
   , RuntimeArtifact (..)
-  , RuntimeEffectEnvironment (..)
   , buildNativeApp
-  , runNativeBlueprintWithEffectEnvironmentResult
   )
 import Bootstrap.Workflow
   ( AppBlueprint
@@ -39,21 +37,30 @@ import Bootstrap.Workflow
 import Domain.Ast
   ( AstRegistration (..)
   )
-import Domain.EffectHandlers
-  ( EffectHandlerRegistration (..)
-  )
 import Domain.Effects
   ( EffectRegistration (..)
   )
-import Domain.Interpreter
-  ( InterpreterRegistration
-  , runtimeInterpreter
-  )
-import Domain.Registry
-  ( DomainRegistration (..)
-  , frameworkCoreDomain
-  , runDomain
-  )
+import qualified Domain.EffectHandlers as RegistryHandlers
+import qualified Domain.Interpreter as RegistryInterpreter
+import qualified Domain.Registry as Registry
+import qualified Framework.Runtime as Runtime
+
+data DomainRuntimeBackend
+  = DomainNativeRuntime Native.RuntimeEffectEnvironment
+  | DomainFrameworkRuntime Runtime.RuntimeEffectEnvironment
+
+data DomainEffectHandlerRegistration = DomainEffectHandlerRegistration
+  { effectHandlerRegistrationName :: String
+  , effectHandlerRuntime :: DomainRuntimeBackend
+  }
+
+data DomainRegistration = DomainRegistration
+  { domainRegistrationName :: String
+  , domainAst :: AstRegistration
+  , domainEffects :: EffectRegistration
+  , domainEffectHandlers :: DomainEffectHandlerRegistration
+  , domainInterpreterName :: String
+  }
 
 data DomainReport = DomainReport
   { domainReportName :: String
@@ -85,14 +92,26 @@ data DomainHandlerCoverage = DomainHandlerCoverage
   , domainHandlerCoverageCovered :: Bool
   }
 
+data DomainRuntimeResult
+  = DomainRuntimeSucceeded [WorkflowFact] [RuntimeArtifact] [String]
+  | DomainRuntimeFailed String
+
 domain ::
   String ->
   AppBlueprint ->
   EffectTheory ->
-  RuntimeEffectEnvironment ->
-  InterpreterRegistration ->
+  Runtime.RuntimeEffectEnvironment ->
   DomainRegistration
-domain name ast effects handlers interpreter =
+domain =
+  domainWithRuntime
+
+domainWithRuntime ::
+  String ->
+  AppBlueprint ->
+  EffectTheory ->
+  Runtime.RuntimeEffectEnvironment ->
+  DomainRegistration
+domainWithRuntime name ast effects handlers =
   DomainRegistration
     { domainRegistrationName = name
     , domainAst =
@@ -106,29 +125,52 @@ domain name ast effects handlers interpreter =
           , effectRegistrationTheory = effects
           }
     , domainEffectHandlers =
-        EffectHandlerRegistration
+        DomainEffectHandlerRegistration
           { effectHandlerRegistrationName = name ++ "-runtime"
-          , effectHandlerEnvironment = handlers
-          , effectHandlerRegistry = runtimeEffectHandlers handlers
-          , effectHandlerTransforms = runtimeEffectTransforms handlers
+          , effectHandlerRuntime = DomainFrameworkRuntime handlers
           }
-    , domainInterpreter = interpreter
+    , domainInterpreterName = "runtime"
     }
 
-domainWithRuntime ::
-  String ->
-  AppBlueprint ->
-  EffectTheory ->
-  RuntimeEffectEnvironment ->
-  DomainRegistration
-domainWithRuntime name ast effects handlers =
-  domain name ast effects handlers runtimeInterpreter
+frameworkCoreDomain :: DomainRegistration
+frameworkCoreDomain =
+  nativeDomainFromRegistry "framework-core" Registry.frameworkCoreDomain
 
 frameworkCoreFacadeDomain :: DomainRegistration
 frameworkCoreFacadeDomain =
-  frameworkCoreDomain
-    { domainRegistrationName = "framework-core-stage1"
+  nativeDomainFromRegistry "framework-core-stage1" Registry.frameworkCoreDomain
+
+nativeDomainFromRegistry :: String -> Registry.DomainRegistration -> DomainRegistration
+nativeDomainFromRegistry name registration =
+  DomainRegistration
+    { domainRegistrationName = name
+    , domainAst = Registry.domainAst registration
+    , domainEffects = Registry.domainEffects registration
+    , domainEffectHandlers =
+        DomainEffectHandlerRegistration
+          { effectHandlerRegistrationName =
+              RegistryHandlers.effectHandlerRegistrationName
+                (Registry.domainEffectHandlers registration)
+          , effectHandlerRuntime =
+              DomainNativeRuntime
+                (RegistryHandlers.effectHandlerEnvironment (Registry.domainEffectHandlers registration))
+          }
+    , domainInterpreterName =
+        RegistryInterpreter.interpreterRegistrationName (Registry.domainInterpreter registration)
     }
+
+runDomain :: DomainRegistration -> IO ()
+runDomain registration =
+  case effectHandlerRuntime (domainEffectHandlers registration) of
+    DomainNativeRuntime environment ->
+      Native.runNativeBlueprintWithEffectEnvironment environment effects blueprint
+    DomainFrameworkRuntime environment ->
+      Runtime.runBlueprintWithEffectEnvironment environment effects blueprint
+  where
+    blueprint =
+      astRegistrationBlueprint (domainAst registration)
+    effects =
+      effectRegistrationTheory (domainEffects registration)
 
 buildDomainReport :: DomainRegistration -> IO DomainReport
 buildDomainReport registration =
@@ -136,19 +178,13 @@ buildDomainReport registration =
     Left message ->
       pure (failedDomainReport (domainRegistrationName registration) message)
     Right plan -> do
-      runtimeResult <-
-        runNativeBlueprintWithEffectEnvironmentResult
-          environment
-          effects
-          blueprint
+      runtimeResult <- runDomainRuntime (effectHandlerRuntime (domainEffectHandlers registration)) effects blueprint
       pure (domainReportFromPlan registration plan runtimeResult)
   where
     blueprint =
       astRegistrationBlueprint (domainAst registration)
     effects =
       effectRegistrationTheory (domainEffects registration)
-    environment =
-      effectHandlerEnvironment (domainEffectHandlers registration)
 
 renderDomainReport :: DomainReport -> [String]
 renderDomainReport report =
@@ -177,7 +213,48 @@ renderDomainReport report =
   ]
     ++ renderFailures (domainReportFailures report)
 
-domainReportFromPlan :: DomainRegistration -> NativeAppPlan -> Either String NativeRuntime -> DomainReport
+runDomainRuntime ::
+  DomainRuntimeBackend ->
+  EffectTheory ->
+  AppBlueprint ->
+  IO DomainRuntimeResult
+runDomainRuntime backend effects blueprint =
+  case backend of
+    DomainNativeRuntime environment -> do
+      result <- Native.runNativeBlueprintWithEffectEnvironmentResult environment effects blueprint
+      pure
+        ( case result of
+            Left message ->
+              DomainRuntimeFailed message
+            Right runtime ->
+              DomainRuntimeSucceeded
+                (Native.availableFacts runtime)
+                (Native.runtimeArtifacts runtime)
+                (Native.runtimeFailures runtime)
+        )
+    DomainFrameworkRuntime environment -> do
+      result <- Runtime.runBlueprintWithEffectEnvironmentResult environment effects blueprint
+      pure
+        ( case result of
+            Left errorReport ->
+              DomainRuntimeFailed (Runtime.renderRuntimeError errorReport)
+            Right runtime ->
+              DomainRuntimeSucceeded
+                (Runtime.availableFacts runtime)
+                (frameworkRuntimeArtifacts runtime)
+                []
+        )
+
+frameworkRuntimeArtifacts :: Runtime.Runtime -> [RuntimeArtifact]
+frameworkRuntimeArtifacts runtime =
+  [ RuntimeArtifact
+      { artifactType = Runtime.runtimeValueType currentValue
+      , artifactText = Runtime.runtimeValueText currentValue
+      }
+  | currentValue <- Runtime.runtimeValues runtime
+  ]
+
+domainReportFromPlan :: DomainRegistration -> NativeAppPlan -> DomainRuntimeResult -> DomainReport
 domainReportFromPlan registration plan runtimeResult =
   DomainReport
     { domainReportName = domainRegistrationName registration
@@ -206,9 +283,9 @@ domainReportFromPlan registration plan runtimeResult =
       plannedRuntimeFacts plan
     finalFacts =
       case runtimeResult of
-        Right runtime ->
-          availableFacts runtime
-        Left _ ->
+        DomainRuntimeSucceeded facts _ _ ->
+          facts
+        DomainRuntimeFailed _ ->
           []
     missingFinal =
       plannedFacts `minus` finalFacts
@@ -216,18 +293,18 @@ domainReportFromPlan registration plan runtimeResult =
       finalFacts `minus` plannedFacts
     artifacts =
       case runtimeResult of
-        Right runtime ->
-          runtimeArtifacts runtime
-        Left _ ->
+        DomainRuntimeSucceeded _ currentArtifacts _ ->
+          currentArtifacts
+        DomainRuntimeFailed _ ->
           []
     failures =
       case runtimeResult of
-        Right runtime ->
-          runtimeFailures runtime
-        Left message ->
+        DomainRuntimeSucceeded _ _ runtimeFailures ->
+          runtimeFailures
+        DomainRuntimeFailed message ->
           [message]
     coverage =
-      handlerCoverageReport plan (effectHandlerEnvironment (domainEffectHandlers registration))
+      handlerCoverageReport plan (effectHandlerRuntime (domainEffectHandlers registration))
 
 failedDomainReport :: String -> String -> DomainReport
 failedDomainReport name message =
@@ -251,7 +328,7 @@ failedDomainReport name message =
     }
 
 reportStatus ::
-  Either String NativeRuntime ->
+  DomainRuntimeResult ->
   [constraint] ->
   [WorkflowFact] ->
   [WorkflowFact] ->
@@ -275,10 +352,10 @@ reportStatus runtimeResult failedConstraints missingFinal extraFinal coverage =
       ]
     runtimeProblems =
       case runtimeResult of
-        Left message ->
+        DomainRuntimeFailed message ->
           ["runtime failed: " ++ message]
-        Right runtime ->
-          runtimeFailures runtime
+        DomainRuntimeSucceeded _ _ runtimeFailures ->
+          runtimeFailures
     factProblems =
       [ "runtime closure missing facts: " ++ show missingFinal
       | not (null missingFinal)
@@ -293,22 +370,48 @@ reportStatus runtimeResult failedConstraints missingFinal extraFinal coverage =
       , not (domainHandlerCoverageCovered currentCoverage)
       ]
 
-handlerCoverageReport :: NativeAppPlan -> RuntimeEffectEnvironment -> [DomainHandlerCoverage]
-handlerCoverageReport plan environment =
+handlerCoverageReport :: NativeAppPlan -> DomainRuntimeBackend -> [DomainHandlerCoverage]
+handlerCoverageReport plan backend =
+  case backend of
+    DomainNativeRuntime environment ->
+      nativeHandlerCoverageReport plan environment
+    DomainFrameworkRuntime environment ->
+      frameworkHandlerCoverageReport plan environment
+
+nativeHandlerCoverageReport :: NativeAppPlan -> Native.RuntimeEffectEnvironment -> [DomainHandlerCoverage]
+nativeHandlerCoverageReport plan environment =
   [ DomainHandlerCoverage
       { domainHandlerCoverageSend = currentSend
-      , domainHandlerCoverageHandlers = map (show . handlerBindingName) handlers
+      , domainHandlerCoverageHandlers = map (show . Native.handlerBindingName) handlers
       , domainHandlerCoverageCovered = not (null handlers)
       }
   | currentSend <- nativeAppPlanSendBoundaries plan
-  , let handlers = handlersFor (runtimeEffectHandlers environment) currentSend
+  , let handlers = nativeHandlersFor (Native.runtimeEffectHandlers environment) currentSend
   ]
 
-handlersFor :: HandlerRegistry -> SendName -> [HandlerBinding]
-handlersFor registry currentSend =
+frameworkHandlerCoverageReport :: NativeAppPlan -> Runtime.RuntimeEffectEnvironment -> [DomainHandlerCoverage]
+frameworkHandlerCoverageReport plan environment =
+  [ DomainHandlerCoverage
+      { domainHandlerCoverageSend = currentSend
+      , domainHandlerCoverageHandlers = map (show . Runtime.handlerBindingName) handlers
+      , domainHandlerCoverageCovered = not (null handlers)
+      }
+  | currentSend <- nativeAppPlanSendBoundaries plan
+  , let handlers = frameworkHandlersFor (Runtime.runtimeEffectHandlers environment) currentSend
+  ]
+
+nativeHandlersFor :: Native.HandlerRegistry -> SendName -> [Native.HandlerBinding]
+nativeHandlersFor registry currentSend =
   [ binding
-  | binding <- handlerRegistryBindings registry
-  , handlerBindingSend binding == currentSend
+  | binding <- Native.handlerRegistryBindings registry
+  , Native.handlerBindingSend binding == currentSend
+  ]
+
+frameworkHandlersFor :: Runtime.HandlerRegistry -> SendName -> [Runtime.HandlerBinding]
+frameworkHandlersFor registry currentSend =
+  [ binding
+  | binding <- Runtime.handlerRegistryBindings registry
+  , Runtime.handlerBindingSend binding == currentSend
   ]
 
 plannedRuntimeFacts :: NativeAppPlan -> [WorkflowFact]
