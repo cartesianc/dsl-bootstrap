@@ -235,6 +235,20 @@ runtime-diagnosis-witness: passed
 constraint-proof-witness: passed
 ```
 
+## Self-Bootstrap Gate
+
+Every framework change must compile and validate itself before it is considered complete.
+
+The explicit gate is documented in [docs/SELF_BOOTSTRAP_GATE.md](docs/SELF_BOOTSTRAP_GATE.md).
+
+Current status:
+
+```text
+evidence fixed point: complete
+artifact rebuild self-hosting: next gate
+old framework replacement: blocked until artifact rebuild passes
+```
+
 ## Next Work
 
 Stage 5 should restore automatic registry/codegen for plugins and effects. After that, artifact rebuild can compile a generated package and compare it with the current evidence fixed point.
