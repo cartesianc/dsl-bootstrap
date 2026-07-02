@@ -53,10 +53,10 @@ AST 表达 framework core 的能力结构；执行细节留给 bootstrap runtime
 AST 中可以出现：
 
 ```text
-workflow grouping
-capability grouping
-final atomic facts
-control-flow shape
+workflow 分组
+capability 分组
+最终原子 facts
+control-flow 形态
 wait gates
 hanging hooks
 ```
@@ -64,17 +64,17 @@ hanging hooks
 AST 中不应该出现：
 
 ```text
-module scan implementation detail
-handler lookup detail
-intermediate catalog facts
-temporary classification facts
-proof construction steps that are not final capabilities
+module scan 实现细节
+handler lookup 细节
+中间 catalog facts
+临时 classification facts
+proof 构造步骤
 runtime artifact plumbing
 ```
 
 这些中间事实进入 effect theory closure。
 
-## 3. Leaf Fact 规则
+## 3. 叶子 Fact 规则
 
 AST leaf fact 应该是最终原子能力。
 
@@ -139,7 +139,7 @@ elaboration contract
 ValidateRuntimeFlow
 ```
 
-## 5. Hanging
+## 5. Hanging 控制结构
 
 Hanging 只表达附加控制结构。
 

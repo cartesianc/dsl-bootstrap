@@ -1,47 +1,60 @@
-# TODO
+# 待办
 
-当前目标是把 `new-framework-core` 收束成真正的 framework compiler/core，并让 `domain-app` 作为外部使用者表达 core 自身。
+当前目标：把 `new-framework-core` 收束成真正的 framework compiler/core，让 `domain-app` 作为外部使用者表达 core 自身。
 
-## 1. 保持两包边界
+## 1. 维持双包边界
 
 当前形态：
 
 ```text
 new-framework-core
-  owns Bootstrap.*, Domain.*, native runtime, report, core CLIs
+  拥有 Bootstrap.*、Domain.*、native runtime、report、core CLI
 
 domain-app
-  depends on new-framework-core
-  owns only SelfDomainApp
-  runs domain-app-self-smoke
+  依赖 new-framework-core
+  只拥有 SelfDomainApp
+  运行 domain-app-self-smoke
 ```
 
-后续不要把 core 实现搬回 `domain-app`。
+后续规则：
+
+```text
+core implementation 留在 new-framework-core
+domain-app 保持外部使用者身份
+旧 generated plugin/effect registry 不进入 production surface
+旧 current/demo alias 不进入 production surface
+旧 Framework.* facade 不进入 production import
+compatibility/migration layer 需要单独 gate
+```
 
 ## 2. Native Proof Surface
 
 继续补全：
 
 ```text
-fact closure
-send contract closure
-take/make closure
-duplicate producer detection
-handler coverage
-transform coverage
+fact 闭包
+send contract 闭包
+take/make 闭包
+重复 producer 检测
+handler 覆盖
+transform 覆盖
 boundary policy evidence
 runtime final fact evidence
 ```
 
-外部 SMT solver 仍然是可选层；没有 solver 时，Haskell proof evidence 通过即可。
+外部 SMT solver 是可选层。没有 solver 时，Haskell proof evidence 通过即可。需要强校验时运行：
+
+```powershell
+stack exec constraint-proof-witness -- --smt=required
+```
 
 ## 3. Fixed Point
 
-下一步要加真正的固定点检查：
+下一步补强固定点检查：
 
 ```text
-Stage 0 build report
-Stage 1 self report
+Stage 0 构建报告
+Stage 1 自证报告
 Stage 0 / Stage 1 evidence diff
 ```
 
@@ -51,10 +64,10 @@ Stage 0 / Stage 1 evidence diff
 domain map
 AST facts
 effect facts
-runtime fact closure
+runtime fact 闭包
 boundary evidence
 proof evidence
-rendered report
+渲染报告
 ```
 
 ## 4. Report 格式
@@ -62,27 +75,27 @@ rendered report
 当前 `Bootstrap.Report.FrameworkCoreReport` 已覆盖：
 
 ```text
-declared facts
-planned runtime facts
-final runtime facts
+声明 facts
+计划 runtime facts
+最终 runtime facts
 send boundaries
-handlers used
-artifacts produced
-declared facts outside runtime closure
+已使用 handlers
+已产生 artifacts
+runtime 闭包外的声明 facts
 ```
 
-后续要补：
+后续补充：
 
 ```text
 JSON / machine-readable report
-Stage report
-fixed point report
-kernel update summary
+Stage 报告
+fixed point 报告
+kernel 更新摘要
 ```
 
 ## 5. Runtime 拆分
 
-`Bootstrap.Runtime` 现在仍然偏大。建议按行为拆：
+`Bootstrap.Runtime` 仍偏大。建议按行为拆分：
 
 ```text
 Bootstrap.Runtime.Types
@@ -95,7 +108,15 @@ Bootstrap.Runtime.SourceGraph
 Bootstrap.Runtime.Report
 ```
 
-先纯提取类型和函数，不改语义；每一步都用 build-watch 编译。
+拆分顺序：
+
+```text
+1. 提取类型
+2. 提取纯函数
+3. 保持现有语义
+4. 每一步运行 stack build
+5. 关键语义运行 workflow-semantics-witness
+```
 
 ## 6. 文档规则
 
@@ -103,10 +124,19 @@ Bootstrap.Runtime.Report
 
 ```text
 new-framework-core 是 core/compiler
-domain-app 是使用者
-不恢复旧业务 DomainApp
-不恢复 generated plugin/effect registry
-不恢复 current/demo alias
-不把旧 Framework.* facade 当 production import
-不增加 compatibility/migration layer
+domain-app 是外部使用者
+旧业务 DomainApp 保留为历史参照
+旧 generated plugin/effect registry 保留为历史参照
+旧 current/demo alias 保留为历史参照
+旧 Framework.* facade 不进入 production import
+```
+
+写法规则：
+
+```text
+使用短句
+直接说明状态
+先写命令和规则
+减少解释性套话
+避免对照式套话
 ```

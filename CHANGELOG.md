@@ -1,25 +1,30 @@
-# Changelog
+# 变更记录
 
-## Unreleased
+## 未发布
 
-### Changed
+### 已变更
 
-- Split the current build surface into `new-framework-core` and `domain-app`.
-- Moved the framework-core expression/compiler implementation into `new-framework-core`.
-- Removed the old `framework-core` source tree from the active architecture.
-- Reworked `domain-app` into a minimal self domain app whose content is `framework-core`.
-- Updated Stack, Cabal project, and HLS cradle configuration to build both packages.
-- Updated native source roots so boundary/import checks read `new-framework-core/src` instead of the old `framework-core/src`.
-- Rewrote the main architecture docs around the new two-package boundary.
-- Reworked the README into a usage guide and mapped HLS cradle entries to concrete executables.
+- 当前构建面拆成 `new-framework-core` 和 `domain-app`。
+- framework-core 表达层和 compiler implementation 移入 `new-framework-core`。
+- 旧 `framework-core` 源码树从活动架构移除。
+- `domain-app` 收敛为最小 self domain app，内容指向 `framework-core`。
+- Stack、Cabal project、HLS cradle 配置已覆盖两个包。
+- native source roots 改为读取 `new-framework-core/src`。
+- 主架构文档按双包边界重写。
+- README 改为使用指南，并把 HLS cradle entry 对齐到具体 executable。
+- workflow runtime 语义补齐真实 `parallel`、`race`、`fallback`、`choice`、`FactAny`、`loop`、`callback`、`middleware`、`suspense`。
+- SMT solver 发现逻辑支持 `Z3_EXE`、`CVC5_EXE` 和 `PATH`。
+- `constraint-proof-witness` 支持 `--smt=off|auto|required` 和 `FRAMEWORK_SMT`。
 
-### Added
+### 已新增
 
-- Added `domain-app-self-smoke`, which verifies the external domain app can compile and run the framework-core self report through `new-framework-core`.
-- Added `Framework.SelfArtifact` and `self-artifact-witness` for the Stage 6 artifact materialization gate.
-- Added `CoreArtifactEffect` and self-artifact evidence facts to the framework-core self expression.
+- 新增 `domain-app-self-smoke`，验证外部 domain app 可编译并运行 framework-core self report。
+- 新增 `Framework.SelfArtifact` 和 `self-artifact-witness`，用于 Stage 6 artifact 物化 gate。
+- 新增 `CoreArtifactEffect` 和 self-artifact evidence facts。
+- 新增 `workflow-semantics-witness`，覆盖 workflow runtime 核心语义。
+- 新增 `RuntimeSnapshot`、`runtimeSnapshot`、`renderRuntimeSnapshot`。
 
-### Removed
+### 已移除
 
-- Removed core implementation ownership from `domain-app`.
-- Kept old oracle smoke executables out of the current build surface.
+- `domain-app` 不拥有 core implementation。
+- 旧 oracle smoke executable 不进入当前构建面。

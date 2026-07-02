@@ -1,6 +1,6 @@
 # 包边界
 
-当前 build surface 有两个包：
+当前构建面有两个包：
 
 ```text
 new-framework-core
@@ -66,9 +66,9 @@ domain-app:self-framework-core
 domain-app-self-smoke
 ```
 
-## 3. Source Catalog
+## 3. 源码目录
 
-native import graph 当前扫描：
+native import graph 当前扫描目录：
 
 ```text
 new-framework-core/src
@@ -83,9 +83,9 @@ new-framework-core/src
 
 这保证当前 core 不再从旧实现目录偷读任何源码。
 
-## 4. Import 规则
+## 4. 导入规则
 
-production source 允许：
+production source 允许导入：
 
 ```text
 Bootstrap.*
@@ -96,7 +96,7 @@ Prelude
 base libraries
 ```
 
-production source 禁止：
+production source 禁止导入：
 
 ```text
 Framework.Workflow
@@ -110,7 +110,7 @@ old generated registry modules
 
 `Bootstrap.CoreSurface` 里的历史 `Framework.*` 字符串是 catalog data；它们不参与 import 边界。
 
-## 5. Setup 规则
+## 5. 构建入口规则
 
 `Setup.hs` 保持最小：
 
@@ -118,4 +118,4 @@ old generated registry modules
 main = defaultMain
 ```
 
-任何未来 generator 都必须生成 framework expression 代码，不能生成旧业务 registries。
+未来 generator 必须生成 framework expression 代码，旧业务 registries 禁止生成。

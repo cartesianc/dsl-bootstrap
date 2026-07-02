@@ -1,20 +1,20 @@
-# Self-Bootstrap Gate
+# 自举 Gate
 
-This repository treats framework changes as bootstrap changes.
+本仓库把 framework 改动视为 bootstrap 改动。
 
-Every new framework version must prove itself before it can replace an older framework version.
+每个新 framework 版本都要先完成自证，再参与替换或发布。
 
-## Current Status
+## 当前状态
 
-The current implementation has reached evidence fixed point:
+当前实现已经达到 evidence fixed point：
 
 ```text
-Stage 0: Bootstrap.* direct framework-core report
-Stage 1: Framework.* facade/domain framework-core report
-Result: fixed-point-smoke reports diffs: 0
+Stage 0: Bootstrap.* 直接生成 framework-core report
+Stage 1: Framework.* facade/domain 生成 framework-core report
+Result: fixed-point-smoke 输出 diffs: 0
 ```
 
-Registry/codegen is now expressed as framework semantics:
+registry/codegen 已进入 framework semantics：
 
 ```text
 Framework.RegistryCodegen
@@ -23,7 +23,7 @@ RegistryCodegenEvidencePassedFact
 domain-app registry-codegen semantic evidence
 ```
 
-Artifact materialization is now an implemented witness:
+artifact 物化已有 witness：
 
 ```text
 Framework.SelfArtifact
@@ -33,17 +33,17 @@ self-artifact-witness
 .generated/stage1-framework
 ```
 
-The checked-in framework source is the core source. The artifact tree is the isolated replacement candidate built from that source.
+已提交源码就是 core source。artifact tree 是从当前源码生成的隔离替换候选。
 
-## Rule
+## 规则
 
-No framework change is complete until the framework compiles and validates itself.
+framework 改动完成前必须通过编译和自证。
 
-No old framework replacement is allowed until `self-artifact-witness` passes for the target commit.
+旧 framework 替换前必须在目标提交运行 `self-artifact-witness` 并通过。
 
-## Required Gate For Every Framework Change
+## 每次 Framework 改动的 Gate
 
-Run these commands before committing framework code:
+提交前运行：
 
 ```powershell
 stack build
@@ -62,7 +62,7 @@ stack exec registry-codegen-witness
 stack exec self-artifact-witness
 ```
 
-Required results:
+通过结果：
 
 ```text
 domain-app-report: status passed
@@ -76,79 +76,79 @@ registry-codegen-witness: passed
 self-artifact-witness: passed
 ```
 
-Run boundary checks:
+边界检查：
 
 ```powershell
 rg -n "^import\s+Framework\." new-framework-core/src/Bootstrap
 rg -n "^import\s+Bootstrap\." domain-app/src domain-app/app
 ```
 
-Both commands must return no matches.
+两个命令应无输出。
 
-## Artifact Materialization Gate
+## Artifact 物化 Gate
 
-Artifact materialization is mandatory before replacing any old framework source.
+替换旧 framework source 前必须物化 artifact。
 
-The gate is:
+gate 步骤：
 
 ```text
-1. Run stack exec self-artifact-witness from the target commit.
-2. The witness creates .generated/stage1-framework.
-3. The Stage 1 artifact runs stack build.
-4. The Stage 1 artifact runs bootstrap-report.
-5. The Stage 1 artifact runs fixed-point-smoke.
-6. The Stage 1 artifact runs constraint-proof-witness.
-7. The Stage 1 artifact runs workflow-semantics-witness.
-8. The Stage 1 artifact runs domain-app-report.
-9. The Stage 1 artifact runs registry-codegen-witness.
+1. 在目标提交运行 stack exec self-artifact-witness。
+2. witness 创建 .generated/stage1-framework。
+3. Stage 1 artifact 运行 stack build。
+4. Stage 1 artifact 运行 bootstrap-report。
+5. Stage 1 artifact 运行 fixed-point-smoke。
+6. Stage 1 artifact 运行 constraint-proof-witness -- --smt=auto。
+7. Stage 1 artifact 运行 workflow-semantics-witness。
+8. Stage 1 artifact 运行 domain-app-report。
+9. Stage 1 artifact 运行 registry-codegen-witness。
 ```
 
-The old framework remains a reference and rollback point until all nine steps pass.
+九步全部通过后，旧 framework 保留为参考和回滚点。
 
-## Replacement Gate
+## 替换 Gate
 
-Replace old framework code only after:
+替换旧 framework 代码前确认：
 
 ```text
-artifact materialization gate: passed
-boundary checks: passed
+artifact 物化 gate: passed
+边界检查: passed
 self-domain report: passed
 fixed-point evidence: diffs 0
 domain-app frontend entry: passed
 git status: clean after commit
 ```
 
-Replacement commit requirements:
+替换提交要求：
 
 ```text
-commit 1: introduce or update the new self-validated framework
-commit 2: replace the old framework with the validated new framework
+commit 1: 引入或更新已自证 framework
+commit 2: 用已验证 framework 替换旧 framework
 ```
 
-If artifact materialization fails, keep the old framework unchanged.
+artifact materialization 失败时，保留旧 framework source。
 
-## Stage Plan
+## Stage 计划
 
 ```text
-Stage 5: automatic registry/codegen for plugins and effects
-Stage 6: artifact materialization self-hosting
-Stage 7: validated replacement of old framework source
+Stage 5: plugins/effects 自动 registry/codegen
+Stage 6: artifact 物化自托管
+Stage 7: 已验证 framework source 替换
 ```
 
-Stage 5 status:
+Stage 5 状态：
 
 ```text
-registry/codegen is declared in framework-core AST/effect semantics
-domain-app plugin/effect registries have generated-line semantic evidence
-registry-codegen-witness is a host witness for that evidence
+registry/codegen 已声明在 framework-core AST/effect semantics 中
+domain-app plugin/effect registries 已有 generated-line semantic evidence
+registry-codegen-witness 是对应 host witness
 ```
 
-Stage 6 status:
+Stage 6 状态：
 
 ```text
-self-artifact manifest is declared in framework-core AST/effect semantics
-self-artifact-witness materializes .generated/stage1-framework
-stage1 framework artifact compiles and validates its own reports
+self-artifact manifest 已声明在 framework-core AST/effect semantics 中
+self-artifact-witness 物化 .generated/stage1-framework
+stage1 framework artifact 可编译并验证自身 reports
 ```
 
-Each later stage must preserve the required gate above.
+后续 stage 必须保留本文件列出的 gate。
