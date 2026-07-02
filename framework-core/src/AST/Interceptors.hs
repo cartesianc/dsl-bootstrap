@@ -3,19 +3,20 @@ module AST.Interceptors
   , LogEvent (..)
   ) where
 
-data Interceptor
-  = ConfigurationMiddleware
-  | BootMiddleware
-  | RuntimeMiddleware
-  | LoggingMiddleware
-  | UserFlowMiddleware
-  | ReportMiddleware
-  | ShutdownMiddleware
-  deriving (Eq, Show)
+newtype Interceptor = Interceptor
+  { interceptorText :: String
+  }
+  deriving (Eq)
 
-data LogEvent
-  = AppStarted
-  | RuntimePrepared
-  | AppFinished
-  | UserRemembered
-  | ReportFinished
+instance Show Interceptor where
+  show =
+    interceptorText
+
+newtype LogEvent = LogEvent
+  { logEventText :: String
+  }
+  deriving (Eq)
+
+instance Show LogEvent where
+  show =
+    logEventText

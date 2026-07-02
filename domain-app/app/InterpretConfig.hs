@@ -2,16 +2,19 @@ module InterpretConfig
   ( currentInterpreter
   ) where
 
-import AST.AppBlueprint
+import Domain.Runtime
+  ( domainRuntimeEffectEnvironment
+  )
+import Framework.Workflow
   ( AppBlueprint
   )
-import Effects.EffectTheory
+import Framework.Effect
   ( EffectTheory
   )
-import Interpreter.Runtime
-  ( runBlueprintWithEffects
+import Framework.Background
+  ( runBlueprintWithEffectEnvironment
   )
 
 currentInterpreter :: AppBlueprint -> EffectTheory -> IO ()
 currentInterpreter ast effects =
-  runBlueprintWithEffects effects ast
+  runBlueprintWithEffectEnvironment domainRuntimeEffectEnvironment effects ast

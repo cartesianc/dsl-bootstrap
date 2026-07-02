@@ -7,41 +7,27 @@ import Data.List
   )
 
 import qualified Domain.AppBlueprint as AppBlueprint
-import Core.App
-  ( renderAppError
-  )
-import Core.App.Boundary
-  ( checkMinimalCore
-  )
-import Core.Bootstrap
+import Framework.Background
   ( checkCoreBoundaryWithImportGraph
+  , checkDefaultElaborationContract
+  , checkDefaultLanguageSpec
+  , checkMinimalCore
+  , checkPackageImportGraph
   , defaultCoreBoundary
+  , defaultElaborationConstraints
+  , defaultLanguageConstraints
+  , defaultPackageImportPolicy
+  , proveMinimalCoreWithAvailableSolver
+  , readPackageImportGraph
+  , renderAppError
   , renderCoreBoundaryError
-  )
-import Core.Effect.Constraint.SMT
-  ( SmtProposition (..)
+  , renderElaborationError
+  , renderLanguageError
+  , renderPackageImportError
+  , smtLibForProposition
+  , SmtProposition (..)
   , SmtResult (..)
   , SmtStatus (..)
-  , proveMinimalCoreWithAvailableSolver
-  , smtLibForProposition
-  )
-import Core.Language.Constraint
-  ( defaultLanguageConstraints
-  )
-import Core.Language.Elaboration
-  ( checkDefaultElaborationContract
-  , defaultElaborationConstraints
-  , renderElaborationError
-  )
-import Core.Language.Validation
-  ( checkDefaultLanguageSpec
-  , renderLanguageError
-  )
-import Core.ImportGraph
-  ( checkPackageImportGraph
-  , defaultPackageImportPolicy
-  , readPackageImportGraph
-  , renderPackageImportError
   )
 import qualified Effects.Theory as EffectsTheory
 

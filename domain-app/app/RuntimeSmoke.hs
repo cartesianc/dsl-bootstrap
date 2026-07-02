@@ -2,7 +2,7 @@ module Main
   ( main
   ) where
 
-import Interpreter.Runtime.Smoke
+import Runtime.Smoke
   ( runRuntimeBoundarySmoke
   )
 

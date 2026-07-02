@@ -378,7 +378,7 @@ renderEffectTheory effectExports =
       , "  ( effectTheory"
       , "  ) where"
       , ""
-      , "import Effects.EffectTheory"
+      , "import Framework.Effect"
       , "  ( EffectTheory"
       , "  , theory"
       , "  )"

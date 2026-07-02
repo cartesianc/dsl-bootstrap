@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module Core.Effect.Semantics
   ( BoundarySource (..)
   , EffectBoundary (..)
@@ -41,6 +43,8 @@ import Effects.EffectTheory
   , SendSignature (..)
   , TransformName
   , TypeName (..)
+  , pattern NoInput
+  , pattern Unit
   )
 
 data EffectSemantics = EffectSemantics

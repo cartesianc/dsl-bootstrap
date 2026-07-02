@@ -2,6 +2,8 @@ module Effects.Report
   ( reportEffect
   ) where
 
+import Domain.EffectVocabulary
+import Domain.Vocabulary
 import Framework.Effect
 
 -- effect: reportEffect

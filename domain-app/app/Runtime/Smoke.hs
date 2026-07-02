@@ -1,6 +1,7 @@
-{-# LANGUAGE GADTs #-}
+﻿{-# LANGUAGE GADTs #-}
+{-# LANGUAGE PatternSynonyms #-}
 
-module Interpreter.Runtime.Smoke
+module Runtime.Smoke
   ( runAlternativeWorkflowSmoke
   , runHangingWorkflowSmoke
   , runRaceWorkflowSmoke
@@ -14,103 +15,28 @@ import Control.Exception
   )
 
 import Blueprint
-import qualified Core.Architecture as Architecture
-import Core.Architecture.Recursion
-  ( gpreproHanging
-  , gpreproWorkflow
+import Domain.EffectVocabulary
+import Domain.Runtime
+  ( ReportInputValue (..)
+  , UserNameValue (..)
+  , domainRuntimeEffectEnvironment
+  , pattern ReportInputTag
+  , pattern UserNameTag
   )
-import Core.Effect.Semantics
-  ( BoundarySource (..)
-  , EffectBoundary (..)
-  , EffectSemantics (..)
-  , PipeTake (..)
-  , TakeMakeRule (..)
-  , TakeMakeSource (..)
-  , TransformContract (..)
-  , TransformUse (..)
-  , effectSemantics
-  , takeMakeRuleFor
-  )
-import Core.Workflow.Eff
-  ( compileHangingEff
-  , compileWorkflowEff
-  , interpretHangingEff
-  , interpretWorkflowEff
-  )
-import Effects.EffectTheory
+import qualified Framework.Workflow as Architecture
+import Framework.Background
+import Framework.Effect
   ( EffectTheory
+  , pattern NoInput
+  , pattern Unit
   , theory
   )
-import qualified Effects.EffectTheory as EffectTheory
-import Effects.Names
-  ( EffectName (UserEffect)
-  , HandlerName (..)
-  , SendName (AskUserName, HandleUserNameError, RememberUser)
-  , TransformName (UserNameToReportInput)
-  , TypeName (NoInput, ReportInput, ReportOutput, Unit, UserName)
-  )
+import qualified Framework.Effect as EffectTheory
 import Effects.User
   ( userEffect
   )
-import Interpreter.Runtime.Algebra
-  ( runtimeAlgebra
-  )
-import Interpreter.Runtime.Contextware
-  ( contextwareWithEffectEnvironment
-  )
-import Interpreter.Runtime.Diagnosis
-  ( buildFailureDiagnosis
-  )
-import Interpreter.Runtime.Hanging.FreeMonoid
-  ( runHanging
-  )
-import Interpreter.Runtime.Handlers
-  ( defaultRuntimeEffectEnvironment
-  , emptyHandlerRegistry
-  , runtimeEffectEnvironment
-  )
-import Interpreter.Runtime.Monad
-  ( defaultRuntimeEnv
-  , getRuntimeState
-  , runRuntimeM
-  , runRuntimeMOrThrow
-  , throwRuntimeError
-  , withRuntimeCallbacks
-  )
-import Interpreter.Runtime.Types
-  ( HandlerBinding (..)
-  , HandlerInput (..)
-  , HandlerRegistry (..)
-  , HandlerResult (..)
-  , RuntimeTypedValue (..)
-  , Runtime (..)
-  , RuntimeCallback (..)
-  , RuntimeCallbackEvent (..)
-  , RuntimeComponentEvent (..)
-  , RuntimeComponentStatus (..)
-  , RuntimeEffectEnvironment
-  , RuntimeError (..)
-  , RuntimeFactClaim (..)
-  , RuntimeFactFailure (..)
-  , RuntimeFactStatus (..)
-  , RuntimeFailureDiagnosis (..)
-  , RuntimeDiagnosisBlocker (..)
-  , RuntimeDiagnosisNode (..)
-  , RuntimeDiagnosisProbe (..)
-  , RuntimeDiagnosisProbeStatus (..)
-  , RuntimeHandler (..)
-  , RuntimeMiddlewareEvent (..)
-  , RuntimeResult (..)
-  , RuntimeSuspenseEvent (..)
-  , RuntimeValue (..)
-  , ReportInputValue (..)
-  , SomeRuntimeValue (..)
-  , UserNameValue (..)
-  , ValueTag (..)
-  , WorkflowProgram
-  , emptyRuntime
-  , typedValueFor
-  )
+
+type RuntimeWorkflowProgram = RuntimeM ()
 
 runSimpleWorkflowSmoke :: IO ()
 runSimpleWorkflowSmoke = do
@@ -611,7 +537,7 @@ runSmoke label workflow = do
     Left exception ->
       putStrLn ("[smoke] failed " ++ show (exception :: SomeException))
 
-runExpectedRuntimeFailure :: String -> RuntimeError -> WorkflowProgram -> IO ()
+runExpectedRuntimeFailure :: String -> RuntimeError -> RuntimeWorkflowProgram -> IO ()
 runExpectedRuntimeFailure label expectedError program =
   runExpectedRuntimeFailureWith label expectedError (const True) program
 
@@ -619,7 +545,7 @@ runExpectedRuntimeFailureWithTrace ::
   String ->
   RuntimeError ->
   String ->
-  WorkflowProgram ->
+  RuntimeWorkflowProgram ->
   IO ()
 runExpectedRuntimeFailureWithTrace label expectedError expectedTrace =
   runExpectedRuntimeFailureWith label expectedError (elem expectedTrace . runtimeTrace)
@@ -628,7 +554,7 @@ runExpectedRuntimeFailureWith ::
   String ->
   RuntimeError ->
   (Runtime -> Bool) ->
-  WorkflowProgram ->
+  RuntimeWorkflowProgram ->
   IO ()
 runExpectedRuntimeFailureWith label expectedError statePredicate program = do
   putStrLn ("[smoke] boundary " ++ label)
@@ -660,7 +586,7 @@ runExpectedRuntimeFailureWith label expectedError statePredicate program = do
             )
         )
 
-runExpectedRuntimeTrace :: String -> String -> WorkflowProgram -> IO ()
+runExpectedRuntimeTrace :: String -> String -> RuntimeWorkflowProgram -> IO ()
 runExpectedRuntimeTrace label expectedTrace program = do
   putStrLn ("[smoke] boundary " ++ label)
   result <- runRuntimeM defaultRuntimeEnv emptyRuntime program
@@ -689,7 +615,7 @@ runExpectedRuntimeTrace label expectedTrace program = do
             )
         )
 
-runExpectedRuntimeState :: String -> (Runtime -> Bool) -> WorkflowProgram -> IO ()
+runExpectedRuntimeState :: String -> (Runtime -> Bool) -> RuntimeWorkflowProgram -> IO ()
 runExpectedRuntimeState label statePredicate program = do
   putStrLn ("[smoke] boundary " ++ label)
   result <- runRuntimeM defaultRuntimeEnv emptyRuntime program
@@ -716,19 +642,19 @@ runExpectedRuntimeState label statePredicate program = do
             )
         )
 
-programPlain :: WorkflowComponent -> WorkflowProgram
+programPlain :: WorkflowComponent -> RuntimeWorkflowProgram
 programPlain =
   gpreproWorkflow compileWorkflowEff interpretWorkflowEff runtimeAlgebra
 
-programWithEffects :: EffectTheory -> WorkflowComponent -> WorkflowProgram
+programWithEffects :: EffectTheory -> WorkflowComponent -> RuntimeWorkflowProgram
 programWithEffects =
-  programWithEnvironment defaultRuntimeEffectEnvironment
+  programWithEnvironment domainRuntimeEffectEnvironment
 
 programWithEnvironment ::
   RuntimeEffectEnvironment ->
   EffectTheory ->
   WorkflowComponent ->
-  WorkflowProgram
+  RuntimeWorkflowProgram
 programWithEnvironment environment effects =
   gpreproWorkflow
     compileWorkflowEff
@@ -977,20 +903,20 @@ smokeHanging =
     ]
 
 smokeMiddlewareRuntime ::
-  Architecture.Hanging (Architecture.HangingAction WorkflowFact Interceptor WorkflowProgram)
+  Architecture.Hanging (Architecture.HangingAction WorkflowFact Interceptor RuntimeWorkflowProgram)
 smokeMiddlewareRuntime =
   Architecture.hanging
     [ Architecture.middleware ReportMiddleware smokeMiddlewareBody
     ]
 
 smokeMiddlewareFailureRuntime ::
-  Architecture.Hanging (Architecture.HangingAction WorkflowFact Interceptor WorkflowProgram)
+  Architecture.Hanging (Architecture.HangingAction WorkflowFact Interceptor RuntimeWorkflowProgram)
 smokeMiddlewareFailureRuntime =
   Architecture.hanging
     [ Architecture.middleware ReportMiddleware smokeMiddlewareFailureBody
     ]
 
-smokeMiddlewareBody :: WorkflowProgram
+smokeMiddlewareBody :: RuntimeWorkflowProgram
 smokeMiddlewareBody = do
   runtime <- getRuntimeState
   if runtimeMiddlewareStack runtime == [ReportMiddleware]
@@ -1003,7 +929,7 @@ smokeMiddlewareBody = do
             )
         )
 
-smokeMiddlewareFailureBody :: WorkflowProgram
+smokeMiddlewareFailureBody :: RuntimeWorkflowProgram
 smokeMiddlewareFailureBody = do
   runtime <- getRuntimeState
   if runtimeMiddlewareStack runtime == [ReportMiddleware]
@@ -1058,7 +984,7 @@ countOccurrences item =
 typedUserNameText :: Runtime -> Maybe String
 typedUserNameText runtime =
   case typedValueFor UserNameTag runtime of
-    Just (RuntimeTypedValue UserNameTag (UserNameValue text)) ->
-      Just text
+    Just currentValue ->
+      Just (runtimeTypedValueText currentValue)
     Nothing ->
       Nothing

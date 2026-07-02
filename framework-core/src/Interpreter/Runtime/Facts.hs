@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module Interpreter.Runtime.Facts
   ( claimFact
   , factExprAvailable
@@ -34,6 +36,8 @@ import Core.Effect.Semantics
   )
 import Effects.Names
   ( TypeName (..)
+  , pattern NoInput
+  , pattern Unit
   )
 import Interpreter.Runtime.Monad
   ( modifyRuntimeState

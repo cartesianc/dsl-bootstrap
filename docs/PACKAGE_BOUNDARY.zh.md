@@ -36,6 +36,7 @@ framework-core/
 ```text
 workflow AST 基础结构
 AppBlueprint 类型
+generic fact/name/interceptor carrier
 EffectTheory DSL 和 effect semantics
 validation
 AppPlan build
@@ -57,6 +58,12 @@ Framework.Background
 ```
 
 `Framework.Workflow` 是 framework 级 workflow facade。当前 domain 为了保留具体 `WorkflowFact`、`WorkflowName`、`Interceptor` 的简洁写法，另有 `domain-app/src/Blueprint.hs` 作为业务 facade。
+业务词汇不放在 `framework-core`。当前业务的 workflow/effect 名称在：
+
+```text
+domain-app/src/Domain/Vocabulary.hs
+domain-app/src/Domain/EffectVocabulary.hs
+```
 
 ## domain-app
 
@@ -69,6 +76,9 @@ domain-app/
   app/
   src/Blueprint.hs
   src/Domain/AppBlueprint.hs
+  src/Domain/Vocabulary.hs
+  src/Domain/EffectVocabulary.hs
+  src/Domain/Runtime.hs
   src/Plugins
   src/Effects
 ```
@@ -77,10 +87,11 @@ domain-app/
 
 ```text
 当前业务蓝图
+当前业务 workflow/effect vocabulary
+当前业务 runtime handler / transform 绑定
 workflow plugins
 effect units
 effect theory registry
-runtime smoke
 main / smoke executables
 ```
 
@@ -127,9 +138,11 @@ Core.*
 Interpreter.*
 Framework.Background
 Effects.EffectTheory
+Effects.Names
+AST.*
 ```
 
-`domain-app/app/InterpretConfig.hs` 是应用入口到 runtime 的薄绑定，可以导入 `Interpreter.Runtime`。普通 workflow/effect 声明不走这条路。
+`domain-app/app/InterpretConfig.hs` 是应用入口到 runtime 的薄绑定，导入 `Framework.Background` 和 `Domain.Runtime`。普通 workflow/effect 声明不走这条路。
 
 ## 自动注册
 

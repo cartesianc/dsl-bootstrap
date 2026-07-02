@@ -30,15 +30,23 @@ module Blueprint
   , race
   , choice
   , ChoiceKey (..)
-  , module AST.Vocabulary
+  , Interceptor (..)
+  , LogEvent (..)
+  , WorkflowFact (..)
+  , WorkflowName (..)
+  , module Domain.Vocabulary
   ) where
 
-import AST.Vocabulary
-import Core.Architecture
+import Domain.Vocabulary
+import Framework.Workflow
   ( ChoiceKey (..)
+  , Interceptor (..)
+  , LogEvent (..)
   , Workflow
+  , WorkflowFact (..)
+  , WorkflowName (..)
   )
-import qualified Core.Architecture as Architecture
+import qualified Framework.Workflow as Architecture
 
 type WorkflowComponent = Workflow WorkflowFact Interceptor
 

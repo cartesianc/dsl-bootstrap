@@ -26,6 +26,16 @@ framework-core -> domain-app  禁止
 
 `stack build` 负责强制 package 依赖方向，`core-boundary-smoke` 会读取真实 import graph 补充检查。
 
+## 构建监听
+
+长编译或排错时用 watcher 跑命令：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-watch.ps1 -CommandLine "stack build --no-terminal"
+```
+
+脚本会实时写 `.tmp-build-watch.log`，看到 error 会先收一小段上下文再停进程；长时间没有输出会按 stall 停下来。
+
 ## 入口
 
 [domain-app/app/Main.hs](domain-app/app/Main.hs)
@@ -86,7 +96,8 @@ runtime-adapter
 
 边界检查项：未知依赖、环依赖、pure core 反向依赖 runtime、package 反向 import、真实 import 越过 slice 依赖闭包。
 
-领域词汇位置：`framework-core/src/AST` 和 `framework-core/src/Effects/Names.hs`。当前 vocabulary 仍属于 core 语言层，具体业务蓝图放在 `domain-app`。
+领域词汇位置：`domain-app/src/Domain/Vocabulary.hs` 和 `domain-app/src/Domain/EffectVocabulary.hs`。
+`framework-core/src/AST`、`framework-core/src/Effects/Names.hs` 只保留 `WorkflowFact`、`WorkflowName`、`EffectName`、`SendName` 这类 generic carrier。
 
 详细边界见 [docs/PACKAGE_BOUNDARY.zh.md](docs/PACKAGE_BOUNDARY.zh.md)。
 
@@ -456,12 +467,12 @@ trace 写入 RuntimeState.runtimeTrace，并保留控制台输出
 ```text
 framework-core/      framework-core package
   src/Framework/     前台/后台 facade
-  src/AST/           AppBlueprint 类型和当前 core vocabulary
+  src/AST/           AppBlueprint 类型和 generic workflow carrier
   src/Core/          AST 核心、LanguageSpec、ElaborationContract、AppPlan、effect semantics、workflow lowering
   src/Interpreter/   runtime algebra、contextware、recursion model
 domain-app/          domain-app package
   app/               入口、AST、EffectTheory、解释配置、smoke
-  src/Domain/        当前业务蓝图
+  src/Domain/        当前业务蓝图、业务词汇、runtime handler/transform 绑定
   src/Plugins/       workflow 插件
   src/Effects/       effect claim、fact producer、transform、external boundary
 docs/                DSL 使用说明

@@ -2,7 +2,7 @@ module Main
   ( main
   ) where
 
-import Core.Boundary.Frontend
+import Framework.Background
   ( checkFrontendImports
   , defaultFrontendBoundaryPolicy
   , extractFrontendImports

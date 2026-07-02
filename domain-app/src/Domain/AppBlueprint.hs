@@ -7,7 +7,7 @@ module Domain.AppBlueprint
   , hooks
   ) where
 
-import AST.AppBlueprint
+import Framework.Workflow
   ( App
   , AppBlueprint (..)
   , AppHanging

@@ -13,10 +13,8 @@ module Interpreter.Runtime.Handlers
   ) where
 
 import Effects.Names
-  ( HandlerName (..)
-  , SendName (..)
-  , TransformName (..)
-  , TypeName (..)
+  ( SendName
+  , TransformName
   )
 import Interpreter.Runtime.Types
   ( HandlerBinding (..)
@@ -26,24 +24,14 @@ import Interpreter.Runtime.Types
   , Runtime
   , RuntimeEffectEnvironment (..)
   , RuntimeHandler (..)
-  , RuntimeTransform (..)
-  , RuntimeValue (..)
+  , RuntimeTransform
   , TransformBinding (..)
   , TransformRegistry (..)
-  , ReportInputValue (..)
-  , UserNameValue (..)
-  , ValueTag (..)
   )
 
 defaultHandlerRegistry :: HandlerRegistry
 defaultHandlerRegistry =
-  HandlerRegistry
-    [ HandlerBinding AskUserName RuntimeAskUserName succeedHandler
-    , HandlerBinding HandleUserNameError RuntimeHandleUserNameError succeedHandler
-    , HandlerBinding RememberUser RuntimeRememberUser succeedHandler
-    , HandlerBinding GenerateReport RuntimeGenerateReport succeedHandler
-    , HandlerBinding WriteLog ConsoleLogHandler succeedHandler
-    ]
+  emptyHandlerRegistry
 
 emptyHandlerRegistry :: HandlerRegistry
 emptyHandlerRegistry =
@@ -51,17 +39,7 @@ emptyHandlerRegistry =
 
 defaultTransformRegistry :: TransformRegistry
 defaultTransformRegistry =
-  TransformRegistry
-    [ TransformBinding
-        UserNameToReportInput
-        ( RuntimeTransform
-            UserNameTag
-            ReportInputTag
-            ( \(UserNameValue text) ->
-                ReportInputValue ("report-input:" ++ text)
-            )
-        )
-    ]
+  emptyTransformRegistry
 
 emptyTransformRegistry :: TransformRegistry
 emptyTransformRegistry =
@@ -87,15 +65,7 @@ runtimeEffectEnvironmentWithTransforms currentHandlers currentTransforms =
 
 succeedHandler :: RuntimeHandler
 succeedHandler =
-  RuntimeHandler (\currentSend _ _ -> pure (HandlerSucceeded (defaultHandlerOutputs currentSend)))
-
-defaultHandlerOutputs :: SendName -> [RuntimeValue]
-defaultHandlerOutputs AskUserName =
-  [RuntimeValue UserName "runtime-user"]
-defaultHandlerOutputs GenerateReport =
-  [RuntimeValue ReportOutput "runtime-report"]
-defaultHandlerOutputs _ =
-  []
+  RuntimeHandler (\_ _ _ -> pure (HandlerSucceeded []))
 
 handlerFor :: HandlerRegistry -> SendName -> Maybe HandlerBinding
 handlerFor registry currentSend =

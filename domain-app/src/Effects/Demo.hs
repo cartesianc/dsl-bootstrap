@@ -2,6 +2,8 @@ module Effects.Demo
   ( demoEffect
   ) where
 
+import Domain.EffectVocabulary
+import Domain.Vocabulary
 import Framework.Effect
 
 -- effect: demoEffect

@@ -21,14 +21,16 @@ custom-setup
 library
   hs-source-dirs:      src
   exposed-modules:     Blueprint
+                     , Domain.EffectVocabulary
                      , Domain.AppBlueprint
+                     , Domain.Runtime
+                     , Domain.Vocabulary
                      , Effects.Demo
                      , Effects.Logging
                      , Effects.Report
                      , Effects.System
                      , Effects.Theory
                      , Effects.User
-                     , Interpreter.Runtime.Smoke
                      , Plugins
                      , Plugins.Boot
                      , Plugins.Configuration
@@ -73,6 +75,7 @@ executable mytest
 executable runtime-smoke
   hs-source-dirs:      app
   main-is:             RuntimeSmoke.hs
+  other-modules:       Runtime.Smoke
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , domain-app
@@ -86,6 +89,8 @@ executable runtime-smoke
                        -Wmissing-home-modules
                        -Wpartial-fields
                        -Wredundant-constraints
+                       -O0
+                       -fno-write-ide-info
 
 executable frontend-boundary-smoke
   hs-source-dirs:      app

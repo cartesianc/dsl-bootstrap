@@ -78,20 +78,17 @@ defaultFrontendBoundaryPolicy =
         , "domain-app/src/Effects"
         ]
     , frontendBoundaryExcludedPaths =
-        [ "domain-app/src/Effects/Theory.hs"
+        [ "domain-app/src/Domain/Runtime.hs"
+        , "domain-app/src/Effects/Theory.hs"
         ]
     , frontendBoundaryAllowedImports =
         [ ExactModule "Framework.Workflow"
         , ExactModule "Framework.Effect"
         , ExactModule "Framework.Hylo"
-        , ExactModule "AST.AppBlueprint"
-        , ExactModule "AST.Facts"
-        , ExactModule "AST.Interceptors"
-        , ExactModule "AST.Names"
-        , ExactModule "AST.Vocabulary"
         , ExactModule "Blueprint"
         , ExactModule "Domain.AppBlueprint"
-        , ExactModule "Effects.Names"
+        , ExactModule "Domain.EffectVocabulary"
+        , ExactModule "Domain.Vocabulary"
         , ExactModule "Effects.Theory"
         , ExactModule "Plugins"
         , PrefixModule "Plugins."
@@ -102,11 +99,14 @@ defaultFrontendBoundaryPolicy =
     , frontendBoundaryForbiddenImports =
         [ ExactModule "Core"
         , PrefixModule "Core."
+        , ExactModule "AST"
+        , PrefixModule "AST."
         , ExactModule "Interpreter"
         , PrefixModule "Interpreter."
         , ExactModule "Framework.Background"
         , PrefixModule "Framework.Background."
         , ExactModule "Effects.EffectTheory"
+        , ExactModule "Effects.Names"
         ]
     }
 
@@ -196,10 +196,10 @@ collectFrontendFiles policy = do
     ]
   where
     excluded =
-      map normalise (frontendBoundaryExcludedPaths policy)
+      map normaliseImportPath (frontendBoundaryExcludedPaths policy)
 
     isExcluded currentFile =
-      normalise currentFile `elem` excluded
+      normaliseImportPath currentFile `elem` excluded
 
 collectRoot :: FilePath -> IO [FilePath]
 collectRoot root = do
@@ -277,6 +277,15 @@ startsWithSpace (currentChar : _) =
 trim :: String -> String
 trim =
   dropWhile isSpace
+
+normaliseImportPath :: FilePath -> FilePath
+normaliseImportPath =
+  map forwardSlash . normalise
+  where
+    forwardSlash '\\' =
+      '/'
+    forwardSlash currentChar =
+      currentChar
 
 nonEmpty :: String -> Maybe String
 nonEmpty [] =

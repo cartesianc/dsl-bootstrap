@@ -5,6 +5,7 @@ module Interpreter.Runtime
   , runBlueprint
   , runBlueprintWithAlgebra
   , runBlueprintWith
+  , runBlueprintWithEffectEnvironment
   , runBlueprintWithEffects
   ) where
 
@@ -52,6 +53,7 @@ import Interpreter.Runtime.Monad
 import Interpreter.Runtime.Types
   ( Runtime (..)
   , RuntimeEnv
+  , RuntimeEffectEnvironment
   , RuntimeFAlgebra
   , emptyRuntime
   )
@@ -104,12 +106,17 @@ runBlueprintWithAlgebraInEnv environment currentAlgebra runtime blueprint = do
 
 runBlueprintWithEffects :: EffectTheory -> AppBlueprint -> IO ()
 runBlueprintWithEffects effects blueprint =
+  runBlueprintWithEffectEnvironment
+    (runtimeEffectEnvironment defaultHandlerRegistry)
+    effects
+    blueprint
+
+runBlueprintWithEffectEnvironment :: RuntimeEffectEnvironment -> EffectTheory -> AppBlueprint -> IO ()
+runBlueprintWithEffectEnvironment currentEffectEnvironment effects blueprint =
   case App.app blueprint effects of
     Left errorReport ->
       traceRuntime ("app build failed: " ++ App.renderAppError errorReport)
     Right appPlan -> do
-      let currentEffectEnvironment =
-            runtimeEffectEnvironment defaultHandlerRegistry
       let currentRuntimeEnv =
             runtimeEnv currentEffectEnvironment (effectSemantics (App.appPlanEffects appPlan))
       traceRuntime ("effect theory loaded " ++ show (length (theoryUnits effects)) ++ " units")

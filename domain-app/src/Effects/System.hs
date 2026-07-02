@@ -2,6 +2,8 @@ module Effects.System
   ( systemEffect
   ) where
 
+import Domain.EffectVocabulary
+import Domain.Vocabulary
 import Framework.Effect
 
 -- effect: systemEffect

@@ -4,6 +4,8 @@ module Effects.User
   ( userEffect
   ) where
 
+import Domain.EffectVocabulary
+import Domain.Vocabulary
 import Framework.Effect
 
 -- effect: userEffect

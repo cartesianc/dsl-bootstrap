@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module Interpreter.Runtime.FactResolution
   ( resolveFactClaim
   ) where
@@ -33,6 +35,9 @@ import Effects.EffectTheory
   ( SendSignature (..)
   , SendName
   , TypeName (..)
+  , pattern ErrorInput
+  , pattern NoInput
+  , pattern Unit
   )
 import Interpreter.Runtime.Handlers
   ( handlerFor

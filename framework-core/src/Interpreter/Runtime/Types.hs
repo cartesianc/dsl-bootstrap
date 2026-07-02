@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Interpreter.Runtime.Types
@@ -7,11 +8,8 @@ module Interpreter.Runtime.Types
   , HandlerRegistry (..)
   , HandlerResult (..)
   , ErrorInputValue (..)
-  , LogMessageValue (..)
   , NoInputValue (..)
   , Registry
-  , ReportInputValue (..)
-  , ReportOutputValue (..)
   , Runtime (..)
   , RuntimeCallback (..)
   , RuntimeCallbackEvent (..)
@@ -45,8 +43,6 @@ module Interpreter.Runtime.Types
   , TransformBinding (..)
   , TransformRegistry (..)
   , UnitValue (..)
-  , UserNameValue (..)
-  , UserRecordValue (..)
   , ValueTag (..)
   , WorkflowProgram
   , applyRuntimeTransform
@@ -70,6 +66,10 @@ module Interpreter.Runtime.Types
 
 import Data.Type.Equality
   ( (:~:) (Refl)
+  )
+import Data.Typeable
+  ( Typeable
+  , eqT
   )
 
 import AST.Vocabulary
@@ -96,6 +96,9 @@ import Effects.Names
   , SendName
   , TransformName
   , TypeName (..)
+  , pattern ErrorInput
+  , pattern NoInput
+  , pattern Unit
   )
 
 data Runtime = Runtime
@@ -228,30 +231,32 @@ data UnitValue = UnitValue
 newtype ErrorInputValue = ErrorInputValue String
   deriving (Eq, Show)
 
-newtype UserNameValue = UserNameValue String
-  deriving (Eq, Show)
-
-newtype UserRecordValue = UserRecordValue String
-  deriving (Eq, Show)
-
-newtype ReportInputValue = ReportInputValue String
-  deriving (Eq, Show)
-
-newtype ReportOutputValue = ReportOutputValue String
-  deriving (Eq, Show)
-
-newtype LogMessageValue = LogMessageValue String
-  deriving (Eq, Show)
-
 data ValueTag value where
-  NoInputTag :: ValueTag NoInputValue
-  UnitTag :: ValueTag UnitValue
-  ErrorInputTag :: ValueTag ErrorInputValue
-  UserNameTag :: ValueTag UserNameValue
-  UserRecordTag :: ValueTag UserRecordValue
-  ReportInputTag :: ValueTag ReportInputValue
-  ReportOutputTag :: ValueTag ReportOutputValue
-  LogMessageTag :: ValueTag LogMessageValue
+  ValueTag :: Typeable value => TypeName -> (value -> String) -> ValueTag value
+
+noInputValueText :: NoInputValue -> String
+noInputValueText _ =
+  ""
+
+unitValueText :: UnitValue -> String
+unitValueText _ =
+  ""
+
+errorInputValueText :: ErrorInputValue -> String
+errorInputValueText (ErrorInputValue text) =
+  text
+
+noInputTag :: ValueTag NoInputValue
+noInputTag =
+  ValueTag NoInput noInputValueText
+
+unitTag :: ValueTag UnitValue
+unitTag =
+  ValueTag Unit unitValueText
+
+errorInputTag :: ValueTag ErrorInputValue
+errorInputTag =
+  ValueTag ErrorInput errorInputValueText
 
 data RuntimeTypedValue value = RuntimeTypedValue
   { runtimeTypedValueTag :: ValueTag value
@@ -440,21 +445,13 @@ runtimeValueToSome :: RuntimeValue -> Maybe SomeRuntimeValue
 runtimeValueToSome currentValue =
   case runtimeValueType currentValue of
     NoInput ->
-      Just (SomeRuntimeValue (RuntimeTypedValue NoInputTag NoInputValue))
+      Just (SomeRuntimeValue (RuntimeTypedValue noInputTag NoInputValue))
     Unit ->
-      Just (SomeRuntimeValue (RuntimeTypedValue UnitTag UnitValue))
+      Just (SomeRuntimeValue (RuntimeTypedValue unitTag UnitValue))
     ErrorInput ->
-      Just (SomeRuntimeValue (RuntimeTypedValue ErrorInputTag (ErrorInputValue (runtimeValueText currentValue))))
-    UserName ->
-      Just (SomeRuntimeValue (RuntimeTypedValue UserNameTag (UserNameValue (runtimeValueText currentValue))))
-    UserRecord ->
-      Just (SomeRuntimeValue (RuntimeTypedValue UserRecordTag (UserRecordValue (runtimeValueText currentValue))))
-    ReportInput ->
-      Just (SomeRuntimeValue (RuntimeTypedValue ReportInputTag (ReportInputValue (runtimeValueText currentValue))))
-    ReportOutput ->
-      Just (SomeRuntimeValue (RuntimeTypedValue ReportOutputTag (ReportOutputValue (runtimeValueText currentValue))))
-    LogMessage ->
-      Just (SomeRuntimeValue (RuntimeTypedValue LogMessageTag (LogMessageValue (runtimeValueText currentValue))))
+      Just (SomeRuntimeValue (RuntimeTypedValue errorInputTag (ErrorInputValue (runtimeValueText currentValue))))
+    _ ->
+      Nothing
 
 someRuntimeValueToRuntimeValue :: SomeRuntimeValue -> RuntimeValue
 someRuntimeValueToRuntimeValue (SomeRuntimeValue currentValue) =
@@ -483,17 +480,11 @@ typedValueFromSome expectedTag (SomeRuntimeValue currentValue) =
       Nothing
 
 sameValueTag :: ValueTag left -> ValueTag right -> Maybe (left :~: right)
-sameValueTag left right =
-  case (left, right) of
-    (NoInputTag, NoInputTag) -> Just Refl
-    (UnitTag, UnitTag) -> Just Refl
-    (ErrorInputTag, ErrorInputTag) -> Just Refl
-    (UserNameTag, UserNameTag) -> Just Refl
-    (UserRecordTag, UserRecordTag) -> Just Refl
-    (ReportInputTag, ReportInputTag) -> Just Refl
-    (ReportOutputTag, ReportOutputTag) -> Just Refl
-    (LogMessageTag, LogMessageTag) -> Just Refl
-    _ -> Nothing
+sameValueTag (ValueTag leftType _) (ValueTag rightType _)
+  | leftType == rightType =
+      eqT
+  | otherwise =
+      Nothing
 
 someRuntimeValueType :: SomeRuntimeValue -> TypeName
 someRuntimeValueType (SomeRuntimeValue currentValue) =
@@ -543,40 +534,12 @@ runtimeTransformOutput (RuntimeTransform _ outputTag _) =
   valueTagTypeName outputTag
 
 valueTagTypeName :: ValueTag value -> TypeName
-valueTagTypeName currentTag =
-  case currentTag of
-    NoInputTag -> NoInput
-    UnitTag -> Unit
-    ErrorInputTag -> ErrorInput
-    UserNameTag -> UserName
-    UserRecordTag -> UserRecord
-    ReportInputTag -> ReportInput
-    ReportOutputTag -> ReportOutput
-    LogMessageTag -> LogMessage
+valueTagTypeName (ValueTag currentType _) =
+  currentType
 
 valueTagPayloadText :: ValueTag value -> value -> String
-valueTagPayloadText currentTag currentValue =
-  case currentTag of
-    NoInputTag -> ""
-    UnitTag -> ""
-    ErrorInputTag ->
-      case currentValue of
-        ErrorInputValue text -> text
-    UserNameTag ->
-      case currentValue of
-        UserNameValue text -> text
-    UserRecordTag ->
-      case currentValue of
-        UserRecordValue text -> text
-    ReportInputTag ->
-      case currentValue of
-        ReportInputValue text -> text
-    ReportOutputTag ->
-      case currentValue of
-        ReportOutputValue text -> text
-    LogMessageTag ->
-      case currentValue of
-        LogMessageValue text -> text
+valueTagPayloadText (ValueTag _ renderValue) =
+  renderValue
 
 firstJust :: [Maybe item] -> Maybe item
 firstJust [] =
