@@ -13,6 +13,7 @@ module Bootstrap.Vocabulary
   , pattern CompileCoreSurfaceEffectTheory
   , pattern ConstraintIRArtifact
   , pattern ComposeCoreSurfaceAst
+  , pattern CoreArtifactEffect
   , pattern ConstraintIRBuiltFact
   , pattern CoreBoundaryEffect
   , pattern CoreBoundaryEvidence
@@ -69,9 +70,13 @@ module Bootstrap.Vocabulary
   , pattern RegistryCodegenEvidencePassedFact
   , pattern RegistryCodegenExpressedFact
   , pattern RunRegistryCodegenEvidence
+  , pattern RunSelfArtifactManifestEvidence
   , pattern RuntimeEvidenceArtifact
   , pattern RunRuntimeEvidence
   , pattern RunSmtProof
+  , pattern SelfArtifactManifestArtifact
+  , pattern SelfArtifactManifestEvidencePassedFact
+  , pattern SelfArtifactManifestExpressedFact
   , pattern SmtProofEvidence
   , pattern RuntimeEvidencePassedFact
   , pattern SmtProofPassedFact
@@ -165,6 +170,9 @@ pattern RuntimeEvidencePassedFact = WorkflowFact "RuntimeEvidencePassedFact"
 pattern RegistryCodegenEvidencePassedFact :: WorkflowFact
 pattern RegistryCodegenEvidencePassedFact = WorkflowFact "RegistryCodegenEvidencePassedFact"
 
+pattern SelfArtifactManifestEvidencePassedFact :: WorkflowFact
+pattern SelfArtifactManifestEvidencePassedFact = WorkflowFact "SelfArtifactManifestEvidencePassedFact"
+
 pattern AstStructureExpressedFact :: WorkflowFact
 pattern AstStructureExpressedFact = WorkflowFact "AstStructureExpressedFact"
 
@@ -189,6 +197,9 @@ pattern RuntimeFactClosureExpressedFact = WorkflowFact "RuntimeFactClosureExpres
 pattern RegistryCodegenExpressedFact :: WorkflowFact
 pattern RegistryCodegenExpressedFact = WorkflowFact "RegistryCodegenExpressedFact"
 
+pattern SelfArtifactManifestExpressedFact :: WorkflowFact
+pattern SelfArtifactManifestExpressedFact = WorkflowFact "SelfArtifactManifestExpressedFact"
+
 pattern FrameworkCoreNativeValidatedFact :: WorkflowFact
 pattern FrameworkCoreNativeValidatedFact = WorkflowFact "FrameworkCoreNativeValidatedFact"
 
@@ -212,6 +223,9 @@ pattern CoreProofEffect = EffectName "CoreProofEffect"
 
 pattern CoreRegistryEffect :: EffectName
 pattern CoreRegistryEffect = EffectName "CoreRegistryEffect"
+
+pattern CoreArtifactEffect :: EffectName
+pattern CoreArtifactEffect = EffectName "CoreArtifactEffect"
 
 pattern CoreRuntimeEffect :: EffectName
 pattern CoreRuntimeEffect = EffectName "CoreRuntimeEffect"
@@ -264,6 +278,9 @@ pattern RuntimeEvidenceArtifact = TypeName "RuntimeEvidenceArtifact"
 pattern RegistryCodegenArtifact :: TypeName
 pattern RegistryCodegenArtifact = TypeName "RegistryCodegenArtifact"
 
+pattern SelfArtifactManifestArtifact :: TypeName
+pattern SelfArtifactManifestArtifact = TypeName "SelfArtifactManifestArtifact"
+
 pattern FrameworkCoreReportArtifact :: TypeName
 pattern FrameworkCoreReportArtifact = TypeName "FrameworkCoreReportArtifact"
 
@@ -314,6 +331,9 @@ pattern RunRuntimeEvidence = SendName "RunRuntimeEvidence"
 
 pattern RunRegistryCodegenEvidence :: SendName
 pattern RunRegistryCodegenEvidence = SendName "RunRegistryCodegenEvidence"
+
+pattern RunSelfArtifactManifestEvidence :: SendName
+pattern RunSelfArtifactManifestEvidence = SendName "RunSelfArtifactManifestEvidence"
 
 pattern PublishFrameworkCoreReport :: SendName
 pattern PublishFrameworkCoreReport = SendName "PublishFrameworkCoreReport"

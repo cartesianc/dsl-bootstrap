@@ -23,20 +23,23 @@ RegistryCodegenEvidencePassedFact
 domain-app registry-codegen semantic evidence
 ```
 
-The stronger artifact rebuild loop is still a required next gate:
+Artifact materialization is now an implemented witness:
 
 ```text
-Stage 0 builds a Stage 1 artifact.
-Stage 1 compiles.
-Stage 1 validates its own report.
-Stage 1 evidence matches the accepted fixed point.
+Framework.SelfArtifact
+SelfArtifactManifestExpressedFact
+SelfArtifactManifestEvidencePassedFact
+self-artifact-witness
+.generated/stage1-framework
 ```
+
+The checked-in framework source is the core source. The artifact tree is the isolated replacement candidate built from that source.
 
 ## Rule
 
 No framework change is complete until the framework compiles and validates itself.
 
-No old framework replacement is allowed until the artifact rebuild gate passes.
+No old framework replacement is allowed until `self-artifact-witness` passes for the target commit.
 
 ## Required Gate For Every Framework Change
 
@@ -55,6 +58,7 @@ stack exec fixed-point-smoke
 stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness
 stack exec registry-codegen-witness
+stack exec self-artifact-witness
 ```
 
 Required results:
@@ -67,6 +71,7 @@ fixed-point-smoke: diffs 0
 runtime-diagnosis-witness: passed
 constraint-proof-witness: passed
 registry-codegen-witness: passed
+self-artifact-witness: passed
 ```
 
 Run boundary checks:
@@ -78,29 +83,30 @@ rg -n "^import\s+Bootstrap\." domain-app/src domain-app/app
 
 Both commands must return no matches.
 
-## Artifact Rebuild Gate
+## Artifact Materialization Gate
 
-Artifact rebuild becomes mandatory before replacing any old framework source.
+Artifact materialization is mandatory before replacing any old framework source.
 
 The gate is:
 
 ```text
-1. Stage 0 framework builds a Stage 1 framework artifact.
-2. Stage 1 artifact is added as an isolated package or replacement worktree.
-3. Stage 1 package compiles with stack build.
-4. Stage 1 runs its own domain report.
-5. Stage 1 runs its own fixed-point evidence comparison.
-6. Stage 1 evidence has no semantic regressions against Stage 0 accepted evidence.
+1. Run stack exec self-artifact-witness from the target commit.
+2. The witness creates .generated/stage1-framework.
+3. The Stage 1 artifact runs stack build.
+4. The Stage 1 artifact runs bootstrap-report.
+5. The Stage 1 artifact runs fixed-point-smoke.
+6. The Stage 1 artifact runs domain-app-report.
+7. The Stage 1 artifact runs registry-codegen-witness.
 ```
 
-The old framework remains a reference and rollback point until all six steps pass.
+The old framework remains a reference and rollback point until all seven steps pass.
 
 ## Replacement Gate
 
 Replace old framework code only after:
 
 ```text
-artifact rebuild gate: passed
+artifact materialization gate: passed
 boundary checks: passed
 self-domain report: passed
 fixed-point evidence: diffs 0
@@ -115,13 +121,13 @@ commit 1: introduce or update the new self-validated framework
 commit 2: replace the old framework with the validated new framework
 ```
 
-If artifact rebuild fails, do not replace the old framework.
+If artifact materialization fails, keep the old framework unchanged.
 
 ## Stage Plan
 
 ```text
 Stage 5: automatic registry/codegen for plugins and effects
-Stage 6: artifact rebuild self-hosting
+Stage 6: artifact materialization self-hosting
 Stage 7: validated replacement of old framework source
 ```
 
@@ -131,6 +137,14 @@ Stage 5 status:
 registry/codegen is declared in framework-core AST/effect semantics
 domain-app plugin/effect registries have generated-line semantic evidence
 registry-codegen-witness is a host witness for that evidence
+```
+
+Stage 6 status:
+
+```text
+self-artifact manifest is declared in framework-core AST/effect semantics
+self-artifact-witness materializes .generated/stage1-framework
+stage1 framework artifact compiles and validates its own reports
 ```
 
 Each later stage must preserve the required gate above.

@@ -15,6 +15,8 @@
 ### Added
 
 - Added `domain-app-self-smoke`, which verifies the external domain app can compile and run the framework-core self report through `new-framework-core`.
+- Added `Framework.SelfArtifact` and `self-artifact-witness` for the Stage 6 artifact materialization gate.
+- Added `CoreArtifactEffect` and self-artifact evidence facts to the framework-core self expression.
 
 ### Removed
 

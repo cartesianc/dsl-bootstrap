@@ -13,6 +13,7 @@ import Bootstrap.Effects.CoreExpression.Facts.FrameworkCoreExpression
   , registryCodegenExpressedFact
   , runtimeFactClosureExpressedFact
   , runtimeInterpreterExpressedFact
+  , selfArtifactManifestExpressedFact
   )
 import Bootstrap.Vocabulary
 import Bootstrap.Effect
@@ -31,6 +32,7 @@ coreExpressionEffect =
     , hyloRenderingProofSurfaceExpressedFact
     , runtimeFactClosureExpressedFact
     , registryCodegenExpressedFact
+    , selfArtifactManifestExpressedFact
     , frameworkCoreNativeValidatedFact
     , frameworkCoreExpressedFact
     ]

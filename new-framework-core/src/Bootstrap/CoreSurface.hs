@@ -93,6 +93,7 @@ explicitCoreSurfaceModules =
   , backgroundRuntime
   , backgroundRuntimeDiagnosis
   , registryCodegenFacade
+  , selfArtifactFacade
   ]
 
 coreBoundaryModuleSurfaces :: [CoreSurfaceModule]
@@ -1088,6 +1089,28 @@ registryCodegenFacade =
           , "generatedLinesMatch"
           , "renderEffectsTheoryModule"
           , "renderPluginsModule"
+          ]
+    )
+
+selfArtifactFacade :: CoreSurfaceModule
+selfArtifactFacade =
+  moduleSurface
+    "Framework.SelfArtifact"
+    "self artifact manifest materialization and isolated stage gate execution"
+    ( map typeCapability
+        [ "ArtifactCommand"
+        , "ArtifactCommandResult"
+        , "ArtifactManifest"
+        , "ArtifactSource"
+        ]
+        ++ map valueCapability
+          [ "defaultSelfArtifactManifest"
+          , "materializeSelfArtifact"
+          , "renderArtifactCommand"
+          , "renderArtifactCommandResult"
+          , "renderArtifactManifest"
+          , "runArtifactCommand"
+          , "runSelfArtifactGate"
           ]
     )
 

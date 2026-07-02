@@ -43,6 +43,7 @@ frameworkCoreEffects =
     , coreLanguageEffect
     , coreProofEffect
     , coreRegistryEffect
+    , coreArtifactEffect
     , coreRuntimeEffect
     , coreExpressionEffect
     , coreReportEffect
@@ -165,6 +166,18 @@ coreRegistryEffect =
     , Effect.externalMake RunRegistryCodegenEvidence MinimalCoreReportArtifact RegistryCodegenArtifact
     ]
 
+coreArtifactEffect :: EffectUnit
+coreArtifactEffect =
+  Effect.effect CoreArtifactEffect
+    [ Effect.fact SelfArtifactManifestEvidencePassedFact
+        [ Effect.needs RegistryCodegenEvidencePassedFact
+        , Effect.take RegistryCodegenArtifact
+        , Effect.uses RunSelfArtifactManifestEvidence
+        , Effect.make SelfArtifactManifestArtifact
+        ]
+    , Effect.externalMake RunSelfArtifactManifestEvidence RegistryCodegenArtifact SelfArtifactManifestArtifact
+    ]
+
 coreExpressionEffect :: EffectUnit
 coreExpressionEffect =
   Effect.effect CoreExpressionEffect
@@ -198,6 +211,9 @@ coreExpressionEffect =
     , Effect.fact RegistryCodegenExpressedFact
         [ Effect.needs RegistryCodegenEvidencePassedFact
         ]
+    , Effect.fact SelfArtifactManifestExpressedFact
+        [ Effect.needs SelfArtifactManifestEvidencePassedFact
+        ]
     , Effect.fact FrameworkCoreNativeValidatedFact
         [ Effect.needs AstStructureExpressedFact
         , Effect.needs EffectTheoryDslExpressedFact
@@ -207,6 +223,7 @@ coreExpressionEffect =
         , Effect.needs HyloRenderingProofSurfaceExpressedFact
         , Effect.needs RuntimeFactClosureExpressedFact
         , Effect.needs RegistryCodegenExpressedFact
+        , Effect.needs SelfArtifactManifestExpressedFact
         ]
     , Effect.fact FrameworkCoreExpressedFact
         [ Effect.needs FrameworkCoreNativeValidatedFact

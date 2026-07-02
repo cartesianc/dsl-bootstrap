@@ -71,6 +71,8 @@ Framework.Background
 Framework.Domain
 Framework.Runtime
 Framework.FixedPoint
+Framework.RegistryCodegen
+Framework.SelfArtifact
 ```
 
 Boundary rules:
@@ -221,6 +223,34 @@ domain-app/src/Plugins.hs
 domain-app/src/Effects/Theory.hs
 ```
 
+## Self Artifact Gate
+
+The checked-in framework source is the core source.
+
+`Framework.SelfArtifact` describes the Stage 1 artifact manifest and the commands required to accept it as a replacement candidate. The witness materializes a fresh package tree at:
+
+```text
+.generated/stage1-framework
+```
+
+Then it runs the Stage 1 package through:
+
+```text
+stack build
+stack exec bootstrap-report
+stack exec fixed-point-smoke
+stack exec domain-app-report
+stack exec registry-codegen-witness
+```
+
+This gate proves that the current framework source can stand up as an isolated next package. Runtime use and domain authoring use the checked-in source directly.
+
+Run it with:
+
+```powershell
+stack exec self-artifact-witness
+```
+
 ## Commands
 
 Build:
@@ -253,6 +283,7 @@ Host witnesses:
 stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness
 stack exec registry-codegen-witness
+stack exec self-artifact-witness
 ```
 
 Expected high-level results:
@@ -265,6 +296,7 @@ fixed-point-smoke: diffs: 0
 runtime-diagnosis-witness: passed
 constraint-proof-witness: passed
 registry-codegen-witness: passed
+self-artifact-witness: passed
 ```
 
 ## Self-Bootstrap Gate
@@ -278,10 +310,10 @@ Current status:
 ```text
 evidence fixed point: complete
 registry/codegen semantic expression: complete
-artifact rebuild self-hosting: next gate
-old framework replacement: blocked until artifact rebuild passes
+stage1 artifact materialization witness: complete
+old framework replacement: allowed after self-artifact-witness passes for the target commit
 ```
 
 ## Next Work
 
-Stage 6 should make artifact rebuild self-hosting compile a generated package and compare it with the current evidence fixed point.
+Stage 7 should automate the replacement step that copies an accepted Stage 1 artifact into the old framework location after the self-artifact witness passes for the target commit.

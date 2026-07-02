@@ -11,6 +11,7 @@ module Bootstrap.Blueprint
   , expressRegistryCodegen
   , expressRuntimeFactClosure
   , expressRuntimeInterpreter
+  , expressSelfArtifactManifest
   , publishBootstrapReport
   , validateFrameworkCoreNative
   ) where
@@ -53,6 +54,7 @@ coreBootstrapApp =
         , expressHyloRenderingProofSurface
         , expressRuntimeFactClosure
         , expressRegistryCodegen
+        , expressSelfArtifactManifest
         ]
     , validateFrameworkCoreNative
     , assertFrameworkCoreExpressed
@@ -91,6 +93,10 @@ expressRegistryCodegen :: App
 expressRegistryCodegen =
   factNode [RegistryCodegenExpressedFact]
 
+expressSelfArtifactManifest :: App
+expressSelfArtifactManifest =
+  factNode [SelfArtifactManifestExpressedFact]
+
 validateFrameworkCoreNative :: App
 validateFrameworkCoreNative =
   wait
@@ -128,6 +134,7 @@ expressedFacts =
   , HyloRenderingProofSurfaceExpressedFact
   , RuntimeFactClosureExpressedFact
   , RegistryCodegenExpressedFact
+  , SelfArtifactManifestExpressedFact
   ]
 
 reportInputs :: [WorkflowFact]

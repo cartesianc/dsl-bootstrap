@@ -9,6 +9,7 @@ module Bootstrap.Effects.CoreExpression.Facts.FrameworkCoreExpression
   , registryCodegenExpressedFact
   , runtimeFactClosureExpressedFact
   , runtimeInterpreterExpressedFact
+  , selfArtifactManifestExpressedFact
   ) where
 
 import Bootstrap.Vocabulary
@@ -72,6 +73,12 @@ registryCodegenExpressedFact =
     [ needs RegistryCodegenEvidencePassedFact
     ]
 
+selfArtifactManifestExpressedFact :: EffectSection
+selfArtifactManifestExpressedFact =
+  fact SelfArtifactManifestExpressedFact
+    [ needs SelfArtifactManifestEvidencePassedFact
+    ]
+
 frameworkCoreNativeValidatedFact :: EffectSection
 frameworkCoreNativeValidatedFact =
   fact FrameworkCoreNativeValidatedFact
@@ -83,6 +90,7 @@ frameworkCoreNativeValidatedFact =
     , needs HyloRenderingProofSurfaceExpressedFact
     , needs RuntimeFactClosureExpressedFact
     , needs RegistryCodegenExpressedFact
+    , needs SelfArtifactManifestExpressedFact
     ]
 
 frameworkCoreExpressedFact :: EffectSection

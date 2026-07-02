@@ -33,6 +33,7 @@ frameworkCoreApp =
         , expressHyloRenderingProofSurface
         , expressRuntimeFactClosure
         , expressRegistryCodegen
+        , expressSelfArtifactManifest
         ]
     , validateFrameworkCoreNative
     , assertFrameworkCoreExpressed
@@ -71,6 +72,10 @@ expressRegistryCodegen :: App
 expressRegistryCodegen =
   fact [RegistryCodegenExpressedFact]
 
+expressSelfArtifactManifest :: App
+expressSelfArtifactManifest =
+  fact [SelfArtifactManifestExpressedFact]
+
 validateFrameworkCoreNative :: App
 validateFrameworkCoreNative =
   wait
@@ -108,6 +113,7 @@ expressedFacts =
   , HyloRenderingProofSurfaceExpressedFact
   , RuntimeFactClosureExpressedFact
   , RegistryCodegenExpressedFact
+  , SelfArtifactManifestExpressedFact
   ]
 
 reportInputs :: [WorkflowFact]

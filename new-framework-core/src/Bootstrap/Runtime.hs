@@ -213,6 +213,7 @@ bootstrapSendBoundaries =
   , GenerateConstraintIR
   , RunSmtProof
   , RunRegistryCodegenEvidence
+  , RunSelfArtifactManifestEvidence
   , RunRuntimeEvidence
   , PublishFrameworkCoreReport
   ]
@@ -653,6 +654,8 @@ runBootstrapNative RunSmtProof _ _ =
           pure (HandlerFailed (renderNativePlanErrors plan))
 runBootstrapNative RunRegistryCodegenEvidence _ _ =
   pure (succeedArtifact RegistryCodegenArtifact "registry codegen expression passed")
+runBootstrapNative RunSelfArtifactManifestEvidence _ _ =
+  pure (succeedArtifact SelfArtifactManifestArtifact "self artifact manifest expression passed")
 runBootstrapNative RunRuntimeEvidence _ _ =
   case buildNativeApp runtimeClosureEvidenceAst runtimeClosureEvidenceEffects of
     Left message ->
