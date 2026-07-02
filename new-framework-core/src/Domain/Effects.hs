@@ -42,6 +42,7 @@ frameworkCoreEffects =
     , coreBoundaryEffect
     , coreLanguageEffect
     , coreProofEffect
+    , coreRegistryEffect
     , coreRuntimeEffect
     , coreExpressionEffect
     , coreReportEffect
@@ -152,6 +153,18 @@ coreRuntimeEffect =
     , Effect.externalMake RunRuntimeEvidence MinimalCoreReportArtifact RuntimeEvidenceArtifact
     ]
 
+coreRegistryEffect :: EffectUnit
+coreRegistryEffect =
+  Effect.effect CoreRegistryEffect
+    [ Effect.fact RegistryCodegenEvidencePassedFact
+        [ Effect.needs MinimalCoreReportBuiltFact
+        , Effect.take MinimalCoreReportArtifact
+        , Effect.uses RunRegistryCodegenEvidence
+        , Effect.make RegistryCodegenArtifact
+        ]
+    , Effect.externalMake RunRegistryCodegenEvidence MinimalCoreReportArtifact RegistryCodegenArtifact
+    ]
+
 coreExpressionEffect :: EffectUnit
 coreExpressionEffect =
   Effect.effect CoreExpressionEffect
@@ -182,6 +195,9 @@ coreExpressionEffect =
         [ Effect.needs RuntimeEvidencePassedFact
         , Effect.needs SmtProofPassedFact
         ]
+    , Effect.fact RegistryCodegenExpressedFact
+        [ Effect.needs RegistryCodegenEvidencePassedFact
+        ]
     , Effect.fact FrameworkCoreNativeValidatedFact
         [ Effect.needs AstStructureExpressedFact
         , Effect.needs EffectTheoryDslExpressedFact
@@ -190,6 +206,7 @@ coreExpressionEffect =
         , Effect.needs BoundaryChecksExpressedFact
         , Effect.needs HyloRenderingProofSurfaceExpressedFact
         , Effect.needs RuntimeFactClosureExpressedFact
+        , Effect.needs RegistryCodegenExpressedFact
         ]
     , Effect.fact FrameworkCoreExpressedFact
         [ Effect.needs FrameworkCoreNativeValidatedFact

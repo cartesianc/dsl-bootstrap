@@ -32,6 +32,7 @@ frameworkCoreApp =
         , expressBoundaryChecks
         , expressHyloRenderingProofSurface
         , expressRuntimeFactClosure
+        , expressRegistryCodegen
         ]
     , validateFrameworkCoreNative
     , assertFrameworkCoreExpressed
@@ -65,6 +66,10 @@ expressHyloRenderingProofSurface =
 expressRuntimeFactClosure :: App
 expressRuntimeFactClosure =
   fact [RuntimeFactClosureExpressedFact]
+
+expressRegistryCodegen :: App
+expressRegistryCodegen =
+  fact [RegistryCodegenExpressedFact]
 
 validateFrameworkCoreNative :: App
 validateFrameworkCoreNative =
@@ -102,6 +107,7 @@ expressedFacts =
   , BoundaryChecksExpressedFact
   , HyloRenderingProofSurfaceExpressedFact
   , RuntimeFactClosureExpressedFact
+  , RegistryCodegenExpressedFact
   ]
 
 reportInputs :: [WorkflowFact]

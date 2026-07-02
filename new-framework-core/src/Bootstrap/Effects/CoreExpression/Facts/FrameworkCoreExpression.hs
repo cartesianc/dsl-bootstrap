@@ -6,6 +6,7 @@ module Bootstrap.Effects.CoreExpression.Facts.FrameworkCoreExpression
   , frameworkCoreExpressedFact
   , frameworkCoreNativeValidatedFact
   , hyloRenderingProofSurfaceExpressedFact
+  , registryCodegenExpressedFact
   , runtimeFactClosureExpressedFact
   , runtimeInterpreterExpressedFact
   ) where
@@ -65,6 +66,12 @@ runtimeFactClosureExpressedFact =
     , needs SmtProofPassedFact
     ]
 
+registryCodegenExpressedFact :: EffectSection
+registryCodegenExpressedFact =
+  fact RegistryCodegenExpressedFact
+    [ needs RegistryCodegenEvidencePassedFact
+    ]
+
 frameworkCoreNativeValidatedFact :: EffectSection
 frameworkCoreNativeValidatedFact =
   fact FrameworkCoreNativeValidatedFact
@@ -75,6 +82,7 @@ frameworkCoreNativeValidatedFact =
     , needs BoundaryChecksExpressedFact
     , needs HyloRenderingProofSurfaceExpressedFact
     , needs RuntimeFactClosureExpressedFact
+    , needs RegistryCodegenExpressedFact
     ]
 
 frameworkCoreExpressedFact :: EffectSection

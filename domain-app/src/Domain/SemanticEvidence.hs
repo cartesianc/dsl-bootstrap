@@ -5,6 +5,10 @@ module Domain.SemanticEvidence
   ) where
 
 import Domain.EffectVocabulary
+import Domain.RegistryCodegenSpec
+  ( expectedEffectsTheoryLines
+  , expectedPluginsLines
+  )
 import Effects.User
   ( userEffect )
 import Framework.Background
@@ -34,6 +38,7 @@ import Framework.Background
 import Framework.Domain
   ( DomainSemanticCheck (..)
   , DomainSemanticEvidence
+  , DomainRegistration (domainRegistrationName)
   , domainEvidenceFailed
   , domainEvidencePassed
   )
@@ -50,12 +55,18 @@ import Framework.Workflow
   ( AppBlueprint (..)
   )
 import qualified Framework.Workflow as Workflow
+import Framework.RegistryCodegen
+  ( diffGeneratedLines
+  , generatedLinesMatch
+  )
 
 domainSemanticChecks :: [DomainSemanticCheck]
 domainSemanticChecks =
   [ runtimeErrorHandlerDiagnosisCheck
   , runtimeRetryDiagnosisCheck
   , runtimeNonIdempotentBlockerCheck
+  , pluginRegistryCodegenCheck
+  , effectTheoryCodegenCheck
   ]
 
 runtimeErrorHandlerDiagnosisCheck :: DomainSemanticCheck
@@ -75,6 +86,40 @@ runtimeNonIdempotentBlockerCheck =
   DomainSemanticCheck
     "runtime-diagnosis-non-idempotent-blocker"
     (\_ _ -> runNonIdempotentBlockerEvidence)
+
+pluginRegistryCodegenCheck :: DomainSemanticCheck
+pluginRegistryCodegenCheck =
+  DomainSemanticCheck
+    "registry-codegen-plugins"
+    (\registration _ -> runGeneratedFileEvidence registration "registry-codegen-plugins" "domain-app/src/Plugins.hs" expectedPluginsLines)
+
+effectTheoryCodegenCheck :: DomainSemanticCheck
+effectTheoryCodegenCheck =
+  DomainSemanticCheck
+    "registry-codegen-effects"
+    (\registration _ -> runGeneratedFileEvidence registration "registry-codegen-effects" "domain-app/src/Effects/Theory.hs" expectedEffectsTheoryLines)
+
+runGeneratedFileEvidence :: DomainRegistration -> String -> FilePath -> [String] -> IO DomainSemanticEvidence
+runGeneratedFileEvidence registration evidenceName path expectedLines = do
+  actualText <- readFile path
+  let actualLines =
+        lines actualText
+      mismatchDetails =
+        ["generated source differs from " ++ path]
+          ++ take 40 (diffGeneratedLines expectedLines actualLines)
+  pure
+    ( if generatedLinesMatch expectedLines actualLines
+        then
+          domainEvidencePassed
+            evidenceName
+            [ "domain: " ++ domainRegistrationName registration
+            , "generated source matches " ++ path
+            ]
+        else
+          domainEvidenceFailed
+            evidenceName
+            mismatchDetails
+    )
 
 runErrorHandlerEvidence :: IO DomainSemanticEvidence
 runErrorHandlerEvidence = do

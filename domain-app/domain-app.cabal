@@ -17,6 +17,7 @@ library
   exposed-modules:     Blueprint
                      , Domain.EffectVocabulary
                      , Domain.AppBlueprint
+                     , Domain.RegistryCodegenSpec
                      , Domain.Runtime
                      , Domain.SemanticEvidence
                      , Domain.Vocabulary
@@ -106,6 +107,23 @@ executable domain-app-self-smoke
 executable runtime-diagnosis-witness
   hs-source-dirs:      app
   main-is:             RuntimeDiagnosisWitness.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , domain-app
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable registry-codegen-witness
+  hs-source-dirs:      app
+  main-is:             RegistryCodegenWitness.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , domain-app

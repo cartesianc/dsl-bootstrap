@@ -10,6 +10,7 @@ import Bootstrap.Effects.CoreExpression.Facts.FrameworkCoreExpression
   , frameworkCoreExpressedFact
   , frameworkCoreNativeValidatedFact
   , hyloRenderingProofSurfaceExpressedFact
+  , registryCodegenExpressedFact
   , runtimeFactClosureExpressedFact
   , runtimeInterpreterExpressedFact
   )
@@ -29,6 +30,7 @@ coreExpressionEffect =
     , boundaryChecksExpressedFact
     , hyloRenderingProofSurfaceExpressedFact
     , runtimeFactClosureExpressedFact
+    , registryCodegenExpressedFact
     , frameworkCoreNativeValidatedFact
     , frameworkCoreExpressedFact
     ]

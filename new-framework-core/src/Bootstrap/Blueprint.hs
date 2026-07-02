@@ -8,6 +8,7 @@ module Bootstrap.Blueprint
   , expressBuildAppValidation
   , expressEffectTheoryDsl
   , expressHyloRenderingProofSurface
+  , expressRegistryCodegen
   , expressRuntimeFactClosure
   , expressRuntimeInterpreter
   , publishBootstrapReport
@@ -51,6 +52,7 @@ coreBootstrapApp =
         , expressBoundaryChecks
         , expressHyloRenderingProofSurface
         , expressRuntimeFactClosure
+        , expressRegistryCodegen
         ]
     , validateFrameworkCoreNative
     , assertFrameworkCoreExpressed
@@ -84,6 +86,10 @@ expressHyloRenderingProofSurface =
 expressRuntimeFactClosure :: App
 expressRuntimeFactClosure =
   factNode [RuntimeFactClosureExpressedFact]
+
+expressRegistryCodegen :: App
+expressRegistryCodegen =
+  factNode [RegistryCodegenExpressedFact]
 
 validateFrameworkCoreNative :: App
 validateFrameworkCoreNative =
@@ -121,6 +127,7 @@ expressedFacts =
   , BoundaryChecksExpressedFact
   , HyloRenderingProofSurfaceExpressedFact
   , RuntimeFactClosureExpressedFact
+  , RegistryCodegenExpressedFact
   ]
 
 reportInputs :: [WorkflowFact]

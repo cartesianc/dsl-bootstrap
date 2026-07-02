@@ -92,6 +92,7 @@ explicitCoreSurfaceModules =
   , backgroundWorkflowRender
   , backgroundRuntime
   , backgroundRuntimeDiagnosis
+  , registryCodegenFacade
   ]
 
 coreBoundaryModuleSurfaces :: [CoreSurfaceModule]
@@ -1070,6 +1071,23 @@ backgroundRuntimeDiagnosis =
           , "diagnosisProbePairs"
           , "recordRuntimeDiagnosis"
           , "renderRuntimeFailureDiagnosis"
+          ]
+    )
+
+registryCodegenFacade :: CoreSurfaceModule
+registryCodegenFacade =
+  moduleSurface
+    "Framework.RegistryCodegen"
+    "pure registry and codegen rendering for frontend plugin/effect registries"
+    ( map typeCapability
+        [ "EffectRegistryBinding"
+        , "PluginRegistryBinding"
+        ]
+        ++ map valueCapability
+          [ "diffGeneratedLines"
+          , "generatedLinesMatch"
+          , "renderEffectsTheoryModule"
+          , "renderPluginsModule"
           ]
     )
 

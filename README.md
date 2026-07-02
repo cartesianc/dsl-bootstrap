@@ -33,6 +33,7 @@ Domain-app uses the same layer shape:
 domain-app/src/Domain/AppBlueprint.hs
 domain-app/src/Effects/Theory.hs
 domain-app/src/Domain/Runtime.hs
+domain-app/src/Domain/RegistryCodegenSpec.hs
 domain-app/src/Domain/SemanticEvidence.hs
 domain-app/app/Main.hs
 ```
@@ -181,15 +182,44 @@ constraint-negative-check
 runtime-closure-executed
 ```
 
-Domain-app registers runtime diagnosis evidence in `domain-app/src/Domain/SemanticEvidence.hs`:
+Domain-app registers runtime diagnosis and registry codegen evidence in `domain-app/src/Domain/SemanticEvidence.hs`:
 
 ```text
 runtime-diagnosis-error-handler
 runtime-diagnosis-retry-probe
 runtime-diagnosis-non-idempotent-blocker
+registry-codegen-plugins
+registry-codegen-effects
 ```
 
 `domain-app-report` and `domain-app-self-smoke` consume the same `domainAppDomain` registration, so frontend source, runtime handlers, proof evidence, and diagnosis evidence close through one domain definition.
+
+## Registry Codegen
+
+Stage 5 is expressed inside the framework semantics.
+
+Framework-core declares registry/codegen as public surface and self evidence:
+
+```text
+Framework.RegistryCodegen
+RegistryCodegenExpressedFact
+RegistryCodegenEvidencePassedFact
+RunRegistryCodegenEvidence
+RegistryCodegenArtifact
+```
+
+Domain-app declares the frontend registry spec in:
+
+```text
+domain-app/src/Domain/RegistryCodegenSpec.hs
+```
+
+The committed registry files are checked against generated lines:
+
+```text
+domain-app/src/Plugins.hs
+domain-app/src/Effects/Theory.hs
+```
 
 ## Commands
 
@@ -222,6 +252,7 @@ Host witnesses:
 ```powershell
 stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness
+stack exec registry-codegen-witness
 ```
 
 Expected high-level results:
@@ -233,6 +264,7 @@ bootstrap-report: passed
 fixed-point-smoke: diffs: 0
 runtime-diagnosis-witness: passed
 constraint-proof-witness: passed
+registry-codegen-witness: passed
 ```
 
 ## Self-Bootstrap Gate
@@ -245,10 +277,11 @@ Current status:
 
 ```text
 evidence fixed point: complete
+registry/codegen semantic expression: complete
 artifact rebuild self-hosting: next gate
 old framework replacement: blocked until artifact rebuild passes
 ```
 
 ## Next Work
 
-Stage 5 should restore automatic registry/codegen for plugins and effects. After that, artifact rebuild can compile a generated package and compare it with the current evidence fixed point.
+Stage 6 should make artifact rebuild self-hosting compile a generated package and compare it with the current evidence fixed point.

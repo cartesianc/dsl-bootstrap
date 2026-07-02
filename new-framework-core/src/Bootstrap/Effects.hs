@@ -5,6 +5,7 @@ module Bootstrap.Effects
   , coreLanguageEffect
   , coreModuleEffect
   , coreProofEffect
+  , coreRegistryEffect
   , coreReportEffect
   , coreRuntimeEffect
   , coreSurfaceEffect
@@ -20,6 +21,8 @@ import Bootstrap.Effects.CoreModule.Registration.Effect
   ( coreModuleEffect )
 import Bootstrap.Effects.CoreProof.Registration.Effect
   ( coreProofEffect )
+import Bootstrap.Effects.CoreRegistry.Registration.Effect
+  ( coreRegistryEffect )
 import Bootstrap.Effects.CoreReport.Registration.Effect
   ( coreReportEffect )
 import Bootstrap.Effects.CoreRuntime.Registration.Effect
@@ -39,6 +42,7 @@ coreBootstrapEffects =
     , coreBoundaryEffect
     , coreLanguageEffect
     , coreProofEffect
+    , coreRegistryEffect
     , coreRuntimeEffect
     , coreExpressionEffect
     , coreReportEffect

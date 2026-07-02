@@ -14,6 +14,15 @@ Stage 1: Framework.* facade/domain framework-core report
 Result: fixed-point-smoke reports diffs: 0
 ```
 
+Registry/codegen is now expressed as framework semantics:
+
+```text
+Framework.RegistryCodegen
+RegistryCodegenExpressedFact
+RegistryCodegenEvidencePassedFact
+domain-app registry-codegen semantic evidence
+```
+
 The stronger artifact rebuild loop is still a required next gate:
 
 ```text
@@ -45,6 +54,7 @@ stack exec bootstrap-report
 stack exec fixed-point-smoke
 stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness
+stack exec registry-codegen-witness
 ```
 
 Required results:
@@ -56,6 +66,7 @@ bootstrap-report: status passed
 fixed-point-smoke: diffs 0
 runtime-diagnosis-witness: passed
 constraint-proof-witness: passed
+registry-codegen-witness: passed
 ```
 
 Run boundary checks:
@@ -114,4 +125,12 @@ Stage 6: artifact rebuild self-hosting
 Stage 7: validated replacement of old framework source
 ```
 
-Each stage must preserve the required gate above.
+Stage 5 status:
+
+```text
+registry/codegen is declared in framework-core AST/effect semantics
+domain-app plugin/effect registries have generated-line semantic evidence
+registry-codegen-witness is a host witness for that evidence
+```
+
+Each later stage must preserve the required gate above.

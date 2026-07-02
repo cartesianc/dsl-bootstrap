@@ -21,6 +21,7 @@ module Bootstrap.Vocabulary
   , pattern CoreLanguageEffect
   , pattern CoreModuleEffect
   , pattern CoreProofEffect
+  , pattern CoreRegistryEffect
   , pattern CoreReportEffect
   , pattern CoreRuntimeEffect
   , pattern CoreHostModuleCatalog
@@ -64,6 +65,10 @@ module Bootstrap.Vocabulary
   , pattern ReadPackageFiles
   , pattern RuntimeFactClosureExpressedFact
   , pattern RuntimeInterpreterExpressedFact
+  , pattern RegistryCodegenArtifact
+  , pattern RegistryCodegenEvidencePassedFact
+  , pattern RegistryCodegenExpressedFact
+  , pattern RunRegistryCodegenEvidence
   , pattern RuntimeEvidenceArtifact
   , pattern RunRuntimeEvidence
   , pattern RunSmtProof
@@ -157,6 +162,9 @@ pattern SmtProofPassedFact = WorkflowFact "SmtProofPassedFact"
 pattern RuntimeEvidencePassedFact :: WorkflowFact
 pattern RuntimeEvidencePassedFact = WorkflowFact "RuntimeEvidencePassedFact"
 
+pattern RegistryCodegenEvidencePassedFact :: WorkflowFact
+pattern RegistryCodegenEvidencePassedFact = WorkflowFact "RegistryCodegenEvidencePassedFact"
+
 pattern AstStructureExpressedFact :: WorkflowFact
 pattern AstStructureExpressedFact = WorkflowFact "AstStructureExpressedFact"
 
@@ -178,6 +186,9 @@ pattern HyloRenderingProofSurfaceExpressedFact = WorkflowFact "HyloRenderingProo
 pattern RuntimeFactClosureExpressedFact :: WorkflowFact
 pattern RuntimeFactClosureExpressedFact = WorkflowFact "RuntimeFactClosureExpressedFact"
 
+pattern RegistryCodegenExpressedFact :: WorkflowFact
+pattern RegistryCodegenExpressedFact = WorkflowFact "RegistryCodegenExpressedFact"
+
 pattern FrameworkCoreNativeValidatedFact :: WorkflowFact
 pattern FrameworkCoreNativeValidatedFact = WorkflowFact "FrameworkCoreNativeValidatedFact"
 
@@ -198,6 +209,9 @@ pattern CoreLanguageEffect = EffectName "CoreLanguageEffect"
 
 pattern CoreProofEffect :: EffectName
 pattern CoreProofEffect = EffectName "CoreProofEffect"
+
+pattern CoreRegistryEffect :: EffectName
+pattern CoreRegistryEffect = EffectName "CoreRegistryEffect"
 
 pattern CoreRuntimeEffect :: EffectName
 pattern CoreRuntimeEffect = EffectName "CoreRuntimeEffect"
@@ -247,6 +261,9 @@ pattern SmtProofEvidence = TypeName "SmtProofEvidence"
 pattern RuntimeEvidenceArtifact :: TypeName
 pattern RuntimeEvidenceArtifact = TypeName "RuntimeEvidenceArtifact"
 
+pattern RegistryCodegenArtifact :: TypeName
+pattern RegistryCodegenArtifact = TypeName "RegistryCodegenArtifact"
+
 pattern FrameworkCoreReportArtifact :: TypeName
 pattern FrameworkCoreReportArtifact = TypeName "FrameworkCoreReportArtifact"
 
@@ -294,6 +311,9 @@ pattern RunSmtProof = SendName "RunSmtProof"
 
 pattern RunRuntimeEvidence :: SendName
 pattern RunRuntimeEvidence = SendName "RunRuntimeEvidence"
+
+pattern RunRegistryCodegenEvidence :: SendName
+pattern RunRegistryCodegenEvidence = SendName "RunRegistryCodegenEvidence"
 
 pattern PublishFrameworkCoreReport :: SendName
 pattern PublishFrameworkCoreReport = SendName "PublishFrameworkCoreReport"

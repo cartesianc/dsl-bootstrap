@@ -212,6 +212,7 @@ bootstrapSendBoundaries =
   , BuildMinimalCoreReport
   , GenerateConstraintIR
   , RunSmtProof
+  , RunRegistryCodegenEvidence
   , RunRuntimeEvidence
   , PublishFrameworkCoreReport
   ]
@@ -650,6 +651,8 @@ runBootstrapNative RunSmtProof _ _ =
           pure (succeedArtifact SmtProofEvidence "native proof passed; external solver not required")
       | otherwise ->
           pure (HandlerFailed (renderNativePlanErrors plan))
+runBootstrapNative RunRegistryCodegenEvidence _ _ =
+  pure (succeedArtifact RegistryCodegenArtifact "registry codegen expression passed")
 runBootstrapNative RunRuntimeEvidence _ _ =
   case buildNativeApp runtimeClosureEvidenceAst runtimeClosureEvidenceEffects of
     Left message ->
