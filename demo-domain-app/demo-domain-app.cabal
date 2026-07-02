@@ -1,0 +1,86 @@
+cabal-version:       2.2
+
+name:                demo-domain-app
+version:             0.1.0.0
+synopsis:            Demo domain application built on new-framework-core facades
+description:         Restores the old code-as-documentation domain shape through Framework.* facades.
+license:             BSD-3-Clause
+license-file:        ../LICENSE
+author:              onetime
+maintainer:          1018248628@qq.com
+copyright:           2026 onetime
+category:            Application
+build-type:          Simple
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     Blueprint
+                     , Domain.EffectVocabulary
+                     , Domain.AppBlueprint
+                     , Domain.Runtime
+                     , Domain.Vocabulary
+                     , Effects.Demo
+                     , Effects.Logging
+                     , Effects.Report
+                     , Effects.System
+                     , Effects.Theory
+                     , Effects.User
+                     , Plugins
+                     , Plugins.Boot
+                     , Plugins.Configuration
+                     , Plugins.Handle
+                     , Plugins.Lifecycle
+                     , Plugins.Logging
+                     , Plugins.Report
+                     , Plugins.Shutdown
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable demo-mytest
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  other-modules:       CurrentAst
+                     , CurrentEffects
+                     , InterpretConfig
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , demo-domain-app
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable demo-domain-report
+  hs-source-dirs:      app
+  main-is:             DomainReport.hs
+  other-modules:       CurrentAst
+                     , CurrentEffects
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , demo-domain-app
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints

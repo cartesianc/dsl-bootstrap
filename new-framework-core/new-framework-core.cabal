@@ -55,6 +55,11 @@ library
                      , Domain.AppBlueprint
                      , Domain.Interpreter
                      , Domain.Registry
+                     , Framework.Background
+                     , Framework.Domain
+                     , Framework.Effect
+                     , Framework.FixedPoint
+                     , Framework.Workflow
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , directory
@@ -169,6 +174,22 @@ executable domain-map
   hs-source-dirs:      app
   main-is:             DomainMap.hs
   other-modules:       Domain.Relations
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable fixed-point-smoke
+  hs-source-dirs:      app
+  main-is:             FixedPointSmoke.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , new-framework-core
