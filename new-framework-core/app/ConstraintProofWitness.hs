@@ -8,9 +8,12 @@ import Bootstrap.Effects
   ( coreBootstrapEffects )
 import Framework.Background.ConstraintProof
   ( SmtResult (..)
+  , SmtSolver
   , SmtStatus (..)
+  , availableSmtSolver
   , constraintsFromAppPlan
   , proveMinimalCoreWithAvailableSolver
+  , renderSmtSolver
   )
 import Framework.Domain
   ( DomainReport (..)
@@ -34,15 +37,29 @@ main = do
         , domainSemanticEvidenceName evidence `elem` expectedEvidence
         , not (domainSemanticEvidencePassed evidence)
         ]
-  solverResults <- optionalSolverResults
+  (maybeSolver, solverResults) <- optionalSolverResults
   let solverFailed =
         [ result
         | result <- solverResults
         , smtResultStatus result == SmtFailed
         ]
-  case (missing, failed, solverFailed) of
-    ([], [], []) ->
-      putStrLn ("[witness] ok constraint proof evidence " ++ show (length expectedEvidence) ++ " claims")
+      solverSkippedWithAvailableSolver =
+        case maybeSolver of
+          Just _ ->
+            [ result
+            | result <- solverResults
+            , smtResultStatus result == SmtSkipped
+            ]
+          Nothing ->
+            []
+  case (missing, failed, solverFailed, solverSkippedWithAvailableSolver) of
+    ([], [], [], []) ->
+      putStrLn
+        ( "[witness] ok constraint proof evidence "
+            ++ show (length expectedEvidence)
+            ++ " claims"
+            ++ solverSuffix maybeSolver
+        )
     _ ->
       ioError
         ( userError
@@ -53,6 +70,8 @@ main = do
                 ++ show (map domainSemanticEvidenceName failed)
                 ++ "\nsolver failed: "
                 ++ show solverFailed
+                ++ "\nsolver skipped with available solver: "
+                ++ show solverSkippedWithAvailableSolver
             )
         )
 
@@ -69,10 +88,19 @@ evidencePresent name report =
     (\evidence -> domainSemanticEvidenceName evidence == name)
     (domainReportSemanticEvidence report)
 
-optionalSolverResults :: IO [SmtResult]
-optionalSolverResults =
+optionalSolverResults :: IO (Maybe SmtSolver, [SmtResult])
+optionalSolverResults = do
+  maybeSolver <- availableSmtSolver
   case constraintsFromAppPlan coreBootstrapBlueprint coreBootstrapEffects of
     Left _ ->
-      pure []
+      pure (maybeSolver, [])
     Right constraints ->
-      proveMinimalCoreWithAvailableSolver constraints
+      (,) maybeSolver <$> proveMinimalCoreWithAvailableSolver constraints
+
+solverSuffix :: Maybe SmtSolver -> String
+solverSuffix maybeSolver =
+  case maybeSolver of
+    Just solver ->
+      "; external solver " ++ renderSmtSolver solver
+    Nothing ->
+      "; external solver not found"

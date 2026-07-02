@@ -57,6 +57,7 @@ stack exec bootstrap-report
 stack exec fixed-point-smoke
 stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness
+stack exec workflow-semantics-witness
 stack exec registry-codegen-witness
 stack exec self-artifact-witness
 ```
@@ -70,6 +71,7 @@ bootstrap-report: status passed
 fixed-point-smoke: diffs 0
 runtime-diagnosis-witness: passed
 constraint-proof-witness: passed
+workflow-semantics-witness: passed
 registry-codegen-witness: passed
 self-artifact-witness: passed
 ```
@@ -95,11 +97,13 @@ The gate is:
 3. The Stage 1 artifact runs stack build.
 4. The Stage 1 artifact runs bootstrap-report.
 5. The Stage 1 artifact runs fixed-point-smoke.
-6. The Stage 1 artifact runs domain-app-report.
-7. The Stage 1 artifact runs registry-codegen-witness.
+6. The Stage 1 artifact runs constraint-proof-witness.
+7. The Stage 1 artifact runs workflow-semantics-witness.
+8. The Stage 1 artifact runs domain-app-report.
+9. The Stage 1 artifact runs registry-codegen-witness.
 ```
 
-The old framework remains a reference and rollback point until all seven steps pass.
+The old framework remains a reference and rollback point until all nine steps pass.
 
 ## Replacement Gate
 

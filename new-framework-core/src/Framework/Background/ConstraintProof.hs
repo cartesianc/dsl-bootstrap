@@ -35,7 +35,11 @@ import Control.Exception
   , try
   )
 import System.Directory
-  ( findExecutable )
+  ( doesFileExist
+  , findExecutable
+  )
+import System.Environment
+  ( lookupEnv )
 import System.Exit
   ( ExitCode (..) )
 import System.Process
@@ -460,12 +464,56 @@ availableSmtSolver = do
 
 solverIfAvailable :: SmtSolver -> IO (Maybe SmtSolver)
 solverIfAvailable solver = do
+  maybeCommand <- explicitSolverCommand solver
+  case maybeCommand of
+    Just command ->
+      pure (Just solver {smtSolverCommand = command})
+    Nothing ->
+      pathSolverCommand solver
+
+explicitSolverCommand :: SmtSolver -> IO (Maybe FilePath)
+explicitSolverCommand solver = do
+  maybeCommand <- lookupEnv (solverEnvironmentName solver)
+  case maybeCommand of
+    Just command
+      | not (null (trim command)) ->
+          existingCommand (trim command)
+    _ ->
+      pure Nothing
+
+pathSolverCommand :: SmtSolver -> IO (Maybe SmtSolver)
+pathSolverCommand solver = do
   maybeCommand <- findExecutable (smtSolverCommand solver)
   case maybeCommand of
     Just command ->
       pure (Just solver {smtSolverCommand = command})
     Nothing ->
       pure Nothing
+
+existingCommand :: FilePath -> IO (Maybe FilePath)
+existingCommand command = do
+  commandExists <- doesFileExist command
+  if commandExists
+    then pure (Just command)
+    else findExecutable command
+
+solverEnvironmentName :: SmtSolver -> String
+solverEnvironmentName solver =
+  case smtSolverName solver of
+    "z3" -> "Z3_EXE"
+    "cvc5" -> "CVC5_EXE"
+    other -> map solverEnvChar other ++ "_EXE"
+
+solverEnvChar :: Char -> Char
+solverEnvChar currentChar
+  | 'a' <= currentChar && currentChar <= 'z' =
+      toEnum (fromEnum currentChar - fromEnum 'a' + fromEnum 'A')
+  | 'A' <= currentChar && currentChar <= 'Z' =
+      currentChar
+  | '0' <= currentChar && currentChar <= '9' =
+      currentChar
+  | otherwise =
+      '_'
 
 defaultSmtPropositions :: [SmtProposition]
 defaultSmtPropositions =
@@ -497,7 +545,7 @@ proveMinimalCoreWithAvailableSolver facts = do
       proveMinimalCoreWithSolver solver facts
     Nothing ->
       pure
-        [ skippedResult currentProposition "no external SMT solver found in PATH; tried z3 and cvc5"
+        [ skippedResult currentProposition "no external SMT solver found; tried Z3_EXE, CVC5_EXE, z3 in PATH, and cvc5 in PATH"
         | currentProposition <- defaultSmtPropositions
         ]
 

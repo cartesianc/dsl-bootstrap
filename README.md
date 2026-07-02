@@ -313,6 +313,14 @@ optional z3 or cvc5 solver witness
 render helpers for facts, errors, propositions, and results
 ```
 
+External SMT solver discovery checks explicit executable variables first,
+then falls back to `PATH`:
+
+```powershell
+$env:Z3_EXE = "D:\smt solver\z3\bin\z3.exe"
+$env:CVC5_EXE = "D:\tools\cvc5\bin\cvc5.exe"
+```
+
 Run:
 
 ```powershell
@@ -376,6 +384,8 @@ The artifact gate materializes `.generated/stage1-framework` and runs that isola
 stack build
 stack exec bootstrap-report
 stack exec fixed-point-smoke
+stack exec constraint-proof-witness
+stack exec workflow-semantics-witness
 stack exec domain-app-report
 stack exec registry-codegen-witness
 ```
