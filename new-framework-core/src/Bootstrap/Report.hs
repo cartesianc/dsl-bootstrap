@@ -116,6 +116,7 @@ renderFrameworkCoreReport report =
   , "surface capabilities: " ++ show (frameworkCoreReportSurfaceCapabilities report)
   ]
     ++ renderConstraintReport (frameworkCoreReportConstraints report)
+    ++ renderBootstrapProofEvidence (frameworkCoreReportConstraints report)
     ++ renderFactClosureReport (frameworkCoreReportFactClosure report)
     ++ renderHandlerCoverage (frameworkCoreReportHandlerCoverage report)
     ++ renderArtifacts (frameworkCoreReportArtifacts report)
@@ -129,6 +130,18 @@ renderConstraintReport report =
   , "  failed: " ++ show (length (constraintReportFailed report))
   ]
     ++ renderFailedConstraints (constraintReportFailed report)
+
+renderBootstrapProofEvidence :: ConstraintReport -> [String]
+renderBootstrapProofEvidence report =
+  [ "proof:"
+  , "  native evidence: " ++ status
+  , "  failed constraints: " ++ show (length (constraintReportFailed report))
+  ]
+  where
+    status =
+      if null (constraintReportFailed report)
+        then "passed"
+        else "failed"
 
 renderFactClosureReport :: FactClosureReport -> [String]
 renderFactClosureReport report =

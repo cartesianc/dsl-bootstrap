@@ -7,6 +7,8 @@ module Framework.Background
   , SendContract (..)
   , buildApp
   , buildNativeApp
+  , module Framework.Background.ConstraintProof
+  , module Framework.Background.RuntimeDiagnosis
   , module Framework.Runtime
   , renderNativeAppError
   , runNativeBlueprintWithEffectEnvironment
@@ -29,6 +31,8 @@ import Bootstrap.Runtime
   )
 import Bootstrap.Workflow
   ( AppBlueprint )
+import Framework.Background.ConstraintProof
+import Framework.Background.RuntimeDiagnosis
 import Framework.Runtime
 
 buildApp :: AppBlueprint -> EffectTheory -> Either String NativeAppPlan

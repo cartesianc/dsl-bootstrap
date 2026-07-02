@@ -101,3 +101,20 @@ executable domain-app-self-smoke
                        -Wmissing-home-modules
                        -Wpartial-fields
                        -Wredundant-constraints
+
+executable runtime-diagnosis-smoke
+  hs-source-dirs:      app
+  main-is:             RuntimeDiagnosisSmoke.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , domain-app
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints

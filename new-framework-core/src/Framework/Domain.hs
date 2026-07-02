@@ -43,6 +43,7 @@ import Domain.Effects
 import qualified Domain.EffectHandlers as RegistryHandlers
 import qualified Domain.Interpreter as RegistryInterpreter
 import qualified Domain.Registry as Registry
+import qualified Framework.Background.ConstraintProof as Proof
 import qualified Framework.Runtime as Runtime
 
 data DomainRuntimeBackend
@@ -78,6 +79,7 @@ data DomainReport = DomainReport
   , domainReportExtraFinalFacts :: [WorkflowFact]
   , domainReportHandlerCoverage :: [DomainHandlerCoverage]
   , domainReportArtifacts :: [RuntimeArtifact]
+  , domainReportProofResults :: [Proof.SmtResult]
   , domainReportFailures :: [String]
   }
 
@@ -179,7 +181,7 @@ buildDomainReport registration =
       pure (failedDomainReport (domainRegistrationName registration) message)
     Right plan -> do
       runtimeResult <- runDomainRuntime (effectHandlerRuntime (domainEffectHandlers registration)) effects blueprint
-      pure (domainReportFromPlan registration plan runtimeResult)
+      pure (domainReportFromPlan registration plan (domainProofResults blueprint effects plan) runtimeResult)
   where
     blueprint =
       astRegistrationBlueprint (domainAst registration)
@@ -211,6 +213,7 @@ renderDomainReport report =
   , "runtime artifacts:"
   , "  total: " ++ show (length (domainReportArtifacts report))
   ]
+    ++ renderProofResults (domainReportProofResults report)
     ++ renderFailures (domainReportFailures report)
 
 runDomainRuntime ::
@@ -254,11 +257,11 @@ frameworkRuntimeArtifacts runtime =
   | currentValue <- Runtime.runtimeValues runtime
   ]
 
-domainReportFromPlan :: DomainRegistration -> NativeAppPlan -> DomainRuntimeResult -> DomainReport
-domainReportFromPlan registration plan runtimeResult =
+domainReportFromPlan :: DomainRegistration -> NativeAppPlan -> [Proof.SmtResult] -> DomainRuntimeResult -> DomainReport
+domainReportFromPlan registration plan proofResults runtimeResult =
   DomainReport
     { domainReportName = domainRegistrationName registration
-    , domainReportStatus = reportStatus runtimeResult failedConstraints missingFinal extraFinal coverage
+    , domainReportStatus = reportStatus runtimeResult failedConstraints missingFinal extraFinal coverage proofResults
     , domainReportSurfaceModules = coreSurfaceModuleCount
     , domainReportSurfaceCapabilities = coreSurfaceCapabilityCount
     , domainReportConstraintTotal = length constraints
@@ -272,6 +275,7 @@ domainReportFromPlan registration plan runtimeResult =
     , domainReportExtraFinalFacts = extraFinal
     , domainReportHandlerCoverage = coverage
     , domainReportArtifacts = artifacts
+    , domainReportProofResults = proofResults
     , domainReportFailures = failures
     }
   where
@@ -305,6 +309,13 @@ domainReportFromPlan registration plan runtimeResult =
           [message]
     coverage =
       handlerCoverageReport plan (effectHandlerRuntime (domainEffectHandlers registration))
+domainProofResults :: AppBlueprint -> EffectTheory -> NativeAppPlan -> [Proof.SmtResult]
+domainProofResults blueprint effects plan =
+  case Proof.constraintsFromAppPlan blueprint effects of
+    Right constraints ->
+      Proof.proveMinimalCore constraints
+    Left _ ->
+      Proof.proveMinimalCore (Proof.constraintsFromNativeAppPlan plan)
 
 failedDomainReport :: String -> String -> DomainReport
 failedDomainReport name message =
@@ -324,6 +335,7 @@ failedDomainReport name message =
     , domainReportExtraFinalFacts = []
     , domainReportHandlerCoverage = []
     , domainReportArtifacts = []
+    , domainReportProofResults = []
     , domainReportFailures = [message]
     }
 
@@ -333,8 +345,9 @@ reportStatus ::
   [WorkflowFact] ->
   [WorkflowFact] ->
   [DomainHandlerCoverage] ->
+  [Proof.SmtResult] ->
   DomainReportStatus
-reportStatus runtimeResult failedConstraints missingFinal extraFinal coverage =
+reportStatus runtimeResult failedConstraints missingFinal extraFinal coverage proofResults =
   case problems of
     [] ->
       DomainReportPassed
@@ -346,6 +359,7 @@ reportStatus runtimeResult failedConstraints missingFinal extraFinal coverage =
         ++ runtimeProblems
         ++ factProblems
         ++ handlerProblems
+        ++ proofProblems
     constraintProblems =
       [ "failed native constraints: " ++ show (length failedConstraints)
       | not (null failedConstraints)
@@ -368,6 +382,15 @@ reportStatus runtimeResult failedConstraints missingFinal extraFinal coverage =
       [ "missing handler for " ++ show (domainHandlerCoverageSend currentCoverage)
       | currentCoverage <- coverage
       , not (domainHandlerCoverageCovered currentCoverage)
+      ]
+    proofProblems =
+      [ "failed proof propositions: " ++ show (length failedProofs)
+      | not (null failedProofs)
+      ]
+    failedProofs =
+      [ result
+      | result <- proofResults
+      , Proof.smtResultStatus result == Proof.SmtFailed
       ]
 
 handlerCoverageReport :: NativeAppPlan -> DomainRuntimeBackend -> [DomainHandlerCoverage]
@@ -463,6 +486,23 @@ renderFailures [] =
   []
 renderFailures failures =
   "failures:" : map ("  " ++) failures
+
+renderProofResults :: [Proof.SmtResult] -> [String]
+renderProofResults results =
+  [ "proof:"
+  , "  propositions: " ++ show (length results)
+  , "  passed: " ++ show (countProofStatus Proof.SmtPassed results)
+  , "  failed: " ++ show (countProofStatus Proof.SmtFailed results)
+  , "  skipped: " ++ show (countProofStatus Proof.SmtSkipped results)
+  ]
+
+countProofStatus :: Proof.SmtStatus -> [Proof.SmtResult] -> Int
+countProofStatus status results =
+  length
+    [ result
+    | result <- results
+    , Proof.smtResultStatus result == status
+    ]
 
 minus :: Eq item => [item] -> [item] -> [item]
 minus left right =

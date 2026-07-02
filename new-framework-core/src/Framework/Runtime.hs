@@ -20,6 +20,12 @@ module Framework.Runtime
   , RuntimeFactClaim (..)
   , RuntimeFactFailure (..)
   , RuntimeFactStatus (..)
+  , RuntimeFailureDiagnosis (..)
+  , RuntimeDiagnosisNode (..)
+  , RuntimeDiagnosisNodeKind (..)
+  , RuntimeDiagnosisProbe (..)
+  , RuntimeDiagnosisProbeStatus (..)
+  , RuntimeDiagnosisBlocker (..)
   , RuntimeHandler (..)
   , RuntimeM (..)
   , RuntimeMiddlewareEvent (..)
@@ -35,7 +41,10 @@ module Framework.Runtime
   , UnitValue (..)
   , ValueTag (..)
   , applyRuntimeTransform
+  , buildFailureDiagnosis
+  , completeDiagnosisProbe
   , defaultRuntimeEnv
+  , diagnosisProbePairs
   , emptyHandlerRegistry
   , emptyRuntime
   , emptyTransformRegistry
@@ -47,8 +56,11 @@ module Framework.Runtime
   , modifyRuntimeState
   , putRuntimeState
   , renderRuntimeError
+  , renderRuntimeFailureDiagnosis
+  , recordRuntimeDiagnosis
   , runBlueprintWithEffectEnvironment
   , runBlueprintWithEffectEnvironmentResult
+  , runBlueprintWithEffectEnvironmentRuntimeResult
   , runRuntimeM
   , runRuntimeMOrThrow
   , runtimeEffectEnvironment
@@ -89,6 +101,8 @@ import Data.Typeable
 import Bootstrap.Effect
   ( EffectTheory
   , HandlerName
+  , IdempotencyPolicy (..)
+  , RetryPolicy (..)
   , SendName
   , SendSignature (..)
   , TransformName
@@ -141,6 +155,7 @@ data Runtime = Runtime
   , runtimeSuspenseEvents :: [RuntimeSuspenseEvent]
   , runtimeMiddlewareStack :: [Interceptor]
   , runtimeMiddlewareEvents :: [RuntimeMiddlewareEvent]
+  , runtimeFailureDiagnoses :: [RuntimeFailureDiagnosis]
   }
   deriving (Eq, Show)
 
@@ -170,7 +185,55 @@ data RuntimeFactFailure
   = RuntimeDependencyFailed WorkflowFact
   | RuntimePipeDependencyFailed WorkflowFact TypeName
   | RuntimeExternalMakeFailed SendName String
+  | RuntimeErrorHandlerFailed SendName String
   | RuntimeLocalFactFailed String
+  deriving (Eq, Show)
+
+data RuntimeFailureDiagnosis = RuntimeFailureDiagnosis
+  { diagnosisRootFact :: WorkflowFact
+  , diagnosisRootSend :: Maybe SendName
+  , diagnosisRootError :: String
+  , diagnosisNodes :: [RuntimeDiagnosisNode]
+  , diagnosisProbes :: [RuntimeDiagnosisProbe]
+  , diagnosisSuspects :: [WorkflowFact]
+  , diagnosisPollutedFacts :: [WorkflowFact]
+  }
+  deriving (Eq, Show)
+
+data RuntimeDiagnosisNode = RuntimeDiagnosisNode
+  { diagnosisNodeFact :: WorkflowFact
+  , diagnosisNodeKind :: RuntimeDiagnosisNodeKind
+  , diagnosisNodeStatus :: Maybe RuntimeFactStatus
+  , diagnosisNodeExternalMakes :: [SendName]
+  , diagnosisNodeIdempotentSends :: [SendName]
+  , diagnosisNodeNonIdempotentSends :: [SendName]
+  , diagnosisNodeBlockers :: [RuntimeDiagnosisBlocker]
+  }
+  deriving (Eq, Show)
+
+data RuntimeDiagnosisNodeKind
+  = DiagnosisRoot
+  | DiagnosisNeedsUpstream WorkflowFact
+  | DiagnosisPipeUpstream WorkflowFact TypeName
+  deriving (Eq, Show)
+
+data RuntimeDiagnosisProbe = RuntimeDiagnosisProbe
+  { diagnosisProbeFact :: WorkflowFact
+  , diagnosisProbeSend :: SendName
+  , diagnosisProbeStatus :: RuntimeDiagnosisProbeStatus
+  }
+  deriving (Eq, Show)
+
+data RuntimeDiagnosisProbeStatus
+  = DiagnosisProbePending
+  | DiagnosisProbePassed
+  | DiagnosisProbeFailed String
+  deriving (Eq, Show)
+
+data RuntimeDiagnosisBlocker
+  = DiagnosisMissingRule
+  | DiagnosisExternalTakeSource
+  | DiagnosisNonIdempotentSend SendName
   deriving (Eq, Show)
 
 data RuntimeComponentEvent
@@ -363,6 +426,7 @@ emptyRuntime =
     , runtimeSuspenseEvents = []
     , runtimeMiddlewareStack = []
     , runtimeMiddlewareEvents = []
+    , runtimeFailureDiagnoses = []
     }
 
 emptyHandlerRegistry :: HandlerRegistry
@@ -432,13 +496,28 @@ runBlueprintWithEffectEnvironmentResult ::
   EffectTheory ->
   AppBlueprint ->
   IO (Either RuntimeError Runtime)
-runBlueprintWithEffectEnvironmentResult environment effects blueprint =
+runBlueprintWithEffectEnvironmentResult environment effects blueprint = do
+  result <- runBlueprintWithEffectEnvironmentRuntimeResult environment effects blueprint
+  pure
+    ( case result of
+        RuntimeFailed errorReport _ ->
+          Left errorReport
+        RuntimeSucceeded runtime _ ->
+          Right runtime
+    )
+
+runBlueprintWithEffectEnvironmentRuntimeResult ::
+  RuntimeEffectEnvironment ->
+  EffectTheory ->
+  AppBlueprint ->
+  IO (RuntimeResult Runtime)
+runBlueprintWithEffectEnvironmentRuntimeResult environment effects blueprint =
   case buildNativeApp blueprint effects of
     Left message ->
-      pure (Left (RuntimeWaitBlocked message))
+      pure (RuntimeFailed (RuntimeWaitBlocked message) emptyRuntime)
     Right plan ->
       if not (nativePlanPassed plan)
-        then pure (Left (RuntimeWaitBlocked (renderNativePlanErrors plan)))
+        then pure (RuntimeFailed (RuntimeWaitBlocked (renderNativePlanErrors plan)) emptyRuntime)
         else do
           let callbacks = runtimeCallbacksFromHanging (blueprintHanging blueprint)
               currentEnv =
@@ -446,14 +525,14 @@ runBlueprintWithEffectEnvironmentResult environment effects blueprint =
           appResult <- runRuntimeM currentEnv emptyRuntime (runWorkflow (blueprintApp blueprint))
           case appResult of
             RuntimeFailed errorReport runtime ->
-              pure (Left (traceFailure errorReport runtime))
+              pure (RuntimeFailed (traceFailure errorReport runtime) runtime)
             RuntimeSucceeded _ appRuntime -> do
               hangingResult <- runRuntimeM currentEnv appRuntime (runHanging (blueprintHanging blueprint))
               case hangingResult of
                 RuntimeFailed errorReport runtime ->
-                  pure (Left (traceFailure errorReport runtime))
+                  pure (RuntimeFailed (traceFailure errorReport runtime) runtime)
                 RuntimeSucceeded _ finalRuntime ->
-                  pure (Right finalRuntime)
+                  pure (RuntimeSucceeded finalRuntime finalRuntime)
 
 getRuntimeState :: RuntimeM RuntimeState
 getRuntimeState =
@@ -614,16 +693,47 @@ ensureFact stack currentFact = do
               throwRuntimeError (RuntimeMissingFactRule currentFact)
             Just rule -> do
               recordFactClaim currentFact RuntimeFactRunning Nothing
-              mapM_ (ensureFact (currentFact : stack)) (nativeRuleNeeds rule)
-              ensureRuleTakes stack rule
-              runRuleTransforms rule
-              runRuleSends rule
-              markRuleSucceeded rule
-              recordFactClaim currentFact RuntimeFactSucceeded Nothing
+              dependencyResult <-
+                catchRuntime
+                  ( do
+                      ensureRuleNeeds stack rule
+                      ensureRuleTakes stack rule
+                  )
+              case dependencyResult of
+                Left errorReport -> do
+                  recordFactFailedIfAbsent currentFact (RuntimeLocalFactFailed (renderRuntimeError errorReport))
+                  _ <- diagnoseRuntimeFailure currentFact Nothing errorReport
+                  throwRuntimeError errorReport
+                Right _ -> do
+                  directResult <-
+                    catchRuntime
+                      ( do
+                          runRuleTransforms rule
+                          runRuleSends rule
+                      )
+                  case directResult of
+                    Left errorReport ->
+                      handleRuleDirectFailure rule errorReport
+                    Right _ -> do
+                      markRuleSucceeded rule
+                      recordFactClaim currentFact RuntimeFactSucceeded Nothing
+
+ensureRuleNeeds :: [WorkflowFact] -> NativeFactRule -> RuntimeM ()
+ensureRuleNeeds stack rule =
+  mapM_ ensureNeed (nativeRuleNeeds rule)
+  where
+    ensureNeed neededFact = do
+      result <- catchRuntime (ensureFact (nativeRuleFact rule : stack) neededFact)
+      case result of
+        Right _ ->
+          pure ()
+        Left errorReport -> do
+          recordFactFailedIfAbsent (nativeRuleFact rule) (RuntimeDependencyFailed neededFact)
+          throwRuntimeError errorReport
 
 ensureRuleTakes :: [WorkflowFact] -> NativeFactRule -> RuntimeM ()
 ensureRuleTakes stack rule =
-  mapM_ ensureTake (filter isPipeType (nativeRuleTakes rule))
+  mapM_ ensureTake (filter runtimePipeDependencyType (nativeRuleTakes rule))
   where
     ensureTake currentType = do
       runtime <- getRuntimeState
@@ -632,8 +742,14 @@ ensureRuleTakes stack rule =
         else do
           plan <- currentPlan
           case sourceFactsForType plan currentType of
-            [sourceFact] ->
-              ensureFact stack sourceFact
+            [sourceFact] -> do
+              result <- catchRuntime (ensureFact stack sourceFact)
+              case result of
+                Right _ ->
+                  pure ()
+                Left errorReport -> do
+                  recordFactFailedIfAbsent (nativeRuleFact rule) (RuntimePipeDependencyFailed sourceFact currentType)
+                  throwRuntimeError errorReport
             [] ->
               throwRuntimeError (RuntimeWaitBlocked ("missing producer for pipe type " ++ show currentType))
             sources ->
@@ -676,45 +792,97 @@ runTransform (expectedInput, expectedOutput, transformName) = do
 
 runRuleSends :: NativeFactRule -> RuntimeM ()
 runRuleSends rule =
-  mapM_ runSend (nativeRuleUses rule)
+  mapM_ runSendWithPolicyOrThrow (nativeRuleUses rule)
 
-runSend :: SendName -> RuntimeM ()
-runSend currentSend = do
+runSendWithPolicyOrThrow :: SendName -> RuntimeM ()
+runSendWithPolicyOrThrow currentSend = do
+  result <- runSendWithPolicy currentSend
+  case result of
+    Nothing ->
+      pure ()
+    Just errorReport ->
+      throwRuntimeError errorReport
+
+runSendWithPolicy :: SendName -> RuntimeM (Maybe RuntimeError)
+runSendWithPolicy currentSend = do
+  firstResult <- runSendOnce currentSend
+  case firstResult of
+    Nothing ->
+      pure Nothing
+    Just errorReport -> do
+      retryAllowed <- sendRetryAllowed currentSend
+      if retryAllowed
+        then do
+          traceRuntimeM ("retry externalMake " ++ show currentSend)
+          runSendOnce currentSend
+        else
+          pure (Just errorReport)
+
+runSendOnce :: SendName -> RuntimeM (Maybe RuntimeError)
+runSendOnce currentSend = do
   plan <- currentPlan
   environment <- currentEffectEnvironment
   case sendContractFor plan currentSend of
     Nothing ->
-      throwRuntimeError (RuntimeMissingSendBoundary currentSend)
+      pure (Just (RuntimeMissingSendBoundary currentSend))
     Just contract ->
       case handlerFor (runtimeEffectHandlers environment) currentSend of
         Nothing ->
-          throwRuntimeError (RuntimeMissingHandler currentSend)
+          pure (Just (RuntimeMissingHandler currentSend))
         Just binding -> do
           runtime <- getRuntimeState
-          input <- handlerInputFor runtime contract
-          result <- liftRuntimeIO (runRuntimeHandler (handlerBindingHandler binding) currentSend input runtime)
-          case result of
-            HandlerFailed message ->
-              throwRuntimeError (RuntimeHandlerFailed currentSend message)
-            HandlerSucceeded outputs -> do
-              validateRuntimeValueOutputs currentSend (sendOutput (sendContractSignature contract)) outputs
-              modifyRuntimeState (recordRuntimeValues outputs)
-              traceRuntimeM ("externalMake " ++ show currentSend ++ " using " ++ show (handlerBindingName binding))
-            HandlerSucceededTyped outputs -> do
-              validateRuntimeTypedValueOutputs currentSend (sendOutput (sendContractSignature contract)) outputs
-              modifyRuntimeState (recordRuntimeTypedValues outputs)
-              traceRuntimeM ("externalMake " ++ show currentSend ++ " using " ++ show (handlerBindingName binding) ++ " typed")
+          traceRuntimeM ("externalMake " ++ show currentSend ++ " using " ++ show (handlerBindingName binding))
+          inputResult <- catchRuntime (handlerInputFor runtime contract)
+          case inputResult of
+            Left errorReport ->
+              pure (Just errorReport)
+            Right input -> do
+              result <- liftRuntimeIO (runRuntimeHandler (handlerBindingHandler binding) currentSend input runtime)
+              case result of
+                HandlerFailed message ->
+                  pure (Just (RuntimeHandlerFailed currentSend message))
+                HandlerSucceeded outputs -> do
+                  validationResult <-
+                    catchRuntime
+                      ( do
+                          validateRuntimeValueOutputs currentSend (sendOutput (sendContractSignature contract)) outputs
+                          modifyRuntimeState (recordRuntimeValues outputs)
+                      )
+                  case validationResult of
+                    Left errorReport ->
+                      pure (Just errorReport)
+                    Right _ ->
+                      pure Nothing
+                HandlerSucceededTyped outputs -> do
+                  validationResult <-
+                    catchRuntime
+                      ( do
+                          validateRuntimeTypedValueOutputs currentSend (sendOutput (sendContractSignature contract)) outputs
+                          modifyRuntimeState (recordRuntimeTypedValues outputs)
+                      )
+                  case validationResult of
+                    Left errorReport ->
+                      pure (Just errorReport)
+                    Right _ ->
+                      pure Nothing
 
 handlerInputFor :: Runtime -> SendContract -> RuntimeM HandlerInput
 handlerInputFor runtime contract =
-  if not (isPipeType inputType)
-    then pure (handlerInputFromValues [])
-    else
+  case inputType of
+    NoInput ->
+      pure (handlerInputFromValues [])
+    Unit ->
+      pure (handlerInputFromValues [])
+    _ ->
       case typedValuesByType inputType runtime of
+        typedValues@(_ : _) ->
+          pure (handlerInputFromTypedValues typedValues)
         [] ->
-          throwRuntimeError (RuntimeMissingHandlerInput (sendContractName contract) inputType)
-        values ->
-          pure (handlerInputFromTypedValues values)
+          case runtimeValuesByType inputType runtime of
+            values@(_ : _) ->
+              pure (handlerInputFromValues values)
+            [] ->
+              throwRuntimeError (RuntimeMissingHandlerInput (sendContractName contract) inputType)
   where
     inputType =
       sendInput (sendContractSignature contract)
@@ -746,6 +914,162 @@ validateRuntimeTypedValueOutputs currentSend outputType outputs
             outputType
             (map someRuntimeValueType outputs)
         )
+
+handleRuleDirectFailure :: NativeFactRule -> RuntimeError -> RuntimeM ()
+handleRuleDirectFailure rule errorReport = do
+  let currentFact =
+        nativeRuleFact rule
+      rootSend =
+        runtimeErrorSend errorReport
+  recordFactFailedIfAbsent currentFact (runtimeFactFailureForError rootSend errorReport)
+  modifyRuntimeState (recordRuntimeValues [RuntimeValue ErrorInput (renderRuntimeError errorReport)])
+  _ <- diagnoseRuntimeFailure currentFact rootSend errorReport
+  runErrorHandlers rule
+  throwRuntimeError errorReport
+
+diagnoseRuntimeFailure :: WorkflowFact -> Maybe SendName -> RuntimeError -> RuntimeM RuntimeFailureDiagnosis
+diagnoseRuntimeFailure currentFact currentSend errorReport = do
+  plan <- currentPlan
+  runtime <- getRuntimeState
+  let diagnosis =
+        buildFailureDiagnosis
+          plan
+          runtime
+          currentFact
+          currentSend
+          (renderRuntimeError errorReport)
+  probedDiagnosis <- runDiagnosisProbes diagnosis
+  traceRuntimeM (renderRuntimeFailureDiagnosis probedDiagnosis)
+  modifyRuntimeState (recordRuntimeDiagnosis probedDiagnosis)
+  pure probedDiagnosis
+
+runDiagnosisProbes :: RuntimeFailureDiagnosis -> RuntimeM RuntimeFailureDiagnosis
+runDiagnosisProbes diagnosis =
+  runDiagnosisProbePairs diagnosis (diagnosisProbePairs diagnosis)
+
+runDiagnosisProbePairs ::
+  RuntimeFailureDiagnosis ->
+  [(WorkflowFact, SendName)] ->
+  RuntimeM RuntimeFailureDiagnosis
+runDiagnosisProbePairs diagnosis [] =
+  pure diagnosis
+runDiagnosisProbePairs diagnosis (currentProbe : rest) = do
+  nextDiagnosis <- runDiagnosisProbe diagnosis currentProbe
+  runDiagnosisProbePairs nextDiagnosis rest
+
+runDiagnosisProbe ::
+  RuntimeFailureDiagnosis ->
+  (WorkflowFact, SendName) ->
+  RuntimeM RuntimeFailureDiagnosis
+runDiagnosisProbe diagnosis (currentFact, currentSend) = do
+  traceRuntimeM ("diagnosis probe " ++ show currentFact ++ " externalMake " ++ show currentSend)
+  result <- runSendOnce currentSend
+  case result of
+    Nothing -> do
+      traceRuntimeM ("diagnosis probe ok " ++ show currentFact ++ " externalMake " ++ show currentSend)
+      pure (completeDiagnosisProbe currentFact currentSend DiagnosisProbePassed diagnosis)
+    Just errorReport -> do
+      traceRuntimeM
+        ( "diagnosis probe failed "
+            ++ show currentFact
+            ++ " externalMake "
+            ++ show currentSend
+            ++ " "
+            ++ show errorReport
+        )
+      pure
+        ( completeDiagnosisProbe
+            currentFact
+            currentSend
+            (DiagnosisProbeFailed (show errorReport))
+            diagnosis
+        )
+
+runErrorHandlers :: NativeFactRule -> RuntimeM ()
+runErrorHandlers rule =
+  case nativeRuleErrors rule of
+    [] ->
+      pure ()
+    handlers -> do
+      traceRuntimeM ("error handlers " ++ show (nativeRuleFact rule) ++ " " ++ show handlers)
+      mapM_ runErrorHandler handlers
+  where
+    runErrorHandler currentHandler = do
+      result <- runSendWithPolicy currentHandler
+      case result of
+        Nothing ->
+          pure ()
+        Just errorReport -> do
+          traceRuntimeM ("error handler " ++ show currentHandler ++ " failed " ++ show errorReport)
+          recordFactFailedIfAbsent
+            (nativeRuleFact rule)
+            (RuntimeErrorHandlerFailed currentHandler (show errorReport))
+
+recordFactFailedIfAbsent :: WorkflowFact -> RuntimeFactFailure -> RuntimeM ()
+recordFactFailedIfAbsent currentFact failure =
+  modifyRuntimeState
+    ( \runtime ->
+        if factAlreadyFailedWithReason runtime currentFact
+          then runtime
+          else
+            runtime
+              { runtimeFactClaims =
+                  upsertRuntimeFactClaim
+                    (RuntimeFactClaim currentFact RuntimeFactFailed (Just failure))
+                    (runtimeFactClaims runtime)
+              }
+    )
+
+factAlreadyFailedWithReason :: Runtime -> WorkflowFact -> Bool
+factAlreadyFailedWithReason runtime currentFact =
+  case factClaimFor runtime currentFact of
+    Just claim ->
+      runtimeFactClaimStatus claim == RuntimeFactFailed
+        && runtimeFactClaimFailure claim /= Nothing
+    Nothing ->
+      False
+
+factClaimFor :: Runtime -> WorkflowFact -> Maybe RuntimeFactClaim
+factClaimFor runtime currentFact =
+  firstJust
+    [ Just claim
+    | claim <- runtimeFactClaims runtime
+    , runtimeFactClaimFact claim == currentFact
+    ]
+
+runtimeFactFailureForError :: Maybe SendName -> RuntimeError -> RuntimeFactFailure
+runtimeFactFailureForError (Just currentSend) errorReport =
+  RuntimeExternalMakeFailed currentSend (renderRuntimeError errorReport)
+runtimeFactFailureForError Nothing errorReport =
+  RuntimeLocalFactFailed (renderRuntimeError errorReport)
+
+runtimeErrorSend :: RuntimeError -> Maybe SendName
+runtimeErrorSend errorReport =
+  case errorReport of
+    RuntimeMissingSendBoundary currentSend ->
+      Just currentSend
+    RuntimeMissingHandler currentSend ->
+      Just currentSend
+    RuntimeMissingHandlerInput currentSend _ ->
+      Just currentSend
+    RuntimeHandlerOutputMismatch currentSend _ _ ->
+      Just currentSend
+    RuntimeHandlerFailed currentSend _ ->
+      Just currentSend
+    _ ->
+      Nothing
+
+sendRetryAllowed :: SendName -> RuntimeM Bool
+sendRetryAllowed currentSend = do
+  plan <- currentPlan
+  case sendContractFor plan currentSend of
+    Just contract ->
+      pure
+        ( sendContractRetry contract == RetryOnce
+            && sendContractIdempotency contract == Idempotent
+        )
+    Nothing ->
+      pure False
 
 markRuleSucceeded :: NativeFactRule -> RuntimeM ()
 markRuleSucceeded rule =
@@ -1028,6 +1352,254 @@ transformFor registry currentTransform =
     , transformBindingName binding == currentTransform
     ]
 
+buildFailureDiagnosis ::
+  NativeAppPlan ->
+  Runtime ->
+  WorkflowFact ->
+  Maybe SendName ->
+  String ->
+  RuntimeFailureDiagnosis
+buildFailureDiagnosis plan runtime rootFact rootSend rootError =
+  RuntimeFailureDiagnosis
+    { diagnosisRootFact = rootFact
+    , diagnosisRootSend = rootSend
+    , diagnosisRootError = rootError
+    , diagnosisNodes = nodes
+    , diagnosisProbes =
+        [ RuntimeDiagnosisProbe currentFact currentSend DiagnosisProbePending
+        | currentNode <- nodes
+        , currentSend <- diagnosisNodeIdempotentSends currentNode
+        , let currentFact = diagnosisNodeFact currentNode
+        ]
+    , diagnosisSuspects = diagnosisSuspectFacts nodes rootFact
+    , diagnosisPollutedFacts = downstreamFacts plan runtime rootFact
+    }
+  where
+    nodes =
+      diagnosisNodesFrom plan runtime [] [SearchItem rootFact DiagnosisRoot]
+
+data SearchItem = SearchItem WorkflowFact RuntimeDiagnosisNodeKind
+
+diagnosisNodesFrom ::
+  NativeAppPlan ->
+  Runtime ->
+  [WorkflowFact] ->
+  [SearchItem] ->
+  [RuntimeDiagnosisNode]
+diagnosisNodesFrom _ _ _ [] =
+  []
+diagnosisNodesFrom plan runtime seen (SearchItem currentFact currentKind : rest)
+  | currentFact `elem` seen =
+      diagnosisNodesFrom plan runtime seen rest
+  | otherwise =
+      currentNode : diagnosisNodesFrom plan runtime (currentFact : seen) (rest ++ upstreamItems)
+  where
+    currentNode =
+      diagnosisNodeFor plan runtime currentFact currentKind
+    upstreamItems =
+      case nativeRuleFor plan currentFact of
+        Nothing ->
+          []
+        Just currentRule ->
+          [ SearchItem neededFact (DiagnosisNeedsUpstream currentFact)
+          | neededFact <- nativeRuleNeeds currentRule
+          ]
+            ++ [ SearchItem sourceFact (DiagnosisPipeUpstream currentFact currentType)
+               | currentType <- filter runtimePipeDependencyType (nativeRuleTakes currentRule)
+               , sourceFact <- sourceFactsForType plan currentType
+               ]
+
+diagnosisNodeFor ::
+  NativeAppPlan ->
+  Runtime ->
+  WorkflowFact ->
+  RuntimeDiagnosisNodeKind ->
+  RuntimeDiagnosisNode
+diagnosisNodeFor plan runtime currentFact currentKind =
+  RuntimeDiagnosisNode
+    { diagnosisNodeFact = currentFact
+    , diagnosisNodeKind = currentKind
+    , diagnosisNodeStatus = factStatus runtime currentFact
+    , diagnosisNodeExternalMakes = sends
+    , diagnosisNodeIdempotentSends = idempotentSends
+    , diagnosisNodeNonIdempotentSends = nonIdempotentSends
+    , diagnosisNodeBlockers = blockers
+    }
+  where
+    currentRule =
+      nativeRuleFor plan currentFact
+    sends =
+      maybe [] nativeRuleUses currentRule
+    idempotentSends =
+      [ currentSend
+      | currentSend <- sends
+      , sendIsIdempotent plan currentSend
+      ]
+    nonIdempotentSends =
+      [ currentSend
+      | currentSend <- sends
+      , not (sendIsIdempotent plan currentSend)
+      ]
+    blockers =
+      missingRuleBlocker currentRule
+        ++ externalTakeBlocker currentRule
+        ++ map DiagnosisNonIdempotentSend nonIdempotentSends
+
+missingRuleBlocker :: Maybe NativeFactRule -> [RuntimeDiagnosisBlocker]
+missingRuleBlocker Nothing =
+  [DiagnosisMissingRule]
+missingRuleBlocker (Just _) =
+  []
+
+externalTakeBlocker :: Maybe NativeFactRule -> [RuntimeDiagnosisBlocker]
+externalTakeBlocker (Just currentRule)
+  | nativeRuleExternal currentRule =
+      [DiagnosisExternalTakeSource]
+externalTakeBlocker _ =
+  []
+
+sendIsIdempotent :: NativeAppPlan -> SendName -> Bool
+sendIsIdempotent plan currentSend =
+  case sendContractFor plan currentSend of
+    Just currentContract ->
+      sendContractIdempotency currentContract == Idempotent
+    Nothing ->
+      False
+
+diagnosisSuspectFacts :: [RuntimeDiagnosisNode] -> WorkflowFact -> [WorkflowFact]
+diagnosisSuspectFacts nodes rootFact =
+  unique
+    ( rootFact
+        : [ diagnosisNodeFact currentNode
+          | currentNode <- nodes
+          , nodeIsSuspect currentNode
+          ]
+    )
+
+nodeIsSuspect :: RuntimeDiagnosisNode -> Bool
+nodeIsSuspect currentNode =
+  not (null (diagnosisNodeIdempotentSends currentNode))
+    || any isNonIdempotentBlocker (diagnosisNodeBlockers currentNode)
+    || DiagnosisMissingRule `elem` diagnosisNodeBlockers currentNode
+    || DiagnosisExternalTakeSource `elem` diagnosisNodeBlockers currentNode
+    || ( null (diagnosisNodeExternalMakes currentNode)
+          && null (diagnosisNodeBlockers currentNode)
+       )
+
+isNonIdempotentBlocker :: RuntimeDiagnosisBlocker -> Bool
+isNonIdempotentBlocker (DiagnosisNonIdempotentSend _) =
+  True
+isNonIdempotentBlocker _ =
+  False
+
+downstreamFacts :: NativeAppPlan -> Runtime -> WorkflowFact -> [WorkflowFact]
+downstreamFacts plan runtime rootFact =
+  downstreamFactsFrom plan runtime [] [rootFact]
+
+downstreamFactsFrom ::
+  NativeAppPlan ->
+  Runtime ->
+  [WorkflowFact] ->
+  [WorkflowFact] ->
+  [WorkflowFact]
+downstreamFactsFrom _ _ seen [] =
+  seen
+downstreamFactsFrom plan runtime seen (currentFact : rest) =
+  downstreamFactsFrom plan runtime nextSeen (rest ++ nextFacts)
+  where
+    nextFacts =
+      [ dependentFact
+      | currentRule <- nativeAppPlanFactRules plan
+      , currentFact `ruleDependsOnFact` (plan, currentRule)
+      , let dependentFact = nativeRuleFact currentRule
+      , dependentFact `elem` claimedFacts runtime
+      , dependentFact `notElem` seen
+      ]
+    nextSeen =
+      unique (seen ++ nextFacts)
+
+ruleDependsOnFact :: WorkflowFact -> (NativeAppPlan, NativeFactRule) -> Bool
+ruleDependsOnFact currentFact (plan, currentRule) =
+  currentFact `elem` nativeRuleNeeds currentRule
+    || any factMakesTakenType (nativeRuleTakes currentRule)
+  where
+    factMakesTakenType currentType =
+      currentFact `elem` sourceFactsForType plan currentType
+
+claimedFacts :: Runtime -> [WorkflowFact]
+claimedFacts runtime =
+  [ runtimeFactClaimFact currentClaim
+  | currentClaim <- runtimeFactClaims runtime
+  ]
+
+factStatus :: Runtime -> WorkflowFact -> Maybe RuntimeFactStatus
+factStatus runtime currentFact =
+  runtimeFactClaimStatus <$> factClaimFor runtime currentFact
+
+diagnosisProbePairs :: RuntimeFailureDiagnosis -> [(WorkflowFact, SendName)]
+diagnosisProbePairs diagnosis =
+  [ (diagnosisProbeFact currentProbe, diagnosisProbeSend currentProbe)
+  | currentProbe <- diagnosisProbes diagnosis
+  , diagnosisProbeStatus currentProbe == DiagnosisProbePending
+  ]
+
+completeDiagnosisProbe ::
+  WorkflowFact ->
+  SendName ->
+  RuntimeDiagnosisProbeStatus ->
+  RuntimeFailureDiagnosis ->
+  RuntimeFailureDiagnosis
+completeDiagnosisProbe currentFact currentSend currentStatus diagnosis =
+  diagnosis
+    { diagnosisProbes =
+        map completeProbe (diagnosisProbes diagnosis)
+    }
+  where
+    completeProbe currentProbe
+      | diagnosisProbeFact currentProbe == currentFact
+          && diagnosisProbeSend currentProbe == currentSend =
+          currentProbe {diagnosisProbeStatus = currentStatus}
+      | otherwise =
+          currentProbe
+
+recordRuntimeDiagnosis :: RuntimeFailureDiagnosis -> Runtime -> Runtime
+recordRuntimeDiagnosis diagnosis runtime =
+  runtime
+    { runtimeFailureDiagnoses =
+        runtimeFailureDiagnoses runtime ++ [diagnosis]
+    }
+
+renderRuntimeFailureDiagnosis :: RuntimeFailureDiagnosis -> String
+renderRuntimeFailureDiagnosis diagnosis =
+  unwords
+    [ "diagnosis root"
+    , show (diagnosisRootFact diagnosis)
+    , renderRootSend (diagnosisRootSend diagnosis)
+    , "error"
+    , show (diagnosisRootError diagnosis)
+    , "suspects"
+    , show (diagnosisSuspects diagnosis)
+    , "probes"
+    , show (diagnosisProbes diagnosis)
+    , "blocked"
+    , show (blockedNodes (diagnosisNodes diagnosis))
+    , "polluted"
+    , show (diagnosisPollutedFacts diagnosis)
+    ]
+
+renderRootSend :: Maybe SendName -> String
+renderRootSend Nothing =
+  "local"
+renderRootSend (Just currentSend) =
+  "send " ++ show currentSend
+
+blockedNodes :: [RuntimeDiagnosisNode] -> [(WorkflowFact, [RuntimeDiagnosisBlocker])]
+blockedNodes nodes =
+  [ (diagnosisNodeFact currentNode, diagnosisNodeBlockers currentNode)
+  | currentNode <- nodes
+  , not (null (diagnosisNodeBlockers currentNode))
+  ]
+
 renderRuntimeError :: RuntimeError -> String
 renderRuntimeError =
   show
@@ -1103,6 +1675,13 @@ typedValuesByType currentType runtime =
   , someRuntimeValueType value == currentType
   ]
 
+runtimeValuesByType :: TypeName -> Runtime -> [RuntimeValue]
+runtimeValuesByType currentType runtime =
+  [ value
+  | value <- runtimeValues runtime
+  , runtimeValueType value == currentType
+  ]
+
 componentStatus :: WorkflowName -> Runtime -> RuntimeComponentStatus
 componentStatus name runtime
   | name `elem` runtimeCompletedComponents runtime =
@@ -1120,6 +1699,14 @@ isPipeType Unit =
 isPipeType ErrorInput =
   False
 isPipeType _ =
+  True
+
+runtimePipeDependencyType :: TypeName -> Bool
+runtimePipeDependencyType NoInput =
+  False
+runtimePipeDependencyType Unit =
+  False
+runtimePipeDependencyType _ =
   True
 
 mergeRuntimeValues :: [RuntimeValue] -> [RuntimeValue] -> [RuntimeValue]
