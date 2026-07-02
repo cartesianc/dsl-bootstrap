@@ -48,7 +48,7 @@ loop
 
 ## 2. AST 只表达结构
 
-AST 负责表达 framework core 的能力结构，而不是执行细节。
+AST 表达 framework core 的能力结构；执行细节留给 bootstrap runtime 和 witness。
 
 AST 中可以出现：
 

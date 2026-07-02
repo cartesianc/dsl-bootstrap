@@ -8,12 +8,16 @@ import Bootstrap.Effects
   ( coreBootstrapEffects )
 import Framework.Background.ConstraintProof
   ( SmtResult (..)
+  , SmtMode (..)
   , SmtSolver
   , SmtStatus (..)
   , availableSmtSolver
   , constraintsFromAppPlan
-  , proveMinimalCoreWithAvailableSolver
+  , parseSmtMode
+  , proveMinimalCoreWithMode
+  , renderSmtMode
   , renderSmtSolver
+  , smtModeFromEnvironment
   )
 import Framework.Domain
   ( DomainReport (..)
@@ -22,9 +26,12 @@ import Framework.Domain
   , domainSemanticEvidencePassed
   , frameworkCoreDomain
   )
+import System.Environment
+  ( getArgs )
 
 main :: IO ()
 main = do
+  mode <- selectedSmtMode
   report <- buildDomainReport frameworkCoreDomain
   let missing =
         [ name
@@ -37,28 +44,28 @@ main = do
         , domainSemanticEvidenceName evidence `elem` expectedEvidence
         , not (domainSemanticEvidencePassed evidence)
         ]
-  (maybeSolver, solverResults) <- optionalSolverResults
+  (maybeSolver, solverResults) <- solverResultsForMode mode
   let solverFailed =
         [ result
         | result <- solverResults
         , smtResultStatus result == SmtFailed
         ]
-      solverSkippedWithAvailableSolver =
-        case maybeSolver of
-          Just _ ->
+      solverSkippedInRequiredMode =
+        case mode of
+          SmtRequired ->
             [ result
             | result <- solverResults
             , smtResultStatus result == SmtSkipped
             ]
-          Nothing ->
+          _ ->
             []
-  case (missing, failed, solverFailed, solverSkippedWithAvailableSolver) of
+  case (missing, failed, solverFailed, solverSkippedInRequiredMode) of
     ([], [], [], []) ->
       putStrLn
         ( "[witness] ok constraint proof evidence "
             ++ show (length expectedEvidence)
             ++ " claims"
-            ++ solverSuffix maybeSolver
+            ++ solverSuffix mode maybeSolver
         )
     _ ->
       ioError
@@ -70,8 +77,8 @@ main = do
                 ++ show (map domainSemanticEvidenceName failed)
                 ++ "\nsolver failed: "
                 ++ show solverFailed
-                ++ "\nsolver skipped with available solver: "
-                ++ show solverSkippedWithAvailableSolver
+                ++ "\nsolver skipped in required mode: "
+                ++ show solverSkippedInRequiredMode
             )
         )
 
@@ -88,19 +95,69 @@ evidencePresent name report =
     (\evidence -> domainSemanticEvidenceName evidence == name)
     (domainReportSemanticEvidence report)
 
-optionalSolverResults :: IO (Maybe SmtSolver, [SmtResult])
-optionalSolverResults = do
-  maybeSolver <- availableSmtSolver
+solverResultsForMode :: SmtMode -> IO (Maybe SmtSolver, [SmtResult])
+solverResultsForMode mode = do
+  maybeSolver <-
+    case mode of
+      SmtDisabled ->
+        pure Nothing
+      _ ->
+        availableSmtSolver
   case constraintsFromAppPlan coreBootstrapBlueprint coreBootstrapEffects of
     Left _ ->
       pure (maybeSolver, [])
     Right constraints ->
-      (,) maybeSolver <$> proveMinimalCoreWithAvailableSolver constraints
+      (,) maybeSolver <$> proveMinimalCoreWithMode mode constraints
 
-solverSuffix :: Maybe SmtSolver -> String
-solverSuffix maybeSolver =
-  case maybeSolver of
-    Just solver ->
-      "; external solver " ++ renderSmtSolver solver
+selectedSmtMode :: IO SmtMode
+selectedSmtMode = do
+  args <- getArgs
+  case cliSmtMode args of
+    Left message ->
+      ioError (userError message)
+    Right (Just mode) ->
+      pure mode
+    Right Nothing -> do
+      envMode <- smtModeFromEnvironment
+      case envMode of
+        Right mode ->
+          pure mode
+        Left message ->
+          ioError (userError message)
+
+cliSmtMode :: [String] -> Either String (Maybe SmtMode)
+cliSmtMode [] =
+  Right Nothing
+cliSmtMode (arg : rest) =
+  case smtEqualsValue arg of
+    Just modeText ->
+      Just <$> parseSmtMode modeText
     Nothing ->
-      "; external solver not found"
+      if arg == "--smt"
+        then case rest of
+          modeText : _ ->
+            Just <$> parseSmtMode modeText
+          [] ->
+            Left "missing value after --smt; expected off, auto, or required"
+        else cliSmtMode rest
+
+smtEqualsValue :: String -> Maybe String
+smtEqualsValue arg =
+  let prefix =
+        "--smt="
+   in if take (length prefix) arg == prefix
+        then Just (drop (length prefix) arg)
+        else Nothing
+
+solverSuffix :: SmtMode -> Maybe SmtSolver -> String
+solverSuffix mode maybeSolver =
+  "; SMT mode " ++ renderSmtMode mode ++ solverText
+  where
+    solverText =
+      case (mode, maybeSolver) of
+        (SmtDisabled, _) ->
+          "; external solver disabled"
+        (_, Just solver) ->
+          "; external solver " ++ renderSmtSolver solver
+        (_, Nothing) ->
+          "; external solver not found"

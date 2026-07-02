@@ -56,7 +56,7 @@ stack exec bootstrap-runtime-smoke
 stack exec bootstrap-report
 stack exec fixed-point-smoke
 stack exec runtime-diagnosis-witness
-stack exec constraint-proof-witness
+stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
 stack exec registry-codegen-witness
 stack exec self-artifact-witness
@@ -70,7 +70,7 @@ domain-app semantic evidence: failed 0
 bootstrap-report: status passed
 fixed-point-smoke: diffs 0
 runtime-diagnosis-witness: passed
-constraint-proof-witness: passed
+constraint-proof-witness --smt=auto: passed
 workflow-semantics-witness: passed
 registry-codegen-witness: passed
 self-artifact-witness: passed

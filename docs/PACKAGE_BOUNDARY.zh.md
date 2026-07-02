@@ -45,7 +45,7 @@ bootstrap-report
 
 ## 2. domain-app
 
-`domain-app` 是外部使用者，不是 core 实现容器。
+`domain-app` 是外部使用者。core 实现留在 `new-framework-core`。
 
 它只暴露：
 
@@ -108,7 +108,7 @@ Interpreter.*
 old generated registry modules
 ```
 
-`Bootstrap.CoreSurface` 里的历史 `Framework.*` 字符串是 catalog data，不是 import。
+`Bootstrap.CoreSurface` 里的历史 `Framework.*` 字符串是 catalog data；它们不参与 import 边界。
 
 ## 5. Setup 规则
 

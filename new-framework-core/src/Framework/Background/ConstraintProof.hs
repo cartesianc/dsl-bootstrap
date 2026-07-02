@@ -4,6 +4,7 @@ module Framework.Background.ConstraintProof
   , RuleId (..)
   , SmtBackend (..)
   , SmtEvidence (..)
+  , SmtMode (..)
   , SmtProposition (..)
   , SmtResult (..)
   , SmtSolver (..)
@@ -15,17 +16,22 @@ module Framework.Background.ConstraintProof
   , constraintsFromNativeAppPlan
   , cvc5Solver
   , defaultSmtPropositions
+  , defaultSmtMode
+  , parseSmtMode
   , proveMinimalCore
   , proveMinimalCoreWith
   , proveMinimalCoreWithAvailableSolver
+  , proveMinimalCoreWithMode
   , proveMinimalCoreWithSolver
   , renderConstraintError
   , renderConstraintFacts
   , renderSmtEvidence
+  , renderSmtMode
   , renderSmtResult
   , renderSmtResults
   , renderSmtSolver
   , smtLibForProposition
+  , smtModeFromEnvironment
   , smtPassed
   , z3Solver
   ) where
@@ -126,6 +132,12 @@ data SmtStatus
   = SmtPassed
   | SmtFailed
   | SmtSkipped
+  deriving (Eq, Show)
+
+data SmtMode
+  = SmtDisabled
+  | SmtAuto
+  | SmtRequired
   deriving (Eq, Show)
 
 data SmtEvidence
@@ -453,6 +465,66 @@ cvc5Solver =
     , smtSolverArguments = ["--lang", "smt2"]
     }
 
+defaultSmtMode :: SmtMode
+defaultSmtMode =
+  SmtAuto
+
+smtModeFromEnvironment :: IO (Either String SmtMode)
+smtModeFromEnvironment = do
+  maybeMode <- lookupEnv smtModeEnvironmentName
+  case maybeMode of
+    Nothing ->
+      pure (Right defaultSmtMode)
+    Just modeText ->
+      pure (parseSmtMode modeText)
+
+parseSmtMode :: String -> Either String SmtMode
+parseSmtMode modeText =
+  case normalizeSmtMode modeText of
+    "" -> Right defaultSmtMode
+    "auto" -> Right SmtAuto
+    "optional" -> Right SmtAuto
+    "on" -> Right SmtAuto
+    "off" -> Right SmtDisabled
+    "disabled" -> Right SmtDisabled
+    "disable" -> Right SmtDisabled
+    "none" -> Right SmtDisabled
+    "false" -> Right SmtDisabled
+    "0" -> Right SmtDisabled
+    "required" -> Right SmtRequired
+    "require" -> Right SmtRequired
+    "strict" -> Right SmtRequired
+    other ->
+      Left
+        ( "invalid "
+            ++ smtModeEnvironmentName
+            ++ " value "
+            ++ show other
+            ++ "; expected off, auto, or required"
+        )
+
+renderSmtMode :: SmtMode -> String
+renderSmtMode mode =
+  case mode of
+    SmtDisabled -> "off"
+    SmtAuto -> "auto"
+    SmtRequired -> "required"
+
+smtModeEnvironmentName :: String
+smtModeEnvironmentName =
+  "FRAMEWORK_SMT"
+
+normalizeSmtMode :: String -> String
+normalizeSmtMode =
+  map toLowerAscii . trim
+
+toLowerAscii :: Char -> Char
+toLowerAscii currentChar
+  | 'A' <= currentChar && currentChar <= 'Z' =
+      toEnum (fromEnum currentChar - fromEnum 'A' + fromEnum 'a')
+  | otherwise =
+      currentChar
+
 availableSmtSolver :: IO (Maybe SmtSolver)
 availableSmtSolver = do
   maybeZ3 <- solverIfAvailable z3Solver
@@ -538,16 +610,41 @@ proveMinimalCoreWith backend facts =
   ]
 
 proveMinimalCoreWithAvailableSolver :: [ConstraintFact] -> IO [SmtResult]
-proveMinimalCoreWithAvailableSolver facts = do
+proveMinimalCoreWithAvailableSolver =
+  proveMinimalCoreWithMode SmtAuto
+
+proveMinimalCoreWithMode :: SmtMode -> [ConstraintFact] -> IO [SmtResult]
+proveMinimalCoreWithMode mode facts =
+  case mode of
+    SmtDisabled ->
+      pure
+        [ skippedResult currentProposition "external SMT disabled by FRAMEWORK_SMT=off"
+        | currentProposition <- defaultSmtPropositions
+        ]
+    SmtAuto ->
+      proveMinimalCoreWithDiscoveredSolver solverMissingMessage facts
+    SmtRequired ->
+      proveMinimalCoreWithDiscoveredSolver solverRequiredMessage facts
+
+proveMinimalCoreWithDiscoveredSolver :: String -> [ConstraintFact] -> IO [SmtResult]
+proveMinimalCoreWithDiscoveredSolver missingMessage facts = do
   maybeSolver <- availableSmtSolver
   case maybeSolver of
     Just solver ->
       proveMinimalCoreWithSolver solver facts
     Nothing ->
       pure
-        [ skippedResult currentProposition "no external SMT solver found; tried Z3_EXE, CVC5_EXE, z3 in PATH, and cvc5 in PATH"
+        [ skippedResult currentProposition missingMessage
         | currentProposition <- defaultSmtPropositions
         ]
+
+solverMissingMessage :: String
+solverMissingMessage =
+  "no external SMT solver found; tried Z3_EXE, CVC5_EXE, z3 in PATH, and cvc5 in PATH"
+
+solverRequiredMessage :: String
+solverRequiredMessage =
+  "external SMT required but no solver found; set Z3_EXE, CVC5_EXE, or PATH"
 
 proveMinimalCoreWithSolver :: SmtSolver -> [ConstraintFact] -> IO [SmtResult]
 proveMinimalCoreWithSolver solver facts =

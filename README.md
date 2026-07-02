@@ -321,11 +321,22 @@ $env:Z3_EXE = "D:\smt solver\z3\bin\z3.exe"
 $env:CVC5_EXE = "D:\tools\cvc5\bin\cvc5.exe"
 ```
 
+SMT mode selection:
+
+```powershell
+$env:FRAMEWORK_SMT = "off"
+$env:FRAMEWORK_SMT = "auto"
+$env:FRAMEWORK_SMT = "required"
+stack exec constraint-proof-witness -- --smt=off
+stack exec constraint-proof-witness -- --smt=auto
+stack exec constraint-proof-witness -- --smt=required
+```
+
 Run:
 
 ```powershell
 stack exec runtime-diagnosis-witness
-stack exec constraint-proof-witness
+stack exec constraint-proof-witness -- --smt=auto
 ```
 
 ## Registry Codegen
@@ -384,7 +395,7 @@ The artifact gate materializes `.generated/stage1-framework` and runs that isola
 stack build
 stack exec bootstrap-report
 stack exec fixed-point-smoke
-stack exec constraint-proof-witness
+stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
 stack exec domain-app-report
 stack exec registry-codegen-witness
@@ -423,7 +434,7 @@ Witnesses:
 
 ```powershell
 stack exec runtime-diagnosis-witness
-stack exec constraint-proof-witness
+stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
 stack exec registry-codegen-witness
 stack exec self-artifact-witness
@@ -443,7 +454,7 @@ stack exec bootstrap-report
 stack exec fixed-point-smoke
 stack exec workflow-semantics-witness
 stack exec runtime-diagnosis-witness
-stack exec constraint-proof-witness
+stack exec constraint-proof-witness -- --smt=auto
 stack exec registry-codegen-witness
 stack exec self-artifact-witness
 ```

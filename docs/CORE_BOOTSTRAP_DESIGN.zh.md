@@ -4,7 +4,7 @@
 
 ## 1. 目标
 
-目标不是恢复旧 framework 入口，也不是恢复旧业务 DomainApp。
+目标是保留可自举的 core kernel。旧 framework 入口和旧业务 DomainApp 作为历史参照。
 
 目标是：
 

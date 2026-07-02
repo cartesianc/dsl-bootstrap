@@ -12,7 +12,7 @@ Diagnosis 回答三个问题：
 哪些 send 可以安全 probe，哪些必须阻止？
 ```
 
-它建立在 effect theory 之上，而不是建立在业务代码之上。
+它建立在 effect theory 之上，并从 runtime witness 收集业务执行证据。
 
 ## 2. 输入
 
