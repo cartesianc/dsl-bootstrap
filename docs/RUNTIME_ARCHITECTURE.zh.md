@@ -138,7 +138,17 @@ RuntimeFactClosureExpressedFact
 
 runtime 的自表达由 AST facts、effect dependencies、core surface catalog 和 witness evidence 共同闭合。源码文件清单只作为实现输入。
 
-`framework-core-frontend-witness` 检查 `RuntimeDiagnosisExpressedFact`、`Framework.Runtime.Diagnosis` CoreSurface module、以及 cabal `exposed-modules` 三者同步。
+`framework-core-frontend-witness` 检查 AST claim、CoreSurface module、以及 cabal `exposed-modules` 三者同步：
+
+```text
+AstStructureExpressedFact -> Framework.Ast
+EffectTheoryDslExpressedFact -> Framework.Effect
+RuntimeConcurrencySemanticsExpressedFact -> Framework.Runtime.Concurrency
+RuntimeDiagnosisExpressedFact -> Framework.Runtime.Diagnosis
+RuntimeBackendParityExpressedFact -> Framework.FixedPoint
+RegistryCodegenExpressedFact -> Framework.RegistryCodegen
+SelfArtifactManifestExpressedFact -> Framework.SelfArtifact
+```
 
 ## 4. Runtime 模块边界
 

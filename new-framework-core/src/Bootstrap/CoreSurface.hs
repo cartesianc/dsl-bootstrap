@@ -84,6 +84,7 @@ explicitCoreSurfaceModules =
   , handlerFacade
   , trustBaseFacade
   , trustBaseManifestFacade
+  , fixedPointFacade
   , hyloFacade
   , backgroundAppBuild
   , backgroundBootstrapBoundary
@@ -851,6 +852,39 @@ trustBaseManifestFacade =
           [ "defaultTrustBaseManifest"
           , "renderTrustBaseManifest"
           , "renderTrustBaseManifestJson"
+          ]
+    )
+
+fixedPointFacade :: CoreSurfaceModule
+fixedPointFacade =
+  moduleSurface
+    "Framework.FixedPoint"
+    "fixed-point report, diff evidence, and runtime backend parity payload model"
+    ( map typeCapability
+        [ "EvidenceDiff"
+        , "FixedPointReport"
+        , "FixedPointDiffEvidencePayload"
+        , "FixedPointDiffEvidenceStatus"
+        , "FixedPointStatus"
+        , "RuntimeBackendParityEvidencePayload"
+        , "RuntimeBackendParityEvidenceStatus"
+        , "StageEvidence"
+        ]
+        ++ map valueCapability
+          [ "buildFixedPointReport"
+          , "fixedPointDiffEvidencePayloadPassed"
+          , "fixedPointDiffEvidencePayloads"
+          , "fixedPointPassed"
+          , "renderFixedPointDiffEvidencePayload"
+          , "renderFixedPointDiffEvidenceStatus"
+          , "renderFixedPointReport"
+          , "renderFixedPointReportJson"
+          , "renderRuntimeBackendParityEvidencePayload"
+          , "renderRuntimeBackendParityEvidenceStatus"
+          , "runtimeBackendParityEvidenceArtifactSummary"
+          , "runtimeBackendParityEvidenceClaimNames"
+          , "runtimeBackendParityEvidencePayloadPassed"
+          , "runtimeBackendParityEvidencePayloads"
           ]
     )
 

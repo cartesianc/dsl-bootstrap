@@ -15,7 +15,14 @@ import Bootstrap.CoreSurface
   , coreSurfaceModules
   )
 import Domain.Vocabulary
-  ( pattern RuntimeDiagnosisExpressedFact )
+  ( pattern AstStructureExpressedFact
+  , pattern EffectTheoryDslExpressedFact
+  , pattern RegistryCodegenExpressedFact
+  , pattern RuntimeBackendParityExpressedFact
+  , pattern RuntimeConcurrencySemanticsExpressedFact
+  , pattern RuntimeDiagnosisExpressedFact
+  , pattern SelfArtifactManifestExpressedFact
+  )
 import Framework.Ast
   ( App
   , AppBlueprint (..)
@@ -83,7 +90,13 @@ data ClaimModuleLink = ClaimModuleLink
 
 claimModuleLinks :: [ClaimModuleLink]
 claimModuleLinks =
-  [ ClaimModuleLink RuntimeDiagnosisExpressedFact "Framework.Runtime.Diagnosis"
+  [ ClaimModuleLink AstStructureExpressedFact "Framework.Ast"
+  , ClaimModuleLink EffectTheoryDslExpressedFact "Framework.Effect"
+  , ClaimModuleLink RuntimeConcurrencySemanticsExpressedFact "Framework.Runtime.Concurrency"
+  , ClaimModuleLink RuntimeDiagnosisExpressedFact "Framework.Runtime.Diagnosis"
+  , ClaimModuleLink RuntimeBackendParityExpressedFact "Framework.FixedPoint"
+  , ClaimModuleLink RegistryCodegenExpressedFact "Framework.RegistryCodegen"
+  , ClaimModuleLink SelfArtifactManifestExpressedFact "Framework.SelfArtifact"
   ]
 
 checkClaimModuleLink :: AppBlueprint -> String -> ClaimModuleLink -> [String]

@@ -191,7 +191,13 @@ AST claim -> CoreSurface module -> cabal exposed-module
 当前自动校验的 link：
 
 ```text
+AstStructureExpressedFact -> Framework.Ast -> new-framework-core exposed-modules
+EffectTheoryDslExpressedFact -> Framework.Effect -> new-framework-core exposed-modules
+RuntimeConcurrencySemanticsExpressedFact -> Framework.Runtime.Concurrency -> new-framework-core exposed-modules
 RuntimeDiagnosisExpressedFact -> Framework.Runtime.Diagnosis -> new-framework-core exposed-modules
+RuntimeBackendParityExpressedFact -> Framework.FixedPoint -> new-framework-core exposed-modules
+RegistryCodegenExpressedFact -> Framework.RegistryCodegen -> new-framework-core exposed-modules
+SelfArtifactManifestExpressedFact -> Framework.SelfArtifact -> new-framework-core exposed-modules
 ```
 
 自动覆盖的边界：
