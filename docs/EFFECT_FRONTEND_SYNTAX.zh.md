@@ -204,8 +204,16 @@ stack exec business-syntax-witness
 ```text
 GenerateReport capability lowering 生成 needs/take/make/uses/externalMake/transform
 GenerateReport pipeline 生成 UserName -> ReportInput 和 ReportInput -> ReportOutput candidate
+Effects.* 等于对应 Domain.Business capability group lowering
+Domain.Business 导入 Framework.Business 且不导入 Framework.Effect
 allDomainCapabilities 通过 business-shape checker
 runtime pipeline adapter 可以执行 transform 链
+```
+
+期望输出：
+
+```text
+[witness] ok business syntax evidence 11 claims
 ```
 
 日常 capability/lowering 语法改动只需要跑 `business-syntax-witness`。高危 `self-artifact-witness` artifact gate 内部也会包含这项检查，但不会因为语法文档或 README/docs-only 变更单独触发。

@@ -14,7 +14,7 @@ import Framework.Business
 import Framework.Effect
   ( EffectUnit )
 
--- effect: userEffect
+-- lowering facade: Domain.Business.userCapabilities -> EffectUnit
 userEffect :: EffectUnit
 userEffect =
   capabilitiesEffect UserEffect userCapabilities

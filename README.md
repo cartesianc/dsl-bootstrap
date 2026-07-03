@@ -121,7 +121,7 @@ domain-app-report: status passed
 bootstrap-report: status passed
 fixed-point-smoke: diffs: 0
 workflow-semantics-witness: ok workflow semantics evidence
-business-syntax-witness: ok business syntax evidence 9 claims
+business-syntax-witness: ok business syntax evidence 11 claims
 self-artifact-witness: passed (仅高危 artifact gate 轮次需要)
 ```
 
@@ -144,7 +144,7 @@ facade 模块：
 
 ```text
 Framework.Ast             frontend AST / AppBlueprint / workflow 构造器
-Framework.Business        业务编写入口：capability/pipeline/policy/binding DSL
+Framework.Business        业务编写入口：capability/pipeline/policy/binding DSL，暴露 NoInput/Unit/ErrorInput authoring token
 Framework.Effect          normalized semantic IR / compatibility layer：effect/fact/needs/take/make/uses/externalMake
 Framework.Handler         handler implementation API：typed values、handlers、transforms、registries
 Framework.TrustBase       架构自我迭代 API：bootstrap runtime、evidence、diagnosis、reports、codegen、artifact gate

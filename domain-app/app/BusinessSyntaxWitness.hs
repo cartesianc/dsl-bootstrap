@@ -8,6 +8,10 @@ module Main
 import "domain-app" Domain.Business
   ( allDomainCapabilities
   , generateReportCapability
+  , loggingCapabilities
+  , reportCapabilities
+  , systemCapabilities
+  , userCapabilities
   )
 import "domain-app" Domain.EffectVocabulary
 import "domain-app" Domain.Vocabulary
@@ -22,8 +26,13 @@ import "domain-app" Domain.Runtime
   , pattern UserNameTag
   , domainHandlerRegistry
   )
+import qualified "domain-app" Effects.Logging as LoggingEffects
+import qualified "domain-app" Effects.Report as ReportEffects
+import qualified "domain-app" Effects.System as SystemEffects
+import qualified "domain-app" Effects.User as UserEffects
 import "new-framework-core" Framework.Business
   ( BusinessShapeIssue
+  , capabilitiesEffect
   , capabilityEffectSections
   , checkBusinessShape
   , pipelineTransformCandidates
@@ -33,9 +42,12 @@ import qualified "new-framework-core" Framework.Effect as Effect
 import "new-framework-core" Framework.Effect
   ( EffectSection (..)
   , EffectName (..)
+  , EffectUnit (..)
+  , ExternalTakeBoundary (..)
   , FactProducer (..)
   , ProducerStep (..)
   , SendBoundary (..)
+  , SendPolicy (..)
   , SendSignature (..)
   , TransformName (..)
   , WorkflowFact (..)
@@ -54,25 +66,30 @@ import "new-framework-core" Framework.TrustBase
   ( Runtime (..)
   , runBlueprintWithEffectEnvironmentResult
   )
+import Data.List
+  ( isInfixOf )
 
 main :: IO ()
 main = do
   runtimePipelinePassed <- pipelineRuntimeAdapterPassed
-  let claims = allClaims runtimePipelinePassed
+  domainBusinessBoundaryPassed <- domainBusinessAuthoringBoundaryPassed
+  let claims = allClaims runtimePipelinePassed domainBusinessBoundaryPassed
   case failedClaims claims of
     [] ->
       putStrLn ("[witness] ok business syntax evidence " ++ show (length claims) ++ " claims")
     failures ->
       ioError (userError (unlines failures))
 
-allClaims :: Bool -> [(String, Bool)]
-allClaims runtimePipelinePassed =
+allClaims :: Bool -> Bool -> [(String, Bool)]
+allClaims runtimePipelinePassed domainBusinessBoundaryPassed =
   [ ("needs lowering failed", needsLoweringPassed)
   , ("take lowering failed", takeLoweringPassed)
   , ("make lowering failed", makeLoweringPassed)
   , ("uses lowering failed", usesLoweringPassed)
   , ("externalMake lowering failed", externalMakeLoweringPassed)
   , ("transform lowering failed", transformLoweringPassed)
+  , ("Effects.* lowering facade drifted from Domain.Business", effectFacadeLoweringPassed)
+  , ("Domain.Business authoring boundary drifted", domainBusinessBoundaryPassed)
   , ("handler binding alignment failed: " ++ unlines (map renderBusinessShapeIssue businessShapeIssues), null businessShapeIssues)
   , ("pipeline adjacent transform failed", pipelineLoweringPassed)
   , ("runtime pipeline adapter failed", runtimePipelinePassed)
@@ -126,6 +143,67 @@ pipelineLoweringPassed =
   where
     candidates =
       pipelineTransformCandidates generateReportCapability
+
+domainBusinessAuthoringBoundaryPassed :: IO Bool
+domainBusinessAuthoringBoundaryPassed = do
+  source <- readFile "domain-app/src/Domain/Business.hs"
+  pure
+    ( "import Framework.Business" `isInfixOf` source
+        && not ("import Framework.Effect" `isInfixOf` source)
+    )
+
+effectFacadeLoweringPassed :: Bool
+effectFacadeLoweringPassed =
+  all
+    id
+    [ effectUnitMatches
+        SystemEffects.systemEffect
+        (capabilitiesEffect SystemEffect systemCapabilities)
+    , effectUnitMatches
+        UserEffects.userEffect
+        (capabilitiesEffect UserEffect userCapabilities)
+    , effectUnitMatches
+        ReportEffects.reportEffect
+        (capabilitiesEffect ReportEffect reportCapabilities)
+    , effectUnitMatches
+        LoggingEffects.loggingEffect
+        (capabilitiesEffect LoggingEffect loggingCapabilities)
+    ]
+
+effectUnitMatches :: EffectUnit -> EffectUnit -> Bool
+effectUnitMatches actual expected =
+  effectUnitName actual == effectUnitName expected
+    && effectSectionsMatch (effectUnitSections actual) (effectUnitSections expected)
+
+effectSectionsMatch :: [EffectSection] -> [EffectSection] -> Bool
+effectSectionsMatch actual expected =
+  length actual == length expected
+    && and (zipWith effectSectionMatches actual expected)
+
+effectSectionMatches :: EffectSection -> EffectSection -> Bool
+effectSectionMatches actual expected =
+  case (actual, expected) of
+    (FactClaimSection left, FactClaimSection right) ->
+      factProducerMatches left right
+    (SendSection left, SendSection right) ->
+      sendBoundaryName left == sendBoundaryName right
+        && sendInput (sendBoundarySignature left) == sendInput (sendBoundarySignature right)
+        && sendOutput (sendBoundarySignature left) == sendOutput (sendBoundarySignature right)
+    (SendPolicySection left, SendPolicySection right) ->
+      sendPolicyName left == sendPolicyName right
+        && sendPolicyIdempotency left == sendPolicyIdempotency right
+        && sendPolicyRetry left == sendPolicyRetry right
+    (ExternalTakeSection left, ExternalTakeSection right) ->
+      externalTakeFact left == externalTakeFact right
+        && externalTakeOutput left == externalTakeOutput right
+    _ ->
+      False
+
+factProducerMatches :: FactProducer -> FactProducer -> Bool
+factProducerMatches actual expected =
+  producerFact actual == producerFact expected
+    && length (producerSteps actual) == length (producerSteps expected)
+    && and (zipWith producerStepMatches (producerSteps actual) (producerSteps expected))
 
 hasReportStep :: ProducerStep -> Bool
 hasReportStep expected =

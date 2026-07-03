@@ -56,3 +56,5 @@ Domain.SemanticEvidence
 `Effects.*` 每个模块只把一组 capability 通过 `Framework.Business.capabilitiesEffect` lower 成 effect IR。
 
 业务编写从 `Framework.Business` capability 开始。`Framework.Effect` 用在 lowering 后的规范化语义 IR。
+
+`business-syntax-witness` 检查这条 vertical slice：capability lowering、`Effects.*` 与 `Domain.Business` lowering 一致、`Domain.Business` 不导入 `Framework.Effect`、business-shape 对齐，以及 typed runtime pipeline adapter。

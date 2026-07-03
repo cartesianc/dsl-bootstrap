@@ -182,8 +182,16 @@ stack exec business-syntax-witness
 ```text
 GenerateReport capability lowering 生成 needs/take/make/uses/externalMake/transform
 GenerateReport pipeline 生成 UserName -> ReportInput 和 ReportInput -> ReportOutput candidate
+Effects.* 等于对应 Domain.Business capability group lowering
+Domain.Business 导入 Framework.Business 且不导入 Framework.Effect
 allDomainCapabilities 通过 business-shape checker
 runtime pipeline adapter 可以执行 transform 链
+```
+
+期望输出：
+
+```text
+[witness] ok business syntax evidence 11 claims
 ```
 
 这轮只冻结 authoring surface。结构化 evidence payload、JSON report、fixed-point schema 和 runtime 继续拆分属于后续迭代。

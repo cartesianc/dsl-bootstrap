@@ -13,7 +13,7 @@ import Framework.Business
 import Framework.Effect
   ( EffectUnit )
 
--- effect: systemEffect
+-- lowering facade: Domain.Business.systemCapabilities -> EffectUnit
 systemEffect :: EffectUnit
 systemEffect =
   capabilitiesEffect SystemEffect systemCapabilities

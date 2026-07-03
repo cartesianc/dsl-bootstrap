@@ -44,7 +44,7 @@ new-framework-core/src/Bootstrap/Runtime
   Boundary    core/frontend boundary policy 和语言契约检查。
 
 new-framework-core/src/Framework
-  public facade。外部 domain 默认只接触这里。Framework.Business 是 effect 前台语法入口。
+  public facade。外部 domain 默认只接触这里。Framework.Business 是 primary capability authoring surface。
 
 new-framework-core/src/Domain
   framework-core 自己的 self-domain expression。它通过 facade style 表达 framework-core。
@@ -171,11 +171,10 @@ self-artifact-witness passed (仅高危 artifact gate 轮次需要)
 
 ```text
 Framework.Ast
-Framework.Effect
 Framework.Business
 ```
 
-其中 `Framework.Business` 是 effect 前台语法，负责 capability / pipeline / policy / handler binding / transform binding 的声明；`Framework.Ast` 是 AppBlueprint / workflow AST 的前台名字。业务前台不导入 `Framework.Runtime`、`Framework.Background`、`Bootstrap.*`。
+其中 `Framework.Business` 是 primary capability authoring surface，负责 capability / pipeline / policy / handler binding / transform binding 的声明，并 re-export `NoInput` / `Unit` / `ErrorInput` 这类 authoring token；`Framework.Effect` 是 normalized effect/fact IR / compatibility API；`Framework.Ast` 是 AppBlueprint / workflow AST 的前台名字。业务前台不导入 `Framework.Effect`、`Framework.Runtime`、`Framework.Background`、`Bootstrap.*`。
 
 handler implementation 只碰：
 
@@ -194,8 +193,9 @@ Framework.TrustBase
 当前分层没有把 runtime 全暴露到前台；边界如下：
 
 ```text
-business frontend -> Framework.Ast / Framework.Effect / Framework.Business
+business frontend -> Framework.Ast / Framework.Business
 handler implementation -> Framework.Handler
 self-iteration / evidence -> Framework.TrustBase
+lowering IR / compatibility -> Framework.Effect
 runtime internals -> Framework.Runtime / Bootstrap.Runtime.*
 ```
