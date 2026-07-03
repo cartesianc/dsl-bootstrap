@@ -250,7 +250,7 @@ nativeConstraints rootFacts rules contracts systems =
     , map (ruleSendsDeclaredConstraint contracts) rules
     , duplicatePipeMakerConstraints rules
     , map (ruleTakesHaveMakerConstraint rules) rules
-    , effectSystemScopeConstraints rules systems
+    , effectSystemScopeConstraints rules contracts systems
     ]
 
 factDeclaredConstraint :: [NativeFactRule] -> WorkflowFact -> NativeConstraint
@@ -301,14 +301,14 @@ ruleTakesHaveMakerConstraint rules rule =
     hasSingleMaker currentType =
       length (sourceFactsForTypeFromRules rules currentType) == 1
 
-effectSystemScopeConstraints :: [NativeFactRule] -> [Workflow.EffectSystem WorkflowFact] -> [NativeConstraint]
-effectSystemScopeConstraints rules systems =
+effectSystemScopeConstraints :: [NativeFactRule] -> [SendContract] -> [Workflow.EffectSystem WorkflowFact] -> [NativeConstraint]
+effectSystemScopeConstraints rules contracts systems =
   concat
     [ map systemBoundaryNameConstraint systems
     , concatMap (systemImportExportConstraints systems) systems
     , concatMap (systemPrivateScopeConstraints systems) systems
     , concatMap (systemRuleClosureConstraints rules) systems
-    , concatMap (systemRuleContractConstraints rules) systems
+    , concatMap (systemRuleContractConstraints rules contracts) systems
     ]
 
 systemBoundaryNameConstraint :: Workflow.EffectSystem WorkflowFact -> NativeConstraint
@@ -424,12 +424,13 @@ ruleDependencyFacts rules rule =
         , isPipeType input
         ]
 
-systemRuleContractConstraints :: [NativeFactRule] -> Workflow.EffectSystem WorkflowFact -> [NativeConstraint]
-systemRuleContractConstraints rules system
+systemRuleContractConstraints :: [NativeFactRule] -> [SendContract] -> Workflow.EffectSystem WorkflowFact -> [NativeConstraint]
+systemRuleContractConstraints rules contracts system
   | not (Workflow.effectSystemBoundaryExplicit system) =
       []
   | otherwise =
-      concatMap constraintsForRule systemRules
+      systemPolicyDeclarationConstraints contracts system
+        ++ concatMap constraintsForRule systemRules
   where
     boundary =
       Workflow.effectSystemBoundary system
@@ -439,6 +440,10 @@ systemRuleContractConstraints rules system
       map show (Workflow.effectSystemBoundarySends boundary)
     allowedTransforms =
       map show (Workflow.effectSystemBoundaryTransforms boundary)
+    declaredIdempotentSends =
+      boundaryIdempotentSends (Workflow.effectSystemBoundaryPolicies boundary)
+    declaredRetrySends =
+      boundaryRetrySends (Workflow.effectSystemBoundaryPolicies boundary)
     systemRules =
       [ rule
       | currentFact <- unique (Workflow.effectSystemBoundaryPrivateFacts boundary ++ Workflow.effectSystemBoundaryExports boundary)
@@ -465,15 +470,113 @@ systemRuleContractConstraints rules system
               ++ " uses "
               ++ show (filter (`notElem` allowedTransforms) usedTransforms)
           )
+      , NativeConstraint
+          ("effect system idempotency policy contract " ++ show systemName ++ " " ++ show (nativeRuleFact rule))
+          (all (`elem` declaredIdempotentSends) actualIdempotentSends)
+          ( "effect system rule uses undeclared idempotency policy: "
+              ++ show systemName
+              ++ " "
+              ++ show (nativeRuleFact rule)
+              ++ " uses "
+              ++ show (filter (`notElem` declaredIdempotentSends) actualIdempotentSends)
+          )
+      , NativeConstraint
+          ("effect system retry policy contract " ++ show systemName ++ " " ++ show (nativeRuleFact rule))
+          (all (`elem` declaredRetrySends) actualRetrySends)
+          ( "effect system rule uses undeclared retry policy: "
+              ++ show systemName
+              ++ " "
+              ++ show (nativeRuleFact rule)
+              ++ " uses "
+              ++ show (filter (`notElem` declaredRetrySends) actualRetrySends)
+          )
       ]
       where
         usedSends =
-          map show (nativeRuleUses rule)
+          unique (map show (nativeRuleUses rule))
         usedTransforms =
           unique
             [ show transformName
             | (_, _, transformName) <- nativeRuleTransforms rule
             ]
+        actualIdempotentSends =
+          [ currentSend
+          | currentSend <- usedSends
+          , Just contract <- [sendContractByName contracts currentSend]
+          , sendContractIdempotency contract == Idempotent
+          ]
+        actualRetrySends =
+          [ currentSend
+          | currentSend <- usedSends
+          , Just contract <- [sendContractByName contracts currentSend]
+          , sendContractRetry contract == RetryOnce
+          ]
+
+systemPolicyDeclarationConstraints :: [SendContract] -> Workflow.EffectSystem WorkflowFact -> [NativeConstraint]
+systemPolicyDeclarationConstraints contracts system =
+  concat
+    [ map policySendDeclaredConstraint policySends
+    , map idempotencyPolicyBackedConstraint declaredIdempotentSends
+    , map retryPolicyBackedConstraint declaredRetrySends
+    ]
+  where
+    boundary =
+      Workflow.effectSystemBoundary system
+    systemName =
+      Workflow.effectSystemName system
+    allowedSends =
+      map show (Workflow.effectSystemBoundarySends boundary)
+    declaredIdempotentSends =
+      boundaryIdempotentSends (Workflow.effectSystemBoundaryPolicies boundary)
+    declaredRetrySends =
+      boundaryRetrySends (Workflow.effectSystemBoundaryPolicies boundary)
+    policySends =
+      unique (declaredIdempotentSends ++ declaredRetrySends)
+    policySendDeclaredConstraint currentSend =
+      NativeConstraint
+        ("effect system policy send declared " ++ show systemName ++ " " ++ currentSend)
+        (currentSend `elem` allowedSends)
+        ("effect system policy references undeclared send: " ++ show systemName ++ " " ++ currentSend)
+    idempotencyPolicyBackedConstraint currentSend =
+      NativeConstraint
+        ("effect system idempotency policy backed " ++ show systemName ++ " " ++ currentSend)
+        ( maybe
+            False
+            ((== Idempotent) . sendContractIdempotency)
+            (sendContractByName contracts currentSend)
+        )
+        ("effect system idempotency policy is not backed by effect theory: " ++ show systemName ++ " " ++ currentSend)
+    retryPolicyBackedConstraint currentSend =
+      NativeConstraint
+        ("effect system retry policy backed " ++ show systemName ++ " " ++ currentSend)
+        ( maybe
+            False
+            ((== RetryOnce) . sendContractRetry)
+            (sendContractByName contracts currentSend)
+        )
+        ("effect system retry policy is not backed by effect theory: " ++ show systemName ++ " " ++ currentSend)
+
+boundaryIdempotentSends :: [Workflow.EffectSystemBoundaryPolicy] -> [String]
+boundaryIdempotentSends policies =
+  unique
+    [ show currentSend
+    | Workflow.EffectSystemBoundaryIdempotent currentSend <- policies
+    ]
+
+boundaryRetrySends :: [Workflow.EffectSystemBoundaryPolicy] -> [String]
+boundaryRetrySends policies =
+  unique
+    [ show currentSend
+    | Workflow.EffectSystemBoundaryRetryOnce currentSend <- policies
+    ]
+
+sendContractByName :: [SendContract] -> String -> Maybe SendContract
+sendContractByName contracts currentSend =
+  firstJust
+    [ Just contract
+    | contract <- contracts
+    , show (sendContractName contract) == currentSend
+    ]
 
 exportedFacts :: [Workflow.EffectSystem WorkflowFact] -> [WorkflowFact]
 exportedFacts systems =

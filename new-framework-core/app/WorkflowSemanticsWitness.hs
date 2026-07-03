@@ -172,8 +172,8 @@ workflowSemanticsClaims =
       effectSystemScopeWitness
   , WorkflowSemanticsClaim
       "workflow-effect-system-contracts"
-      "EffectSystemBoundary send/transform contracts constrain explicit private and export rules"
-      "valid contracts pass while undeclared send and transform usage fail plan validation"
+      "EffectSystemBoundary send/transform/policy contracts constrain explicit private and export rules"
+      "valid contracts pass while undeclared send, transform, missing policy, and policy mismatch fail plan validation"
       "WorkflowEffectSystemContractsArtifact"
       effectSystemContractWitness
   ]
@@ -525,8 +525,10 @@ effectSystemScopeWitness = do
 effectSystemContractWitness :: IO ()
 effectSystemContractWitness = do
   requirePlanPasses "valid effect system contracts" validContractBlueprint contractTheory
-  requirePlanFails "undeclared send contract" undeclaredSendBlueprint contractTheory
-  requirePlanFails "undeclared transform contract" undeclaredTransformBlueprint contractTheory
+  requirePlanFails "undeclared send contract" undeclaredSendBlueprint contractTheoryWithoutPolicies
+  requirePlanFails "undeclared transform contract" undeclaredTransformBlueprint contractTheoryWithoutPolicies
+  requirePlanFails "missing send policy contract" missingPolicyBlueprint contractTheory
+  requirePlanFails "send policy mismatch" validContractBlueprint contractTheoryWithoutPolicies
 
 runFrameworkSuccess ::
   String ->
@@ -727,6 +729,21 @@ contractTheory :: E.EffectTheory
 contractTheory =
   theory
     [ external boundaryContractSend boundaryContractSendOutputType
+    , E.idempotent boundaryContractSend
+    , E.retry boundaryContractSend
+    , E.fact boundaryContractInputFact [E.make boundaryContractInputType]
+    , E.fact
+        boundaryContractExportFact
+        [ E.take boundaryContractInputType
+        , E.transform boundaryContractInputType boundaryContractOutputType boundaryContractTransform
+        , E.uses boundaryContractSend
+        ]
+    ]
+
+contractTheoryWithoutPolicies :: E.EffectTheory
+contractTheoryWithoutPolicies =
+  theory
+    [ external boundaryContractSend boundaryContractSendOutputType
     , E.fact boundaryContractInputFact [E.make boundaryContractInputType]
     , E.fact
         boundaryContractExportFact
@@ -784,31 +801,48 @@ validContractBlueprint =
   contractBlueprint
     [W.boundarySend (show boundaryContractSend)]
     [W.boundaryTransform (show boundaryContractTransform)]
+    [ W.boundaryIdempotent (show boundaryContractSend)
+    , W.boundaryRetryOnce (show boundaryContractSend)
+    ]
 
 undeclaredSendBlueprint :: W.AppBlueprint
 undeclaredSendBlueprint =
   contractBlueprint
     []
     [W.boundaryTransform (show boundaryContractTransform)]
+    []
 
 undeclaredTransformBlueprint :: W.AppBlueprint
 undeclaredTransformBlueprint =
   contractBlueprint
     [W.boundarySend (show boundaryContractSend)]
     []
+    []
 
-contractBlueprint :: [W.EffectSystemBoundarySend] -> [W.EffectSystemBoundaryTransform] -> W.AppBlueprint
-contractBlueprint sends transforms =
+missingPolicyBlueprint :: W.AppBlueprint
+missingPolicyBlueprint =
+  contractBlueprint
+    [W.boundarySend (show boundaryContractSend)]
+    [W.boundaryTransform (show boundaryContractTransform)]
+    []
+
+contractBlueprint ::
+  [W.EffectSystemBoundarySend] ->
+  [W.EffectSystemBoundaryTransform] ->
+  [W.EffectSystemBoundaryPolicy] ->
+  W.AppBlueprint
+contractBlueprint sends transforms policies =
   blueprint
     ( W.run
         ( W.effectSystemFromBoundary
-            ( W.systemBoundaryWithContracts
+            ( W.systemBoundaryWithPolicies
                 boundaryContractFlow
                 []
                 [boundaryContractInputFact]
                 [boundaryContractExportFact]
                 sends
                 transforms
+                policies
             )
         )
     )
