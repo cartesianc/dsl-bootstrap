@@ -23,6 +23,7 @@ module Framework.Domain
   , frameworkCoreDomain
   , frameworkCoreFacadeDomain
   , renderDomainReport
+  , renderDomainReportJson
   , runDomain
   ) where
 
@@ -276,6 +277,23 @@ renderDomainReport report =
     ++ renderProofResults (domainReportProofResults report)
     ++ renderSemanticEvidence (domainReportSemanticEvidence report)
     ++ renderFailures (domainReportFailures report)
+
+renderDomainReportJson :: DomainReport -> String
+renderDomainReportJson report =
+  jsonObject
+    [ jsonField "schema" (jsonString "domain-report.v1")
+    , jsonField "domain" (jsonString (domainReportName report))
+    , jsonField "status" (jsonString (renderDomainStatus (domainReportStatus report)))
+    , jsonField "surfaceModules" (jsonNumber (domainReportSurfaceModules report))
+    , jsonField "surfaceCapabilities" (jsonNumber (domainReportSurfaceCapabilities report))
+    , jsonField "constraints" (domainConstraintsJson report)
+    , jsonField "factClosure" (domainFactClosureJson report)
+    , jsonField "handlerCoverage" (jsonArray (map domainHandlerCoverageJson (domainReportHandlerCoverage report)))
+    , jsonField "runtimeArtifacts" (jsonArray (map runtimeArtifactJson (domainReportArtifacts report)))
+    , jsonField "proof" (jsonArray (map proofResultJson (domainReportProofResults report)))
+    , jsonField "semanticEvidence" (jsonArray (map semanticEvidenceJson (domainReportSemanticEvidence report)))
+    , jsonField "failures" (jsonStringArray (domainReportFailures report))
+    ]
 
 runDomainRuntime ::
   DomainRuntimeBackend ->
@@ -689,6 +707,56 @@ renderSemanticEvidenceStatus DomainSemanticEvidencePassed =
 renderSemanticEvidenceStatus DomainSemanticEvidenceFailed =
   "failed"
 
+domainConstraintsJson :: DomainReport -> String
+domainConstraintsJson report =
+  jsonObject
+    [ jsonField "total" (jsonNumber (domainReportConstraintTotal report))
+    , jsonField "passed" (jsonNumber (domainReportConstraintPassed report))
+    , jsonField "failed" (jsonNumber (domainReportConstraintFailed report))
+    ]
+
+domainFactClosureJson :: DomainReport -> String
+domainFactClosureJson report =
+  jsonObject
+    [ jsonField "declaredFacts" (jsonShowArray (domainReportDeclaredFacts report))
+    , jsonField "rootFacts" (jsonShowArray (domainReportRootFacts report))
+    , jsonField "plannedRuntimeFacts" (jsonShowArray (domainReportPlannedRuntimeFacts report))
+    , jsonField "finalRuntimeFacts" (jsonShowArray (domainReportFinalRuntimeFacts report))
+    , jsonField "missingFinalFacts" (jsonShowArray (domainReportMissingFinalFacts report))
+    , jsonField "extraFinalFacts" (jsonShowArray (domainReportExtraFinalFacts report))
+    ]
+
+domainHandlerCoverageJson :: DomainHandlerCoverage -> String
+domainHandlerCoverageJson coverage =
+  jsonObject
+    [ jsonField "send" (jsonString (show (domainHandlerCoverageSend coverage)))
+    , jsonField "handlers" (jsonStringArray (domainHandlerCoverageHandlers coverage))
+    , jsonField "covered" (jsonBool (domainHandlerCoverageCovered coverage))
+    ]
+
+runtimeArtifactJson :: RuntimeArtifact -> String
+runtimeArtifactJson artifact =
+  jsonObject
+    [ jsonField "type" (jsonString (show (artifactType artifact)))
+    , jsonField "text" (jsonString (artifactText artifact))
+    ]
+
+proofResultJson :: Proof.SmtResult -> String
+proofResultJson result =
+  jsonObject
+    [ jsonField "status" (jsonString (show (Proof.smtResultStatus result)))
+    , jsonField "proposition" (jsonString (show (Proof.smtResultProposition result)))
+    , jsonField "evidence" (jsonString (show (Proof.smtResultEvidence result)))
+    ]
+
+semanticEvidenceJson :: DomainSemanticEvidence -> String
+semanticEvidenceJson evidence =
+  jsonObject
+    [ jsonField "name" (jsonString (domainSemanticEvidenceName evidence))
+    , jsonField "status" (jsonString (renderSemanticEvidenceStatus (domainSemanticEvidenceStatus evidence)))
+    , jsonField "details" (jsonStringArray (domainSemanticEvidenceDetails evidence))
+    ]
+
 countProofStatus :: Proof.SmtStatus -> [Proof.SmtResult] -> Int
 countProofStatus status results =
   length
@@ -724,3 +792,61 @@ firstJust (current : rest) =
       Just item
     Nothing ->
       firstJust rest
+
+jsonObject :: [String] -> String
+jsonObject fields =
+  "{" ++ joinWith "," fields ++ "}"
+
+jsonField :: String -> String -> String
+jsonField name value =
+  jsonString name ++ ":" ++ value
+
+jsonArray :: [String] -> String
+jsonArray values =
+  "[" ++ joinWith "," values ++ "]"
+
+jsonStringArray :: [String] -> String
+jsonStringArray =
+  jsonArray . map jsonString
+
+jsonShowArray :: Show item => [item] -> String
+jsonShowArray =
+  jsonStringArray . map show
+
+jsonString :: String -> String
+jsonString value =
+  "\"" ++ concatMap jsonChar value ++ "\""
+
+jsonChar :: Char -> String
+jsonChar currentChar =
+  case currentChar of
+    '"' ->
+      "\\\""
+    '\\' ->
+      "\\\\"
+    '\n' ->
+      "\\n"
+    '\r' ->
+      "\\r"
+    '\t' ->
+      "\\t"
+    _ ->
+      [currentChar]
+
+jsonNumber :: Int -> String
+jsonNumber =
+  show
+
+jsonBool :: Bool -> String
+jsonBool True =
+  "true"
+jsonBool False =
+  "false"
+
+joinWith :: String -> [String] -> String
+joinWith _ [] =
+  ""
+joinWith _ [item] =
+  item
+joinWith separator (item : rest) =
+  item ++ separator ++ joinWith separator rest

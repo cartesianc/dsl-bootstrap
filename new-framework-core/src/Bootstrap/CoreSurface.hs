@@ -778,6 +778,7 @@ trustBaseFacade =
           , "diffGeneratedLines"
           , "generatedLinesMatch"
           , "buildFixedPointReport"
+          , "renderFixedPointReportJson"
           , "renderRuntimeBackendParityEvidencePayload"
           , "runtimeBackendParityEvidencePayloads"
           , "runSelfArtifactGate"

@@ -10,6 +10,7 @@ module Framework.FixedPoint
   , renderRuntimeBackendParityEvidencePayload
   , renderRuntimeBackendParityEvidenceStatus
   , renderFixedPointReport
+  , renderFixedPointReportJson
   , runtimeBackendParityEvidencePayloadPassed
   , runtimeBackendParityEvidencePayloads
   ) where
@@ -120,6 +121,17 @@ renderFixedPointReport report =
   ]
     ++ renderDiffs (fixedPointDiffs report)
 
+renderFixedPointReportJson :: FixedPointReport -> String
+renderFixedPointReportJson report =
+  jsonObject
+    [ jsonField "schema" (jsonString "fixed-point-report.v1")
+    , jsonField "status" (jsonString (renderFixedPointStatus (fixedPointStatus report)))
+    , jsonField "stage0" (stageEvidenceJson (fixedPointStage0 report))
+    , jsonField "stage1" (stageEvidenceJson (fixedPointStage1 report))
+    , jsonField "diffs" (jsonArray (map evidenceDiffJson (fixedPointDiffs report)))
+    , jsonField "runtimeBackendParity" (jsonArray (map runtimeBackendParityEvidencePayloadJson (runtimeBackendParityEvidencePayloads report)))
+    ]
+
 runtimeBackendParityEvidencePayloads :: FixedPointReport -> [RuntimeBackendParityEvidencePayload]
 runtimeBackendParityEvidencePayloads report =
   [ parityPayload
@@ -166,6 +178,44 @@ renderRuntimeBackendParityEvidenceStatus RuntimeBackendParityEvidencePassed =
   "passed"
 renderRuntimeBackendParityEvidenceStatus RuntimeBackendParityEvidenceFailed =
   "failed"
+
+runtimeBackendParityEvidencePayloadJson :: RuntimeBackendParityEvidencePayload -> String
+runtimeBackendParityEvidencePayloadJson payload =
+  jsonObject
+    [ jsonField "claim" (jsonString (runtimeBackendParityEvidenceClaim payload))
+    , jsonField "status" (jsonString (renderRuntimeBackendParityEvidenceStatus (runtimeBackendParityEvidenceStatus payload)))
+    , jsonField "expected" (jsonString (runtimeBackendParityEvidenceExpected payload))
+    , jsonField "observed" (jsonString (runtimeBackendParityEvidenceObserved payload))
+    , jsonField "artifact" (jsonString (runtimeBackendParityEvidenceArtifact payload))
+    ]
+
+stageEvidenceJson :: StageEvidence -> String
+stageEvidenceJson evidence =
+  jsonObject
+    [ jsonField "name" (jsonString (stageEvidenceName evidence))
+    , jsonField "status" (jsonString (stageEvidenceStatus evidence))
+    , jsonField "surfaceModules" (jsonNumber (stageEvidenceSurfaceModules evidence))
+    , jsonField "surfaceCapabilities" (jsonNumber (stageEvidenceSurfaceCapabilities evidence))
+    , jsonField "constraintTotal" (jsonNumber (stageEvidenceConstraintTotal evidence))
+    , jsonField "constraintFailed" (jsonNumber (stageEvidenceConstraintFailed evidence))
+    , jsonField "declaredFacts" (jsonStringArray (stageEvidenceDeclaredFacts evidence))
+    , jsonField "rootFacts" (jsonStringArray (stageEvidenceRootFacts evidence))
+    , jsonField "plannedRuntimeFacts" (jsonStringArray (stageEvidencePlannedRuntimeFacts evidence))
+    , jsonField "finalRuntimeFacts" (jsonStringArray (stageEvidenceFinalRuntimeFacts evidence))
+    , jsonField "missingFinalFacts" (jsonStringArray (stageEvidenceMissingFinalFacts evidence))
+    , jsonField "extraFinalFacts" (jsonStringArray (stageEvidenceExtraFinalFacts evidence))
+    , jsonField "handlerCoverage" (jsonStringArray (stageEvidenceHandlerCoverage evidence))
+    , jsonField "artifactTypes" (jsonStringArray (stageEvidenceArtifactTypes evidence))
+    , jsonField "failures" (jsonStringArray (stageEvidenceFailures evidence))
+    ]
+
+evidenceDiffJson :: EvidenceDiff -> String
+evidenceDiffJson diffReport =
+  jsonObject
+    [ jsonField "field" (jsonString (evidenceDiffField diffReport))
+    , jsonField "stage0" (jsonString (evidenceDiffStage0 diffReport))
+    , jsonField "stage1" (jsonString (evidenceDiffStage1 diffReport))
+    ]
 
 parityPayload :: String -> String -> String -> [String] -> FixedPointReport -> RuntimeBackendParityEvidencePayload
 parityPayload claim artifact expected fields report =
@@ -351,3 +401,51 @@ renderDiff diffReport =
 sortedShows :: Show item => [item] -> [String]
 sortedShows =
   sort . map show
+
+jsonObject :: [String] -> String
+jsonObject fields =
+  "{" ++ joinWith "," fields ++ "}"
+
+jsonField :: String -> String -> String
+jsonField name value =
+  jsonString name ++ ":" ++ value
+
+jsonArray :: [String] -> String
+jsonArray values =
+  "[" ++ joinWith "," values ++ "]"
+
+jsonStringArray :: [String] -> String
+jsonStringArray =
+  jsonArray . map jsonString
+
+jsonString :: String -> String
+jsonString value =
+  "\"" ++ concatMap jsonChar value ++ "\""
+
+jsonChar :: Char -> String
+jsonChar currentChar =
+  case currentChar of
+    '"' ->
+      "\\\""
+    '\\' ->
+      "\\\\"
+    '\n' ->
+      "\\n"
+    '\r' ->
+      "\\r"
+    '\t' ->
+      "\\t"
+    _ ->
+      [currentChar]
+
+jsonNumber :: Int -> String
+jsonNumber =
+  show
+
+joinWith :: String -> [String] -> String
+joinWith _ [] =
+  ""
+joinWith _ [item] =
+  item
+joinWith separator (item : rest) =
+  item ++ separator ++ joinWith separator rest

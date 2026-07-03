@@ -3,8 +3,19 @@ module Main
   ) where
 
 import Bootstrap.Report
-  ( printFrameworkCoreReport )
+  ( buildFrameworkCoreReport
+  , printFrameworkCoreReport
+  , renderFrameworkCoreReportJson
+  )
+import System.Environment
+  ( getArgs )
 
 main :: IO ()
-main =
-  printFrameworkCoreReport
+main = do
+  args <- getArgs
+  case args of
+    ["--json"] -> do
+      report <- buildFrameworkCoreReport
+      putStrLn (renderFrameworkCoreReportJson report)
+    _ ->
+      printFrameworkCoreReport

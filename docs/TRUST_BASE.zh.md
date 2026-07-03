@@ -146,8 +146,8 @@ domain-app-report
 
 ```text
 workflow semantics witness payload
-machine-readable report JSON
 machine-readable fixed-point diff
+JSON schema versioning after v1
 artifact runner manifest validation
 ```
 

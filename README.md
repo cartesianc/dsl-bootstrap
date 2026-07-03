@@ -47,6 +47,7 @@ stack exec mytest
 
 ```powershell
 stack exec domain-app-report
+stack exec domain-app-report -- --json
 ```
 
 验证 capability 前台和 lowering 语法：
@@ -521,7 +522,17 @@ stack exec framework-core-mytest
 stack exec bootstrap-smoke
 stack exec bootstrap-runtime-smoke
 stack exec bootstrap-report
+stack exec bootstrap-report -- --json
 stack exec fixed-point-smoke
+stack exec fixed-point-smoke -- --json
+```
+
+JSON 输出带 schema 字段：
+
+```text
+framework-core-report.v1
+domain-report.v1
+fixed-point-report.v1
 ```
 
 fixed-point 比较：

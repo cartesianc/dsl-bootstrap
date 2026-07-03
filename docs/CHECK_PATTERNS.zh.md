@@ -28,7 +28,9 @@ artifact proof
 ```powershell
 stack build
 stack exec bootstrap-report
+stack exec bootstrap-report -- --json
 stack exec fixed-point-smoke
+stack exec fixed-point-smoke -- --json
 ```
 
 这三条覆盖：
@@ -48,13 +50,17 @@ bootstrap-report
 
 fixed-point-smoke
   stage0-bootstrap 与 stage1-framework-facade diff 为 0
+  runtime backend parity payload
+  fixed-point-report.v1 JSON schema
 ```
 
 当前期望输出：
 
 ```text
 bootstrap-report: status passed
+bootstrap-report --json: framework-core-report.v1
 fixed-point-smoke: diffs: 0
+fixed-point-smoke --json: fixed-point-report.v1
 ```
 
 ## 2. Runtime 语义闭包

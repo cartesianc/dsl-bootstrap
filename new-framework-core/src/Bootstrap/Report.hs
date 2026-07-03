@@ -12,6 +12,7 @@ module Bootstrap.Report
   , renderConstraintReport
   , renderFactClosureReport
   , renderFrameworkCoreReport
+  , renderFrameworkCoreReportJson
   , renderHandlerCoverage
   ) where
 
@@ -107,6 +108,21 @@ frameworkCoreReportPassed report =
 printFrameworkCoreReport :: IO ()
 printFrameworkCoreReport =
   buildFrameworkCoreReport >>= mapM_ putStrLn . renderFrameworkCoreReport
+
+renderFrameworkCoreReportJson :: FrameworkCoreReport -> String
+renderFrameworkCoreReportJson report =
+  jsonObject
+    [ jsonField "schema" (jsonString "framework-core-report.v1")
+    , jsonField "report" (jsonString (frameworkCoreReportName report))
+    , jsonField "status" (jsonString (renderStatus (frameworkCoreReportStatus report)))
+    , jsonField "surfaceModules" (jsonNumber (frameworkCoreReportSurfaceModules report))
+    , jsonField "surfaceCapabilities" (jsonNumber (frameworkCoreReportSurfaceCapabilities report))
+    , jsonField "constraints" (constraintReportJson (frameworkCoreReportConstraints report))
+    , jsonField "factClosure" (factClosureReportJson (frameworkCoreReportFactClosure report))
+    , jsonField "handlerCoverage" (jsonArray (map handlerCoverageJson (frameworkCoreReportHandlerCoverage report)))
+    , jsonField "runtimeArtifacts" (jsonArray (map runtimeArtifactJson (frameworkCoreReportArtifacts report)))
+    , jsonField "failures" (jsonStringArray (frameworkCoreReportFailures report))
+    ]
 
 renderFrameworkCoreReport :: FrameworkCoreReport -> [String]
 renderFrameworkCoreReport report =
@@ -404,6 +420,49 @@ renderArtifacts artifacts =
   , "  total: " ++ show (length artifacts)
   ]
 
+constraintReportJson :: ConstraintReport -> String
+constraintReportJson report =
+  jsonObject
+    [ jsonField "total" (jsonNumber (constraintReportTotal report))
+    , jsonField "passed" (jsonNumber (constraintReportPassed report))
+    , jsonField "failed" (jsonArray (map nativeConstraintJson (constraintReportFailed report)))
+    ]
+
+nativeConstraintJson :: NativeConstraint -> String
+nativeConstraintJson constraint =
+  jsonObject
+    [ jsonField "name" (jsonString (nativeConstraintName constraint))
+    , jsonField "passed" (jsonBool (nativeConstraintPassed constraint))
+    , jsonField "message" (jsonString (nativeConstraintMessage constraint))
+    ]
+
+factClosureReportJson :: FactClosureReport -> String
+factClosureReportJson report =
+  jsonObject
+    [ jsonField "declaredFacts" (jsonShowArray (factClosureDeclaredFacts report))
+    , jsonField "rootFacts" (jsonShowArray (factClosureRootFacts report))
+    , jsonField "plannedRuntimeFacts" (jsonShowArray (factClosurePlannedRuntimeFacts report))
+    , jsonField "finalRuntimeFacts" (jsonShowArray (factClosureFinalRuntimeFacts report))
+    , jsonField "declaredOutsideRuntime" (jsonShowArray (factClosureDeclaredOutsideRuntime report))
+    , jsonField "missingFinalFacts" (jsonShowArray (factClosureMissingFinalFacts report))
+    , jsonField "extraFinalFacts" (jsonShowArray (factClosureExtraFinalFacts report))
+    ]
+
+handlerCoverageJson :: HandlerCoverage -> String
+handlerCoverageJson coverage =
+  jsonObject
+    [ jsonField "send" (jsonString (show (handlerCoverageSend coverage)))
+    , jsonField "handlers" (jsonStringArray (handlerCoverageHandlers coverage))
+    , jsonField "covered" (jsonBool (handlerCoverageCovered coverage))
+    ]
+
+runtimeArtifactJson :: RuntimeArtifact -> String
+runtimeArtifactJson artifact =
+  jsonObject
+    [ jsonField "type" (jsonString (show (artifactType artifact)))
+    , jsonField "text" (jsonString (artifactText artifact))
+    ]
+
 renderFailures :: [String] -> [String]
 renderFailures [] =
   []
@@ -442,3 +501,61 @@ firstJust (current : rest) =
 indentLines :: Int -> [String] -> [String]
 indentLines count =
   map (replicate count ' ' ++)
+
+jsonObject :: [String] -> String
+jsonObject fields =
+  "{" ++ joinWith "," fields ++ "}"
+
+jsonField :: String -> String -> String
+jsonField name value =
+  jsonString name ++ ":" ++ value
+
+jsonArray :: [String] -> String
+jsonArray values =
+  "[" ++ joinWith "," values ++ "]"
+
+jsonStringArray :: [String] -> String
+jsonStringArray =
+  jsonArray . map jsonString
+
+jsonShowArray :: Show item => [item] -> String
+jsonShowArray =
+  jsonStringArray . map show
+
+jsonString :: String -> String
+jsonString value =
+  "\"" ++ concatMap jsonChar value ++ "\""
+
+jsonChar :: Char -> String
+jsonChar currentChar =
+  case currentChar of
+    '"' ->
+      "\\\""
+    '\\' ->
+      "\\\\"
+    '\n' ->
+      "\\n"
+    '\r' ->
+      "\\r"
+    '\t' ->
+      "\\t"
+    _ ->
+      [currentChar]
+
+jsonNumber :: Int -> String
+jsonNumber =
+  show
+
+jsonBool :: Bool -> String
+jsonBool True =
+  "true"
+jsonBool False =
+  "false"
+
+joinWith :: String -> [String] -> String
+joinWith _ [] =
+  ""
+joinWith _ [item] =
+  item
+joinWith separator (item : rest) =
+  item ++ separator ++ joinWith separator rest
