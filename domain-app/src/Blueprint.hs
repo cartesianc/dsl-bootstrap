@@ -3,22 +3,23 @@
 
 module Blueprint
   ( WorkflowComponent
+  , EffectSystemComponent
   , FactComponent
   , HangingComponent
   , Chain
   , Parallel
   , Middleware
-  , Fact
   , Wait
   , Fallback
   , Race
   , Choice
   , Hanging
   , FactDsl (facts)
+  , effectSystem
+  , run
   , chain
   , parallel
   , middleware
-  , fact
   , wait
   , callback
   , suspense
@@ -30,25 +31,28 @@ module Blueprint
   , race
   , choice
   , ChoiceKey (..)
+  , EffectSystemName (..)
   , Interceptor (..)
   , LogEvent (..)
   , WorkflowFact (..)
-  , WorkflowName (..)
   , module Domain.Vocabulary
   ) where
 
 import Domain.Vocabulary
 import Framework.Ast
   ( ChoiceKey (..)
+  , EffectSystem
+  , EffectSystemName (..)
   , Interceptor (..)
   , LogEvent (..)
   , Workflow
   , WorkflowFact (..)
-  , WorkflowName (..)
   )
 import qualified Framework.Ast as Architecture
 
 type WorkflowComponent = Workflow WorkflowFact Interceptor
+
+type EffectSystemComponent = EffectSystem WorkflowFact
 
 type FactComponent = Architecture.FactExpr WorkflowFact
 
@@ -59,8 +63,6 @@ type Chain = WorkflowComponent
 type Parallel = WorkflowComponent
 
 type Middleware = HangingComponent
-
-type Fact = WorkflowComponent
 
 type Wait = WorkflowComponent
 
@@ -87,11 +89,19 @@ instance FactDsl FactComponent where
   facts =
     id
 
-chain :: WorkflowName -> [WorkflowComponent] -> Chain
+effectSystem :: FactDsl currentFacts => EffectSystemName -> currentFacts -> EffectSystemComponent
+effectSystem name =
+  Architecture.effectSystem name . facts
+
+run :: EffectSystemComponent -> WorkflowComponent
+run =
+  Architecture.run
+
+chain :: [WorkflowComponent] -> Chain
 chain =
   Architecture.chain
 
-parallel :: WorkflowName -> [WorkflowComponent] -> Parallel
+parallel :: [WorkflowComponent] -> Parallel
 parallel =
   Architecture.parallel
 
@@ -99,19 +109,15 @@ middleware :: Interceptor -> WorkflowComponent -> Middleware
 middleware =
   Architecture.middleware
 
-fact :: FactDsl currentFacts => currentFacts -> Fact
-fact =
-  Architecture.fact . facts
-
 wait :: FactDsl currentFacts => currentFacts -> WorkflowComponent -> Wait
 wait currentFacts =
   Architecture.wait (facts currentFacts)
 
-callback :: WorkflowName -> WorkflowComponent -> HangingComponent
+callback :: EffectSystemName -> WorkflowComponent -> HangingComponent
 callback =
   Architecture.callback
 
-suspense :: WorkflowName -> HangingComponent
+suspense :: EffectSystemName -> HangingComponent
 suspense =
   Architecture.suspense
 

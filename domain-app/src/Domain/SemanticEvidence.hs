@@ -201,7 +201,12 @@ runNonIdempotentBlockerEvidence = do
 userNameBlueprint :: AppBlueprint
 userNameBlueprint =
   AppBlueprint
-    { blueprintApp = Workflow.fact (Workflow.factItems [userNameAskedFact])
+    { blueprintApp =
+        Workflow.run
+          ( Workflow.effectSystem
+              (Workflow.EffectSystemName "UserNameAskedSystem")
+              (Workflow.factItems [userNameAskedFact])
+          )
     , blueprintHanging = Workflow.hanging []
     }
 

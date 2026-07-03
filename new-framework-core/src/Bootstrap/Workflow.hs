@@ -6,7 +6,8 @@ module Bootstrap.Workflow
   , Chain (..)
   , Choice (..)
   , ChoiceKey (..)
-  , Fact (..)
+  , EffectSystem (..)
+  , EffectSystemName (..)
   , FactExpr (..)
   , Fallback (..)
   , Hanging (..)
@@ -22,13 +23,12 @@ module Bootstrap.Workflow
   , Wait (..)
   , Workflow (..)
   , WorkflowFact (..)
-  , WorkflowName (..)
   , callback
   , chain
   , chainItems
   , choice
   , choiceItems
-  , fact
+  , effectSystem
   , factAll
   , factAny
   , factItems
@@ -51,6 +51,7 @@ module Bootstrap.Workflow
   , race
   , raceItems
   , requirementItems
+  , run
   , suspense
   , wait
   ) where
@@ -64,14 +65,14 @@ instance Show WorkflowFact where
   show =
     workflowFactText
 
-newtype WorkflowName = WorkflowName
-  { workflowNameText :: String
+newtype EffectSystemName = EffectSystemName
+  { effectSystemNameText :: String
   }
   deriving (Eq)
 
-instance Show WorkflowName where
+instance Show EffectSystemName where
   show =
-    workflowNameText
+    effectSystemNameText
 
 newtype Interceptor = Interceptor
   { interceptorText :: String
@@ -130,7 +131,7 @@ data FactExpr fact
   | FactAny [FactExpr fact]
 
 data Callback fact workflow = Callback
-  { callbackTarget :: WorkflowName
+  { callbackTarget :: EffectSystemName
   , callbackBody :: workflow
   }
 
@@ -139,7 +140,7 @@ newtype Wait fact = Wait
   }
 
 data Suspense fact workflow = Suspense
-  { suspenseTarget :: WorkflowName
+  { suspenseTarget :: EffectSystemName
   }
 
 newtype Loop workflow = Loop
@@ -163,14 +164,15 @@ newtype Requirement fact = Requirement
   { requirementFacts :: [fact]
   }
 
-newtype Fact fact = Fact
-  { factExpression :: FactExpr fact
+data EffectSystem fact = EffectSystem
+  { effectSystemName :: EffectSystemName
+  , effectSystemSuccess :: FactExpr fact
   }
 
 data Workflow fact hook
-  = FactWorkflow (Fact fact)
-  | ChainWorkflow WorkflowName (Chain (Workflow fact hook))
-  | ParallelWorkflow WorkflowName (Parallel (Workflow fact hook))
+  = RunWorkflow (EffectSystem fact)
+  | ChainWorkflow (Chain (Workflow fact hook))
+  | ParallelWorkflow (Parallel (Workflow fact hook))
   | FallbackWorkflow (Fallback (Workflow fact hook))
   | RaceWorkflow (Race (Workflow fact hook))
   | ChoiceWorkflow ChoiceKey (Choice (Workflow fact hook))
@@ -248,21 +250,21 @@ factAny :: [FactExpr fact] -> FactExpr fact
 factAny =
   FactAny
 
-factComponent :: FactExpr fact -> Fact fact
-factComponent =
-  Fact
+effectSystem :: EffectSystemName -> FactExpr fact -> EffectSystem fact
+effectSystem =
+  EffectSystem
 
-fact :: FactExpr fact -> Workflow fact hook
-fact =
-  FactWorkflow . factComponent
+run :: EffectSystem fact -> Workflow fact hook
+run =
+  RunWorkflow
 
-chain :: WorkflowName -> [Workflow fact hook] -> Workflow fact hook
-chain name =
-  ChainWorkflow name . freeChain
+chain :: [Workflow fact hook] -> Workflow fact hook
+chain =
+  ChainWorkflow . freeChain
 
-parallel :: WorkflowName -> [Workflow fact hook] -> Workflow fact hook
-parallel name =
-  ParallelWorkflow name . freeParallel
+parallel :: [Workflow fact hook] -> Workflow fact hook
+parallel =
+  ParallelWorkflow . freeParallel
 
 fallback :: [Workflow fact hook] -> Workflow fact hook
 fallback =
@@ -284,11 +286,11 @@ hanging :: [HangingAction fact hook workflow] -> Hanging (HangingAction fact hoo
 hanging =
   freeHanging
 
-callback :: WorkflowName -> workflow -> HangingAction fact hook workflow
+callback :: EffectSystemName -> workflow -> HangingAction fact hook workflow
 callback currentTarget body =
   HangingCallback (Callback currentTarget body)
 
-suspense :: WorkflowName -> HangingAction fact hook workflow
+suspense :: EffectSystemName -> HangingAction fact hook workflow
 suspense currentTarget =
   HangingSuspense (Suspense currentTarget)
 

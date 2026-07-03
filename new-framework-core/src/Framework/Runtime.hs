@@ -134,7 +134,7 @@ import Bootstrap.Workflow
   ( AppBlueprint (..)
   , Callback (..)
   , ChoiceKey (..)
-  , Fact (..)
+  , EffectSystemName
   , FactExpr (..)
   , HangingAction (..)
   , Interceptor
@@ -143,7 +143,6 @@ import Bootstrap.Workflow
   , Suspense (..)
   , Workflow (..)
   , WorkflowFact
-  , WorkflowName
   , chainItems
   , choiceItems
   , fallbackItems
@@ -161,8 +160,8 @@ data Runtime = Runtime
   , runtimeTypedValues :: [SomeRuntimeValue]
   , runtimeFactClaims :: [RuntimeFactClaim]
   , runtimeTrace :: [String]
-  , runtimeActiveComponents :: [WorkflowName]
-  , runtimeCompletedComponents :: [WorkflowName]
+  , runtimeActiveComponents :: [EffectSystemName]
+  , runtimeCompletedComponents :: [EffectSystemName]
   , runtimeComponentEvents :: [RuntimeComponentEvent]
   , runtimeCallbackEvents :: [RuntimeCallbackEvent]
   , runtimeSuspenseEvents :: [RuntimeSuspenseEvent]
@@ -180,8 +179,8 @@ data RuntimeSnapshot = RuntimeSnapshot
   , snapshotRuntimeValues :: [RuntimeValue]
   , snapshotRuntimeTypedValues :: [SomeRuntimeValue]
   , snapshotRuntimeFactClaims :: [RuntimeFactClaim]
-  , snapshotRuntimeActiveComponents :: [WorkflowName]
-  , snapshotRuntimeCompletedComponents :: [WorkflowName]
+  , snapshotRuntimeActiveComponents :: [EffectSystemName]
+  , snapshotRuntimeCompletedComponents :: [EffectSystemName]
   , snapshotRuntimeTrace :: [String]
   }
   deriving (Eq, Show)
@@ -262,18 +261,18 @@ data RuntimeDiagnosisBlocker
   deriving (Eq, Show)
 
 data RuntimeComponentEvent
-  = RuntimeComponentEntered WorkflowName
-  | RuntimeComponentExited WorkflowName
+  = RuntimeComponentEntered EffectSystemName
+  | RuntimeComponentExited EffectSystemName
   deriving (Eq, Show)
 
 data RuntimeCallbackEvent
-  = RuntimeCallbackTriggered WorkflowName
-  | RuntimeCallbackCompleted WorkflowName
-  | RuntimeCallbackFailed WorkflowName
+  = RuntimeCallbackTriggered EffectSystemName
+  | RuntimeCallbackCompleted EffectSystemName
+  | RuntimeCallbackFailed EffectSystemName
   deriving (Eq, Show)
 
 data RuntimeSuspenseEvent
-  = RuntimeSuspenseRequested WorkflowName RuntimeComponentStatus RuntimeSnapshot
+  = RuntimeSuspenseRequested EffectSystemName RuntimeComponentStatus RuntimeSnapshot
   deriving (Eq, Show)
 
 data RuntimeMiddlewareEvent
@@ -369,7 +368,7 @@ data RuntimeEnv = RuntimeEnv
   }
 
 data RuntimeCallback = RuntimeCallback
-  { runtimeCallbackTarget :: WorkflowName
+  { runtimeCallbackTarget :: EffectSystemName
   , runtimeCallbackBody :: Workflow WorkflowFact Interceptor
   }
 
@@ -659,12 +658,14 @@ withRuntimeMiddleware currentMiddleware body =
 runWorkflow :: Workflow WorkflowFact Interceptor -> RuntimeM ()
 runWorkflow workflow =
   case workflow of
-    FactWorkflow currentFact ->
-      runFactExpr (factExpression currentFact)
-    ChainWorkflow name steps ->
-      runNamedWorkflow "chain" name (mapM_ runWorkflow (chainItems steps))
-    ParallelWorkflow name branches ->
-      runNamedWorkflow "parallel" name (runParallel (parallelItems branches))
+    RunWorkflow system ->
+      runEffectSystem system
+    ChainWorkflow steps -> do
+      traceRuntimeM "chain"
+      mapM_ runWorkflow (chainItems steps)
+    ParallelWorkflow branches -> do
+      traceRuntimeM "parallel"
+      runParallel (parallelItems branches)
     FallbackWorkflow branches ->
       runFallback (fallbackItems branches)
     RaceWorkflow branches ->
@@ -675,12 +676,14 @@ runWorkflow workflow =
       runFactExpr (Workflow.waitFacts wait)
       runWorkflow body
 
-runNamedWorkflow :: String -> WorkflowName -> RuntimeM () -> RuntimeM ()
-runNamedWorkflow label name body = do
+runEffectSystem :: Workflow.EffectSystem WorkflowFact -> RuntimeM ()
+runEffectSystem system = do
+  let name =
+        Workflow.effectSystemName system
   enterComponent name
-  traceRuntimeM (label ++ " " ++ show name)
+  traceRuntimeM ("run " ++ show name)
   runWorkflowCallbacks name
-  result <- catchRuntime body
+  result <- catchRuntime (runFactExpr (Workflow.effectSystemSuccess system))
   exitComponent name
   case result of
     Right _ ->
@@ -688,7 +691,7 @@ runNamedWorkflow label name body = do
     Left errorReport ->
       throwRuntimeError errorReport
 
-runWorkflowCallbacks :: WorkflowName -> RuntimeM ()
+runWorkflowCallbacks :: EffectSystemName -> RuntimeM ()
 runWorkflowCallbacks name = do
   environment <- askRuntimeEnv
   let callbacks =
@@ -1558,7 +1561,7 @@ runtimeHangingAction action =
     _ ->
       True
 
-requestSuspense :: WorkflowName -> RuntimeM ()
+requestSuspense :: EffectSystemName -> RuntimeM ()
 requestSuspense target = do
   runtime <- getRuntimeState
   let status = componentStatus target runtime
@@ -1612,7 +1615,7 @@ runMiddleware middleware body =
       Left errorReport ->
         throwRuntimeError errorReport
 
-enterComponent :: WorkflowName -> RuntimeM ()
+enterComponent :: EffectSystemName -> RuntimeM ()
 enterComponent name =
   modifyRuntimeState
     ( \runtime ->
@@ -1622,7 +1625,7 @@ enterComponent name =
           }
     )
 
-exitComponent :: WorkflowName -> RuntimeM ()
+exitComponent :: EffectSystemName -> RuntimeM ()
 exitComponent name =
   modifyRuntimeState
     ( \runtime ->
@@ -2155,7 +2158,7 @@ runtimeValuesByType currentType runtime =
   , runtimeValueType value == currentType
   ]
 
-componentStatus :: WorkflowName -> Runtime -> RuntimeComponentStatus
+componentStatus :: EffectSystemName -> Runtime -> RuntimeComponentStatus
 componentStatus name runtime
   | name `elem` runtimeCompletedComponents runtime =
       RuntimeComponentCompleted

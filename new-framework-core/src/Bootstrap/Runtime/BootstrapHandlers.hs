@@ -300,7 +300,11 @@ runtimeClosureEvidenceAst :: Workflow.AppBlueprint
 runtimeClosureEvidenceAst =
   Workflow.AppBlueprint
     { Workflow.blueprintApp =
-        Workflow.fact (Workflow.factItems [runtimeClosureRootFact])
+        Workflow.run
+          ( Workflow.effectSystem
+              (Workflow.EffectSystemName "RuntimeClosureEvidenceSystem")
+              (Workflow.factItems [runtimeClosureRootFact])
+          )
     , Workflow.blueprintHanging =
         Workflow.hanging []
     }

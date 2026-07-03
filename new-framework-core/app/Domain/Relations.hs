@@ -11,7 +11,7 @@ import Bootstrap.Workflow
   , AppHanging
   , Callback (..)
   , ChoiceKey (..)
-  , Fact (..)
+  , EffectSystem (..)
   , FactExpr (..)
   , HangingAction (..)
   , Interceptor
@@ -446,14 +446,21 @@ collectBlueprintNodes blueprint =
 collectWorkflowNodes :: [String] -> App -> [AstNode]
 collectWorkflowNodes path currentWorkflow =
   case currentWorkflow of
-    FactWorkflow _ ->
-      []
-    ChainWorkflow name steps ->
-      namedWorkflowNode "chain" (show name) path currentWorkflow
-        : concatMap (collectWorkflowNodes (path ++ [show name])) (chainItems steps)
-    ParallelWorkflow name branches ->
-      namedWorkflowNode "parallel" (show name) path currentWorkflow
-        : concatMap (collectWorkflowNodes (path ++ [show name])) (parallelItems branches)
+    RunWorkflow system ->
+      [ AstNode
+          { astNodeKind = "run"
+          , astNodeName = show (effectSystemName system)
+          , astNodePath = path ++ [show (effectSystemName system)]
+          , astNodeWaitFacts = []
+          , astNodeClaimFacts = collectFactExpr (effectSystemSuccess system)
+          }
+      ]
+    ChainWorkflow steps ->
+      namedWorkflowNode "chain" "chain" path currentWorkflow
+        : concatMap (collectWorkflowNodes (path ++ ["chain"])) (chainItems steps)
+    ParallelWorkflow branches ->
+      namedWorkflowNode "parallel" "parallel" path currentWorkflow
+        : concatMap (collectWorkflowNodes (path ++ ["parallel"])) (parallelItems branches)
     FallbackWorkflow branches ->
       namedWorkflowNode "fallback" "fallback" path currentWorkflow
         : concatMap (collectWorkflowNodes (path ++ ["fallback"])) (fallbackItems branches)
@@ -560,11 +567,11 @@ collectHangingActionFacts currentAction =
 collectWorkflowFacts :: App -> [WorkflowFact]
 collectWorkflowFacts currentWorkflow =
   case currentWorkflow of
-    FactWorkflow (Fact facts) ->
-      collectFactExpr facts
-    ChainWorkflow _ steps ->
+    RunWorkflow system ->
+      collectFactExpr (effectSystemSuccess system)
+    ChainWorkflow steps ->
       unique (concatMap collectWorkflowFacts (chainItems steps))
-    ParallelWorkflow _ branches ->
+    ParallelWorkflow branches ->
       unique (concatMap collectWorkflowFacts (parallelItems branches))
     FallbackWorkflow branches ->
       unique (concatMap collectWorkflowFacts (fallbackItems branches))
@@ -582,11 +589,11 @@ collectWorkflowFacts currentWorkflow =
 collectWorkflowWaitFacts :: App -> [WorkflowFact]
 collectWorkflowWaitFacts currentWorkflow =
   case currentWorkflow of
-    FactWorkflow _ ->
+    RunWorkflow _ ->
       []
-    ChainWorkflow _ steps ->
+    ChainWorkflow steps ->
       unique (concatMap collectWorkflowWaitFacts (chainItems steps))
-    ParallelWorkflow _ branches ->
+    ParallelWorkflow branches ->
       unique (concatMap collectWorkflowWaitFacts (parallelItems branches))
     FallbackWorkflow branches ->
       unique (concatMap collectWorkflowWaitFacts (fallbackItems branches))

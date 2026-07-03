@@ -182,7 +182,14 @@ factAnyFallbackWitness = do
           , (successSend, succeedHandler [value successType "success"])
           ]
       )
-      (blueprint (W.fact (W.factAny [W.factItems [failFact], W.factItems [successFact]])))
+      ( blueprint
+          ( W.run
+              ( W.effectSystem
+                  (W.EffectSystemName "WorkflowSemanticsAnySystem")
+                  (W.factAny [W.factItems [failFact], W.factItems [successFact]])
+              )
+          )
+      )
       ( theory
           [ factUses failFact failSend
           , factUses successFact successSend
@@ -200,7 +207,7 @@ loopFixedPointWitness = do
       "loop fixed point"
       (frameworkEnvironment [])
       ( W.AppBlueprint
-          { W.blueprintApp = W.chain emptyFlow []
+          { W.blueprintApp = W.chain []
           , W.blueprintHanging = W.hanging [W.loop (fact loopFact)]
           }
       )
@@ -215,7 +222,7 @@ middlewareFailureWitness = do
       (frameworkEnvironment [(failSend, failHandler "middleware failed")])
       (theory [factUses failFact failSend, external failSend failType])
       ( W.AppBlueprint
-          { W.blueprintApp = W.chain emptyFlow []
+          { W.blueprintApp = W.chain []
           , W.blueprintHanging = W.hanging [W.middleware middlewareName (fact failFact)]
           }
       )
@@ -237,7 +244,7 @@ suspenseSnapshotWitness = do
       "suspense snapshot"
       (frameworkEnvironment [])
       ( W.AppBlueprint
-          { W.blueprintApp = W.chain targetFlow [fact targetFact]
+          { W.blueprintApp = runFactAs targetFlow targetFact
           , W.blueprintHanging = W.hanging [W.suspense targetFlow]
           }
       )
@@ -258,11 +265,11 @@ callbackFailureWitness = do
       "callback failure"
       (frameworkEnvironment [(failSend, failHandler "callback failed")])
       ( W.AppBlueprint
-          { W.blueprintApp = W.chain targetFlow []
+          { W.blueprintApp = runFactAs targetFlow targetFact
           , W.blueprintHanging = W.hanging [W.callback targetFlow (fact failFact)]
           }
       )
-      (theory [factUses failFact failSend, external failSend failType])
+      (theory [factPure targetFact, factUses failFact failSend, external failSend failType])
   require "callback failed event" (R.RuntimeCallbackFailed targetFlow `elem` R.runtimeCallbackEvents runtime)
 
 nativeFrameworkAlignmentWitness :: IO ()
@@ -377,7 +384,11 @@ blueprint app =
 
 fact :: W.WorkflowFact -> W.App
 fact currentFact =
-  W.fact (W.factItems [currentFact])
+  runFactAs (W.EffectSystemName (show currentFact)) currentFact
+
+runFactAs :: W.EffectSystemName -> W.WorkflowFact -> W.App
+runFactAs name currentFact =
+  W.run (W.effectSystem name (W.factItems [currentFact]))
 
 value :: E.TypeName -> String -> R.RuntimeValue
 value currentType text =
@@ -399,7 +410,7 @@ require label False =
 
 parallelBlueprint :: W.AppBlueprint
 parallelBlueprint =
-  blueprint (W.parallel parallelFlow [fact leftFact, fact rightFact])
+  blueprint (W.parallel [fact leftFact, fact rightFact])
 
 raceBlueprint :: W.AppBlueprint
 raceBlueprint =
@@ -409,7 +420,6 @@ alignmentBlueprint :: W.AppBlueprint
 alignmentBlueprint =
   blueprint
     ( W.chain
-        alignmentFlow
         [ fact alignmentFirstFact
         , fact alignmentSecondFact
         ]
@@ -530,21 +540,9 @@ successType :: E.TypeName
 successType =
   E.TypeName "WorkflowSemanticsSuccessType"
 
-parallelFlow :: W.WorkflowName
-parallelFlow =
-  W.WorkflowName "WorkflowSemanticsParallelFlow"
-
-alignmentFlow :: W.WorkflowName
-alignmentFlow =
-  W.WorkflowName "WorkflowSemanticsAlignmentFlow"
-
-emptyFlow :: W.WorkflowName
-emptyFlow =
-  W.WorkflowName "WorkflowSemanticsEmptyFlow"
-
-targetFlow :: W.WorkflowName
+targetFlow :: W.EffectSystemName
 targetFlow =
-  W.WorkflowName "WorkflowSemanticsTargetFlow"
+  W.EffectSystemName "WorkflowSemanticsTargetFlow"
 
 selectedChoice :: W.ChoiceKey
 selectedChoice =

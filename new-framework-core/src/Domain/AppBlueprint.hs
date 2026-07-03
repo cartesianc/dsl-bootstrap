@@ -22,9 +22,7 @@ frameworkCoreBlueprint =
 frameworkCoreApp :: App
 frameworkCoreApp =
   chain
-    FrameworkCoreFlow
     [ parallel
-        ValidateStaticContractsFlow
         [ expressAstStructure
         , expressEffectTheoryDsl
         , expressRuntimeBranch
@@ -41,18 +39,16 @@ frameworkCoreApp =
 
 expressAstStructure :: App
 expressAstStructure =
-  fact [AstStructureExpressedFact]
+  systemNode AstStructureExpressedFact
 
 expressEffectTheoryDsl :: App
 expressEffectTheoryDsl =
-  fact [EffectTheoryDslExpressedFact]
+  systemNode EffectTheoryDslExpressedFact
 
 expressRuntimeBranch :: App
 expressRuntimeBranch =
   chain
-    RuntimeBranchExpressionFlow
     [ parallel
-        ValidateRuntimeFlow
         [ expressRuntimeTypes
         , expressRuntimePlanBuild
         , expressRuntimeValidation
@@ -68,88 +64,75 @@ expressRuntimeBranch =
 
 expressRuntimeTypes :: App
 expressRuntimeTypes =
-  fact [RuntimeTypesExpressedFact]
+  systemNode RuntimeTypesExpressedFact
 
 expressRuntimePlanBuild :: App
 expressRuntimePlanBuild =
-  fact [RuntimePlanBuildExpressedFact]
+  systemNode RuntimePlanBuildExpressedFact
 
 expressRuntimeValidation :: App
 expressRuntimeValidation =
-  fact [RuntimeValidationExpressedFact]
+  systemNode RuntimeValidationExpressedFact
 
 expressRuntimeExecutionSemantics :: App
 expressRuntimeExecutionSemantics =
-  fact [RuntimeExecutionSemanticsExpressedFact]
+  systemNode RuntimeExecutionSemanticsExpressedFact
 
 expressRuntimeConcurrencySemantics :: App
 expressRuntimeConcurrencySemantics =
-  fact [RuntimeConcurrencySemanticsExpressedFact]
+  systemNode RuntimeConcurrencySemanticsExpressedFact
 
 expressRuntimeDiagnosis :: App
 expressRuntimeDiagnosis =
-  fact [RuntimeDiagnosisExpressedFact]
+  systemNode RuntimeDiagnosisExpressedFact
 
 expressRuntimeBackendAdapter :: App
 expressRuntimeBackendAdapter =
-  fact [RuntimeBackendAdapterExpressedFact]
+  systemNode RuntimeBackendAdapterExpressedFact
 
 expressRuntimeBackendParity :: App
 expressRuntimeBackendParity =
-  fact [RuntimeBackendParityExpressedFact]
+  systemNode RuntimeBackendParityExpressedFact
 
 expressRuntimeInterpreter :: App
 expressRuntimeInterpreter =
-  wait
-    (allOf runtimeInterpreterInputs)
-    (fact [RuntimeInterpreterExpressedFact])
+  systemNode RuntimeInterpreterExpressedFact
 
 expressBuildAppValidation :: App
 expressBuildAppValidation =
-  fact [BuildAppValidationExpressedFact]
+  systemNode BuildAppValidationExpressedFact
 
 expressBoundaryChecks :: App
 expressBoundaryChecks =
-  fact [BoundaryChecksExpressedFact]
+  systemNode BoundaryChecksExpressedFact
 
 expressHyloRenderingProofSurface :: App
 expressHyloRenderingProofSurface =
-  fact [HyloRenderingProofSurfaceExpressedFact]
+  systemNode HyloRenderingProofSurfaceExpressedFact
 
 expressRuntimeFactClosure :: App
 expressRuntimeFactClosure =
-  wait
-    (allOf runtimeClosureInputs)
-    (fact [RuntimeFactClosureExpressedFact])
+  systemNode RuntimeFactClosureExpressedFact
 
 expressRegistryCodegen :: App
 expressRegistryCodegen =
-  fact [RegistryCodegenExpressedFact]
+  systemNode RegistryCodegenExpressedFact
 
 expressSelfArtifactManifest :: App
 expressSelfArtifactManifest =
-  fact [SelfArtifactManifestExpressedFact]
+  systemNode SelfArtifactManifestExpressedFact
 
 validateFrameworkCoreNative :: App
 validateFrameworkCoreNative =
-  wait
-    (allOf expressedFacts)
-    (fact [FrameworkCoreNativeValidatedFact])
+  systemNode FrameworkCoreNativeValidatedFact
 
 assertFrameworkCoreExpressed :: App
 assertFrameworkCoreExpressed =
-  wait
-    (allOf (FrameworkCoreNativeValidatedFact : expressedFacts))
-    (fact [FrameworkCoreExpressedFact])
+  systemNode FrameworkCoreExpressedFact
 
 publishBootstrapReport :: App
 publishBootstrapReport =
-  wait
-    (allOf reportInputs)
-    ( chain
-        PublishBootstrapReportFlow
-        [fact [FrameworkCoreReportPublishedFact]]
-    )
+  systemNode FrameworkCoreReportPublishedFact
 
 frameworkCoreHooks :: AppHanging
 frameworkCoreHooks =
@@ -157,46 +140,10 @@ frameworkCoreHooks =
     [ middleware FrameworkCoreTraceMiddleware frameworkCoreApp
     ]
 
-expressedFacts :: [WorkflowFact]
-expressedFacts =
-  [ AstStructureExpressedFact
-  , EffectTheoryDslExpressedFact
-  , RuntimeTypesExpressedFact
-  , RuntimePlanBuildExpressedFact
-  , RuntimeValidationExpressedFact
-  , RuntimeExecutionSemanticsExpressedFact
-  , RuntimeConcurrencySemanticsExpressedFact
-  , RuntimeDiagnosisExpressedFact
-  , RuntimeBackendAdapterExpressedFact
-  , RuntimeBackendParityExpressedFact
-  , RuntimeInterpreterExpressedFact
-  , BuildAppValidationExpressedFact
-  , BoundaryChecksExpressedFact
-  , HyloRenderingProofSurfaceExpressedFact
-  , RuntimeFactClosureExpressedFact
-  , RegistryCodegenExpressedFact
-  , SelfArtifactManifestExpressedFact
-  ]
-
-runtimeInterpreterInputs :: [WorkflowFact]
-runtimeInterpreterInputs =
-  [ RuntimeTypesExpressedFact
-  , RuntimeExecutionSemanticsExpressedFact
-  , RuntimeConcurrencySemanticsExpressedFact
-  , RuntimeDiagnosisExpressedFact
-  , RuntimeBackendAdapterExpressedFact
-  , RuntimeBackendParityExpressedFact
-  ]
-
-runtimeClosureInputs :: [WorkflowFact]
-runtimeClosureInputs =
-  [ RuntimePlanBuildExpressedFact
-  , RuntimeValidationExpressedFact
-  , RuntimeExecutionSemanticsExpressedFact
-  ]
-
-reportInputs :: [WorkflowFact]
-reportInputs =
-  [ FrameworkCoreNativeValidatedFact
-  , FrameworkCoreExpressedFact
-  ]
+systemNode :: WorkflowFact -> App
+systemNode currentFact =
+  run
+    ( effectSystem
+        (EffectSystemName (show currentFact))
+        [currentFact]
+    )

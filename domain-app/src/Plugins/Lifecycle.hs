@@ -12,7 +12,7 @@ import Plugins.Shutdown
 -- plugin: lifecycleStart
 lifecycleStart :: Chain
 lifecycleStart =
-  chain LifecycleStartFlow
+  chain
     [ configurationModule
     , bootModule
     ]

@@ -4,21 +4,14 @@ module Plugins.Boot where
 
 import Blueprint
 
-type BootModule = Wait
+type BootModule = WorkflowComponent
 
 type BootHook = Middleware
 
 -- plugin: bootModule
 bootModule :: BootModule
 bootModule =
-  wait
-    [ AppConfiguredFact
-    ]
-    ( parallel BootPreparation
-        [ fact [AppStartedFact]
-        , fact [RuntimePreparedFact]
-        ]
-    )
+  run (effectSystem BootPreparation [AppStartedFact, RuntimePreparedFact])
 
 -- plugin: bootHook
 bootHook :: BootHook

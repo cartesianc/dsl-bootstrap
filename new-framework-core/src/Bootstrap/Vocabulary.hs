@@ -147,34 +147,34 @@ import Bootstrap.Effect
   , TypeName (..)
   )
 import Bootstrap.Workflow
-  ( Interceptor (..)
+  ( EffectSystemName (..)
+  , Interceptor (..)
   , WorkflowFact (..)
-  , WorkflowName (..)
   )
 
-pattern FrameworkCoreFlow :: WorkflowName
-pattern FrameworkCoreFlow = WorkflowName "FrameworkCoreFlow"
+pattern FrameworkCoreFlow :: EffectSystemName
+pattern FrameworkCoreFlow = EffectSystemName "FrameworkCoreFlow"
 
-pattern CoreSurfaceFormalizationFlow :: WorkflowName
-pattern CoreSurfaceFormalizationFlow = WorkflowName "CoreSurfaceFormalizationFlow"
+pattern CoreSurfaceFormalizationFlow :: EffectSystemName
+pattern CoreSurfaceFormalizationFlow = EffectSystemName "CoreSurfaceFormalizationFlow"
 
-pattern CoreSurfaceModulesFormalizationFlow :: WorkflowName
-pattern CoreSurfaceModulesFormalizationFlow = WorkflowName "CoreSurfaceModulesFormalizationFlow"
+pattern CoreSurfaceModulesFormalizationFlow :: EffectSystemName
+pattern CoreSurfaceModulesFormalizationFlow = EffectSystemName "CoreSurfaceModulesFormalizationFlow"
 
-pattern ValidateStaticContractsFlow :: WorkflowName
-pattern ValidateStaticContractsFlow = WorkflowName "ValidateStaticContractsFlow"
+pattern ValidateStaticContractsFlow :: EffectSystemName
+pattern ValidateStaticContractsFlow = EffectSystemName "ValidateStaticContractsFlow"
 
-pattern BuildProofFlow :: WorkflowName
-pattern BuildProofFlow = WorkflowName "BuildProofFlow"
+pattern BuildProofFlow :: EffectSystemName
+pattern BuildProofFlow = EffectSystemName "BuildProofFlow"
 
-pattern ValidateRuntimeFlow :: WorkflowName
-pattern ValidateRuntimeFlow = WorkflowName "ValidateRuntimeFlow"
+pattern ValidateRuntimeFlow :: EffectSystemName
+pattern ValidateRuntimeFlow = EffectSystemName "ValidateRuntimeFlow"
 
-pattern RuntimeBranchExpressionFlow :: WorkflowName
-pattern RuntimeBranchExpressionFlow = WorkflowName "RuntimeBranchExpressionFlow"
+pattern RuntimeBranchExpressionFlow :: EffectSystemName
+pattern RuntimeBranchExpressionFlow = EffectSystemName "RuntimeBranchExpressionFlow"
 
-pattern PublishBootstrapReportFlow :: WorkflowName
-pattern PublishBootstrapReportFlow = WorkflowName "PublishFrameworkCoreReportFlow"
+pattern PublishBootstrapReportFlow :: EffectSystemName
+pattern PublishBootstrapReportFlow = EffectSystemName "PublishFrameworkCoreReportFlow"
 
 pattern FrameworkCoreTraceMiddleware :: Interceptor
 pattern FrameworkCoreTraceMiddleware = Interceptor "FrameworkCoreTraceMiddleware"

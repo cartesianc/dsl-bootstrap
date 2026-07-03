@@ -11,9 +11,7 @@ type ConfigHook = Middleware
 -- plugin: configurationModule
 configurationModule :: ConfigModule
 configurationModule =
-  parallel ConfigurationFlow
-    [ fact [AppConfiguredFact]
-    ]
+  run (effectSystem ConfigurationFlow [AppConfiguredFact])
 
 -- plugin: configurationHook
 configurationHook :: ConfigHook

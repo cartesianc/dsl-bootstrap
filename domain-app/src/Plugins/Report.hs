@@ -4,20 +4,18 @@ module Plugins.Report where
 
 import Blueprint
 
-type ReportModule = Parallel
+type ReportModule = WorkflowComponent
 
 type ReportLoop = HangingComponent
 
 type ReportHook = Middleware
 
-type CalculationReport = Wait
+type CalculationReport = WorkflowComponent
 
 -- plugin: reportModule
 reportModule :: ReportModule
 reportModule =
-  parallel ReportModuleFlow
-    [ calculationReport
-    ]
+  run (effectSystem ReportModuleFlow [ReportGeneratedFact])
 
 -- plugin: reportLoop
 reportLoop :: ReportLoop
@@ -27,19 +25,7 @@ reportLoop =
 -- plugin: calculationReport
 calculationReport :: CalculationReport
 calculationReport =
-  wait
-    [ UserKnownFact
-    ]
-    ( chain CalculationReportFlow
-        [ fact [CalculationSectionOpenedFact]
-        , parallel CalculationsFlow
-            [ fact [AddCalculatedFact]
-            , fact [FactorialCalculatedFact]
-            , fact [SquaresCalculatedFact]
-            ]
-        , fact [ReportGeneratedFact]
-        ]
-    )
+  reportModule
 
 -- plugin: reportHook
 reportHook :: ReportHook

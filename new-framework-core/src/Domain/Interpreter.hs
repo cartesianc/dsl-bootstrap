@@ -20,7 +20,6 @@ import Bootstrap.Effect
 import Bootstrap.Workflow
   ( AppBlueprint (..)
   , ChoiceKey (..)
-  , Fact (..)
   , FactExpr (..)
   , HangingAction (..)
   , Workflow (..)
@@ -97,12 +96,16 @@ runAstTree _ ast _ =
 renderWorkflow :: (Show fact) => Workflow fact hook -> [String]
 renderWorkflow workflow =
   case workflow of
-    FactWorkflow (Fact expression) ->
-      ["fact " ++ renderFactExpr expression]
-    ChainWorkflow name steps ->
-      ("chain " ++ show name) : indentLines 2 (concatMap renderWorkflow (chainItems steps))
-    ParallelWorkflow name branches ->
-      ("parallel " ++ show name) : indentLines 2 (concatMap renderWorkflow (parallelItems branches))
+    RunWorkflow system ->
+      [ "run "
+          ++ show (Bootstrap.Workflow.effectSystemName system)
+          ++ " succeeds "
+          ++ renderFactExpr (Bootstrap.Workflow.effectSystemSuccess system)
+      ]
+    ChainWorkflow steps ->
+      "chain" : indentLines 2 (concatMap renderWorkflow (chainItems steps))
+    ParallelWorkflow branches ->
+      "parallel" : indentLines 2 (concatMap renderWorkflow (parallelItems branches))
     FallbackWorkflow branches ->
       "fallback" : indentLines 2 (concatMap renderWorkflow (fallbackItems branches))
     RaceWorkflow branches ->

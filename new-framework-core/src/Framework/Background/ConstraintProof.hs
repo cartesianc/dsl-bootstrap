@@ -66,13 +66,13 @@ import Bootstrap.Runtime
 import Bootstrap.Workflow
   ( AppBlueprint (..)
   , Callback (..)
+  , EffectSystemName
   , FactExpr (..)
   , Hanging
   , HangingAction (..)
   , Loop (..)
   , Workflow (..)
   , WorkflowFact
-  , WorkflowName
   , chainItems
   , choiceItems
   , fallbackItems
@@ -88,7 +88,7 @@ newtype RuleId = RuleId WorkflowFact
 
 data WorkflowScope
   = RootScope
-  | NamedScope WorkflowName
+  | NamedScope EffectSystemName
   deriving (Eq, Show)
 
 data ConstraintFact
@@ -225,12 +225,12 @@ waitConstraintsFromBlueprint blueprint =
 collectWorkflowWaits :: WorkflowScope -> Workflow WorkflowFact hook -> [ConstraintFact]
 collectWorkflowWaits currentScope currentWorkflow =
   case currentWorkflow of
-    FactWorkflow _ ->
+    RunWorkflow _ ->
       []
-    ChainWorkflow label steps ->
-      concatMap (collectWorkflowWaits (NamedScope label)) (chainItems steps)
-    ParallelWorkflow label branches ->
-      concatMap (collectWorkflowWaits (NamedScope label)) (parallelItems branches)
+    ChainWorkflow steps ->
+      concatMap (collectWorkflowWaits currentScope) (chainItems steps)
+    ParallelWorkflow branches ->
+      concatMap (collectWorkflowWaits currentScope) (parallelItems branches)
     FallbackWorkflow branches ->
       concatMap (collectWorkflowWaits currentScope) (fallbackItems branches)
     RaceWorkflow branches ->

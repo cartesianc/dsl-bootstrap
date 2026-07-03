@@ -4,31 +4,21 @@ module Plugins.Handle where
 
 import Blueprint
 
-type UserModule = Parallel
+type UserModule = WorkflowComponent
 
 type UserHook = Middleware
 
-type Onboarding = Wait
+type Onboarding = WorkflowComponent
 
 -- plugin: userModule
 userModule :: UserModule
 userModule =
-  parallel UserModuleFlow
-    [ onboarding
-    ]
+  run (effectSystem UserModuleFlow [UserKnownFact])
 
 -- plugin: onboarding
 onboarding :: Onboarding
 onboarding =
-  wait
-    [ RuntimePreparedFact
-    ]
-    ( chain OnboardingFlow
-        [ fact [UserNameAskedFact]
-        , fact [UserGreetedFact]
-        , fact [UserKnownFact]
-        ]
-    )
+  userModule
 
 -- plugin: userHook
 userHook :: UserHook

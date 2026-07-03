@@ -4,20 +4,14 @@ module Plugins.Shutdown where
 
 import Blueprint
 
-type ShutdownModule = Wait
+type ShutdownModule = WorkflowComponent
 
 type ShutdownHook = Middleware
 
 -- plugin: shutdownModule
 shutdownModule :: ShutdownModule
 shutdownModule =
-  wait
-    [ ReportGeneratedFact
-    ]
-    ( parallel ShutdownFlow
-        [ fact [AppFinishedFact]
-        ]
-    )
+  run (effectSystem ShutdownFlow [AppFinishedFact])
 
 -- plugin: shutdownHook
 shutdownHook :: ShutdownHook

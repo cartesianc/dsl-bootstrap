@@ -21,15 +21,13 @@ import Bootstrap.Vocabulary
 import qualified Bootstrap.Effect as Effect
 import Bootstrap.Workflow
   ( App
-  , FactExpr
+  , EffectSystemName (..)
   , WorkflowFact (..)
-  , WorkflowName (..)
   , chain
-  , fact
-  , factAll
   , factItems
+  , effectSystem
   , parallel
-  , wait
+  , run
   )
 
 data CoreCapabilityKind
@@ -380,12 +378,9 @@ coreSurfaceFacts =
 coreSurfaceApp :: App
 coreSurfaceApp =
   chain
-    CoreSurfaceFormalizationFlow
     [ factNode [CoreSurfaceCatalogLoadedFact]
-    , parallel CoreSurfaceModulesFormalizationFlow (map coreSurfaceModuleApp coreSurfaceModules)
-    , wait
-        (allFacts (map (uncurry coreSurfaceCapabilityFact) coreSurfaceCapabilities))
-        (factNode [CoreSurfaceAstFormalizedFact])
+    , parallel (map coreSurfaceModuleApp coreSurfaceModules)
+    , factNode [CoreSurfaceAstFormalizedFact]
     , factNode [CoreSurfaceEffectTheoryFormalizedFact]
     , factNode [CoreSurfaceFormalizedFact]
     ]
@@ -393,10 +388,8 @@ coreSurfaceApp =
 coreSurfaceModuleApp :: CoreSurfaceModule -> App
 coreSurfaceModuleApp currentModule =
   chain
-    (coreSurfaceModuleWorkflow currentModule)
     [ factNode [coreSurfaceModuleFact currentModule]
     , parallel
-        (coreSurfaceCapabilityWorkflow currentModule)
         (map (factNode . (: []) . coreSurfaceCapabilityFact currentModule) (surfaceModuleCapabilities currentModule))
     ]
 
@@ -496,14 +489,6 @@ coreSurfaceCapabilityFact currentModule currentCapability =
         ++ capabilityName currentCapability
     )
 
-coreSurfaceModuleWorkflow :: CoreSurfaceModule -> WorkflowName
-coreSurfaceModuleWorkflow currentModule =
-  WorkflowName ("FormalizeCoreSurfaceModule:" ++ surfaceModuleName currentModule)
-
-coreSurfaceCapabilityWorkflow :: CoreSurfaceModule -> WorkflowName
-coreSurfaceCapabilityWorkflow currentModule =
-  WorkflowName ("FormalizeCoreSurfaceCapabilities:" ++ surfaceModuleName currentModule)
-
 coreSurfaceCatalogType :: Effect.TypeName
 coreSurfaceCatalogType =
   Effect.TypeName "CoreSurfaceCatalog"
@@ -534,12 +519,12 @@ coreSurfaceCapabilityAstType currentModule currentCapability =
     )
 
 factNode :: [WorkflowFact] -> App
-factNode =
-  fact . factItems
-
-allFacts :: [WorkflowFact] -> FactExpr WorkflowFact
-allFacts =
-  factAll . map (factItems . (: []))
+factNode currentFacts =
+  run
+    ( effectSystem
+        (EffectSystemName (show currentFacts))
+        (factItems currentFacts)
+    )
 
 astFacade :: CoreSurfaceModule
 astFacade =
@@ -559,7 +544,8 @@ workflowFacade =
         , "AppHanging"
         , "WorkflowFact"
         , "Interceptor"
-        , "WorkflowName"
+        , "EffectSystemName"
+        , "EffectSystem"
         , "Chain"
         , "Parallel"
         , "Middleware"
@@ -575,7 +561,6 @@ workflowFacade =
         , "HangingAction"
         , "ChoiceKey"
         , "Requirement"
-        , "Fact"
         , "Workflow"
         ]
         ++ map valueCapability
@@ -597,6 +582,8 @@ workflowFacade =
           , "factItems"
           , "factAll"
           , "factAny"
+          , "effectSystem"
+          , "run"
           , "chain"
           , "parallel"
           , "middleware"
@@ -608,7 +595,6 @@ workflowFacade =
           , "hanging"
           , "suspense"
           , "loop"
-          , "fact"
           ]
     )
 

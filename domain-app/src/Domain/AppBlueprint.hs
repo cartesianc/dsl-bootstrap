@@ -24,7 +24,7 @@ blueprint =
 
 app :: App
 app =
-  chain AppFlow
+  chain
     [ lifecycleStart
     , userModule
     , reportModule

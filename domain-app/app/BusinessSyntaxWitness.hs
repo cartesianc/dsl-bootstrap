@@ -202,7 +202,11 @@ pipelineRuntimeAst :: Workflow.AppBlueprint
 pipelineRuntimeAst =
   Workflow.AppBlueprint
     { Workflow.blueprintApp =
-        Workflow.fact (Workflow.factItems [pipelineAdapterFact])
+        Workflow.run
+          ( Workflow.effectSystem
+              (Workflow.EffectSystemName "PipelineRuntimeAdapterSystem")
+              (Workflow.factItems [pipelineAdapterFact])
+          )
     , Workflow.blueprintHanging =
         Workflow.hanging []
     }

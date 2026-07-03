@@ -37,7 +37,6 @@ import Bootstrap.Runtime.Types
 import Bootstrap.Workflow
   ( AppBlueprint (..)
   , ChoiceKey (..)
-  , Fact (..)
   , FactExpr (..)
   , Workflow (..)
   , WorkflowFact
@@ -101,12 +100,16 @@ runNativeWorkflow ::
   IO (Either String NativeRuntime)
 runNativeWorkflow environment plan runtime workflow =
   case workflow of
-    FactWorkflow currentFact ->
-      runFactExpr environment plan runtime (factExpression currentFact)
-    ChainWorkflow name steps ->
-      runSequential environment plan (traceRuntime ("chain " ++ show name) runtime) (chainItems steps)
-    ParallelWorkflow name branches ->
-      runNativeParallel environment plan (traceRuntime ("parallel " ++ show name) runtime) (parallelItems branches)
+    RunWorkflow system ->
+      runFactExpr
+        environment
+        plan
+        (traceRuntime ("run " ++ show (Workflow.effectSystemName system)) runtime)
+        (Workflow.effectSystemSuccess system)
+    ChainWorkflow steps ->
+      runSequential environment plan (traceRuntime "chain" runtime) (chainItems steps)
+    ParallelWorkflow branches ->
+      runNativeParallel environment plan (traceRuntime "parallel" runtime) (parallelItems branches)
     FallbackWorkflow branches ->
       runNativeFallback environment plan runtime (fallbackItems branches)
     RaceWorkflow branches ->

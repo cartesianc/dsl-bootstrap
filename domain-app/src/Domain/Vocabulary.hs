@@ -38,10 +38,10 @@ module Domain.Vocabulary
   ) where
 
 import Framework.Ast
-  ( Interceptor (..)
+  ( EffectSystemName (..)
+  , Interceptor (..)
   , LogEvent (..)
   , WorkflowFact (..)
-  , WorkflowName (..)
   )
 
 pattern AppConfiguredFact :: WorkflowFact
@@ -80,35 +80,35 @@ pattern ReportGeneratedFact = WorkflowFact "ReportGeneratedFact"
 pattern AppFinishedFact :: WorkflowFact
 pattern AppFinishedFact = WorkflowFact "AppFinishedFact"
 
-pattern AppFlow :: WorkflowName
-pattern AppFlow = WorkflowName "AppFlow"
+pattern AppFlow :: EffectSystemName
+pattern AppFlow = EffectSystemName "AppFlow"
 
-pattern LifecycleStartFlow :: WorkflowName
-pattern LifecycleStartFlow = WorkflowName "LifecycleStartFlow"
+pattern LifecycleStartFlow :: EffectSystemName
+pattern LifecycleStartFlow = EffectSystemName "LifecycleStartFlow"
 
-pattern ConfigurationFlow :: WorkflowName
-pattern ConfigurationFlow = WorkflowName "ConfigurationFlow"
+pattern ConfigurationFlow :: EffectSystemName
+pattern ConfigurationFlow = EffectSystemName "ConfigurationFlow"
 
-pattern BootPreparation :: WorkflowName
-pattern BootPreparation = WorkflowName "BootPreparation"
+pattern BootPreparation :: EffectSystemName
+pattern BootPreparation = EffectSystemName "BootPreparation"
 
-pattern UserModuleFlow :: WorkflowName
-pattern UserModuleFlow = WorkflowName "UserModuleFlow"
+pattern UserModuleFlow :: EffectSystemName
+pattern UserModuleFlow = EffectSystemName "UserModuleFlow"
 
-pattern OnboardingFlow :: WorkflowName
-pattern OnboardingFlow = WorkflowName "OnboardingFlow"
+pattern OnboardingFlow :: EffectSystemName
+pattern OnboardingFlow = EffectSystemName "OnboardingFlow"
 
-pattern ReportModuleFlow :: WorkflowName
-pattern ReportModuleFlow = WorkflowName "ReportModuleFlow"
+pattern ReportModuleFlow :: EffectSystemName
+pattern ReportModuleFlow = EffectSystemName "ReportModuleFlow"
 
-pattern CalculationReportFlow :: WorkflowName
-pattern CalculationReportFlow = WorkflowName "CalculationReportFlow"
+pattern CalculationReportFlow :: EffectSystemName
+pattern CalculationReportFlow = EffectSystemName "CalculationReportFlow"
 
-pattern CalculationsFlow :: WorkflowName
-pattern CalculationsFlow = WorkflowName "CalculationsFlow"
+pattern CalculationsFlow :: EffectSystemName
+pattern CalculationsFlow = EffectSystemName "CalculationsFlow"
 
-pattern ShutdownFlow :: WorkflowName
-pattern ShutdownFlow = WorkflowName "ShutdownFlow"
+pattern ShutdownFlow :: EffectSystemName
+pattern ShutdownFlow = EffectSystemName "ShutdownFlow"
 
 pattern ConfigurationMiddleware :: Interceptor
 pattern ConfigurationMiddleware = Interceptor "ConfigurationMiddleware"

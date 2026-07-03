@@ -30,16 +30,15 @@ import Bootstrap.Workflow
   ( App
   , AppBlueprint (..)
   , AppHanging
-  , FactExpr
+  , EffectSystemName (..)
   , WorkflowFact
   , chain
-  , fact
-  , factAll
   , factItems
   , hanging
   , middleware
   , parallel
-  , wait
+  , effectSystem
+  , run
   )
 
 coreBootstrapBlueprint :: AppBlueprint
@@ -52,9 +51,7 @@ coreBootstrapBlueprint =
 coreBootstrapApp :: App
 coreBootstrapApp =
   chain
-    FrameworkCoreFlow
     [ parallel
-        ValidateStaticContractsFlow
         [ expressAstStructure
         , expressEffectTheoryDsl
         , expressRuntimeBranch
@@ -71,18 +68,16 @@ coreBootstrapApp =
 
 expressAstStructure :: App
 expressAstStructure =
-  factNode [AstStructureExpressedFact]
+  systemNode AstStructureExpressedFact
 
 expressEffectTheoryDsl :: App
 expressEffectTheoryDsl =
-  factNode [EffectTheoryDslExpressedFact]
+  systemNode EffectTheoryDslExpressedFact
 
 expressRuntimeBranch :: App
 expressRuntimeBranch =
   chain
-    RuntimeBranchExpressionFlow
     [ parallel
-        ValidateRuntimeFlow
         [ expressRuntimeTypes
         , expressRuntimePlanBuild
         , expressRuntimeValidation
@@ -98,88 +93,75 @@ expressRuntimeBranch =
 
 expressRuntimeTypes :: App
 expressRuntimeTypes =
-  factNode [RuntimeTypesExpressedFact]
+  systemNode RuntimeTypesExpressedFact
 
 expressRuntimePlanBuild :: App
 expressRuntimePlanBuild =
-  factNode [RuntimePlanBuildExpressedFact]
+  systemNode RuntimePlanBuildExpressedFact
 
 expressRuntimeValidation :: App
 expressRuntimeValidation =
-  factNode [RuntimeValidationExpressedFact]
+  systemNode RuntimeValidationExpressedFact
 
 expressRuntimeExecutionSemantics :: App
 expressRuntimeExecutionSemantics =
-  factNode [RuntimeExecutionSemanticsExpressedFact]
+  systemNode RuntimeExecutionSemanticsExpressedFact
 
 expressRuntimeConcurrencySemantics :: App
 expressRuntimeConcurrencySemantics =
-  factNode [RuntimeConcurrencySemanticsExpressedFact]
+  systemNode RuntimeConcurrencySemanticsExpressedFact
 
 expressRuntimeDiagnosis :: App
 expressRuntimeDiagnosis =
-  factNode [RuntimeDiagnosisExpressedFact]
+  systemNode RuntimeDiagnosisExpressedFact
 
 expressRuntimeBackendAdapter :: App
 expressRuntimeBackendAdapter =
-  factNode [RuntimeBackendAdapterExpressedFact]
+  systemNode RuntimeBackendAdapterExpressedFact
 
 expressRuntimeBackendParity :: App
 expressRuntimeBackendParity =
-  factNode [RuntimeBackendParityExpressedFact]
+  systemNode RuntimeBackendParityExpressedFact
 
 expressRuntimeInterpreter :: App
 expressRuntimeInterpreter =
-  wait
-    (allFacts runtimeInterpreterInputs)
-    (factNode [RuntimeInterpreterExpressedFact])
+  systemNode RuntimeInterpreterExpressedFact
 
 expressBuildAppValidation :: App
 expressBuildAppValidation =
-  factNode [BuildAppValidationExpressedFact]
+  systemNode BuildAppValidationExpressedFact
 
 expressBoundaryChecks :: App
 expressBoundaryChecks =
-  factNode [BoundaryChecksExpressedFact]
+  systemNode BoundaryChecksExpressedFact
 
 expressHyloRenderingProofSurface :: App
 expressHyloRenderingProofSurface =
-  factNode [HyloRenderingProofSurfaceExpressedFact]
+  systemNode HyloRenderingProofSurfaceExpressedFact
 
 expressRuntimeFactClosure :: App
 expressRuntimeFactClosure =
-  wait
-    (allFacts runtimeClosureInputs)
-    (factNode [RuntimeFactClosureExpressedFact])
+  systemNode RuntimeFactClosureExpressedFact
 
 expressRegistryCodegen :: App
 expressRegistryCodegen =
-  factNode [RegistryCodegenExpressedFact]
+  systemNode RegistryCodegenExpressedFact
 
 expressSelfArtifactManifest :: App
 expressSelfArtifactManifest =
-  factNode [SelfArtifactManifestExpressedFact]
+  systemNode SelfArtifactManifestExpressedFact
 
 validateFrameworkCoreNative :: App
 validateFrameworkCoreNative =
-  wait
-    (allFacts expressedFacts)
-    (factNode [FrameworkCoreNativeValidatedFact])
+  systemNode FrameworkCoreNativeValidatedFact
 
 assertFrameworkCoreExpressed :: App
 assertFrameworkCoreExpressed =
-  wait
-    (allFacts (FrameworkCoreNativeValidatedFact : expressedFacts))
-    (factNode [FrameworkCoreExpressedFact])
+  systemNode FrameworkCoreExpressedFact
 
 publishBootstrapReport :: App
 publishBootstrapReport =
-  wait
-    (allFacts reportInputs)
-    ( chain
-        PublishBootstrapReportFlow
-        [factNode [FrameworkCoreReportPublishedFact]]
-    )
+  systemNode FrameworkCoreReportPublishedFact
 
 coreBootstrapHanging :: AppHanging
 coreBootstrapHanging =
@@ -187,54 +169,10 @@ coreBootstrapHanging =
     [ middleware FrameworkCoreTraceMiddleware coreBootstrapApp
     ]
 
-expressedFacts :: [WorkflowFact]
-expressedFacts =
-  [ AstStructureExpressedFact
-  , EffectTheoryDslExpressedFact
-  , RuntimeTypesExpressedFact
-  , RuntimePlanBuildExpressedFact
-  , RuntimeValidationExpressedFact
-  , RuntimeExecutionSemanticsExpressedFact
-  , RuntimeConcurrencySemanticsExpressedFact
-  , RuntimeDiagnosisExpressedFact
-  , RuntimeBackendAdapterExpressedFact
-  , RuntimeBackendParityExpressedFact
-  , RuntimeInterpreterExpressedFact
-  , BuildAppValidationExpressedFact
-  , BoundaryChecksExpressedFact
-  , HyloRenderingProofSurfaceExpressedFact
-  , RuntimeFactClosureExpressedFact
-  , RegistryCodegenExpressedFact
-  , SelfArtifactManifestExpressedFact
-  ]
-
-runtimeInterpreterInputs :: [WorkflowFact]
-runtimeInterpreterInputs =
-  [ RuntimeTypesExpressedFact
-  , RuntimeExecutionSemanticsExpressedFact
-  , RuntimeConcurrencySemanticsExpressedFact
-  , RuntimeDiagnosisExpressedFact
-  , RuntimeBackendAdapterExpressedFact
-  , RuntimeBackendParityExpressedFact
-  ]
-
-runtimeClosureInputs :: [WorkflowFact]
-runtimeClosureInputs =
-  [ RuntimePlanBuildExpressedFact
-  , RuntimeValidationExpressedFact
-  , RuntimeExecutionSemanticsExpressedFact
-  ]
-
-reportInputs :: [WorkflowFact]
-reportInputs =
-  [ FrameworkCoreNativeValidatedFact
-  , FrameworkCoreExpressedFact
-  ]
-
-factNode :: [WorkflowFact] -> App
-factNode =
-  fact . factItems
-
-allFacts :: [WorkflowFact] -> FactExpr WorkflowFact
-allFacts =
-  factAll . map (factItems . (: []))
+systemNode :: WorkflowFact -> App
+systemNode currentFact =
+  run
+    ( effectSystem
+        (EffectSystemName (show currentFact))
+        (factItems [currentFact])
+    )
