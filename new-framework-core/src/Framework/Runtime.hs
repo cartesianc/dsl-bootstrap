@@ -103,14 +103,8 @@ import Control.Exception
   ( SomeException
   , try
   )
-import Data.Type.Equality
-  ( (:~:) (Refl) )
-import Data.Typeable
-  ( eqT )
-
 import Bootstrap.Effect
   ( EffectTheory
-  , HandlerName
   , IdempotencyPolicy (..)
   , RetryPolicy (..)
   , SendName
@@ -157,50 +151,9 @@ import Framework.Runtime.Diagnosis
   , recordRuntimeDiagnosis
   , renderRuntimeFailureDiagnosis
   )
+import Framework.Runtime.Handlers
 import Framework.Runtime.Types
-
-data HandlerInput = HandlerInput
-  { handlerInputValues :: [RuntimeValue]
-  , handlerInputTypedValues :: [SomeRuntimeValue]
-  }
-  deriving (Eq, Show)
-
-data HandlerResult
-  = HandlerSucceeded [RuntimeValue]
-  | HandlerSucceededTyped [SomeRuntimeValue]
-  | HandlerFailed String
-  deriving (Eq, Show)
-
-newtype RuntimeHandler = RuntimeHandler
-  { runRuntimeHandler :: SendName -> HandlerInput -> Runtime -> IO HandlerResult
-  }
-
-data HandlerBinding = HandlerBinding
-  { handlerBindingSend :: SendName
-  , handlerBindingName :: HandlerName
-  , handlerBindingHandler :: RuntimeHandler
-  }
-
-newtype HandlerRegistry = HandlerRegistry
-  { handlerRegistryBindings :: [HandlerBinding]
-  }
-
-data RuntimeTransform where
-  RuntimeTransform :: ValueTag input -> ValueTag output -> (input -> output) -> RuntimeTransform
-
-data TransformBinding = TransformBinding
-  { transformBindingName :: TransformName
-  , transformBindingTransform :: RuntimeTransform
-  }
-
-newtype TransformRegistry = TransformRegistry
-  { transformRegistryBindings :: [TransformBinding]
-  }
-
-data RuntimeEffectEnvironment = RuntimeEffectEnvironment
-  { runtimeEffectHandlers :: HandlerRegistry
-  , runtimeEffectTransforms :: TransformRegistry
-  }
+import Framework.Runtime.Values
 
 data RuntimeEnv = RuntimeEnv
   { runtimeEnvEffectEnvironment :: RuntimeEffectEnvironment
@@ -329,22 +282,6 @@ renderRuntimeSnapshot snapshot =
   , "  completed components: " ++ show (snapshotRuntimeCompletedComponents snapshot)
   , "  trace lines: " ++ show (length (snapshotRuntimeTrace snapshot))
   ]
-
-emptyHandlerRegistry :: HandlerRegistry
-emptyHandlerRegistry =
-  HandlerRegistry []
-
-emptyTransformRegistry :: TransformRegistry
-emptyTransformRegistry =
-  TransformRegistry []
-
-runtimeEffectEnvironment :: HandlerRegistry -> RuntimeEffectEnvironment
-runtimeEffectEnvironment handlers =
-  RuntimeEffectEnvironment handlers emptyTransformRegistry
-
-runtimeEffectEnvironmentWithTransforms :: HandlerRegistry -> TransformRegistry -> RuntimeEffectEnvironment
-runtimeEffectEnvironmentWithTransforms =
-  RuntimeEffectEnvironment
 
 defaultRuntimeEnv :: RuntimeEnv
 defaultRuntimeEnv =
@@ -1535,69 +1472,6 @@ recordFactClaim currentFact status failure =
         runtime {runtimeFactClaims = upsertRuntimeFactClaim (RuntimeFactClaim currentFact status failure) (runtimeFactClaims runtime)}
     )
 
-handlerInputFromValues :: [RuntimeValue] -> HandlerInput
-handlerInputFromValues values =
-  HandlerInput
-    { handlerInputValues = values
-    , handlerInputTypedValues =
-        [ currentTypedValue
-        | currentValue <- values
-        , Just currentTypedValue <- [runtimeValueToSome currentValue]
-        ]
-    }
-
-handlerInputFromTypedValues :: [SomeRuntimeValue] -> HandlerInput
-handlerInputFromTypedValues values =
-  HandlerInput
-    { handlerInputValues = map someRuntimeValueToRuntimeValue values
-    , handlerInputTypedValues = values
-    }
-
-runtimeValueToSome :: RuntimeValue -> Maybe SomeRuntimeValue
-runtimeValueToSome currentValue =
-  case runtimeValueType currentValue of
-    NoInput ->
-      Just (SomeRuntimeValue (RuntimeTypedValue noInputTag NoInputValue))
-    Unit ->
-      Just (SomeRuntimeValue (RuntimeTypedValue unitTag UnitValue))
-    ErrorInput ->
-      Just (SomeRuntimeValue (RuntimeTypedValue errorInputTag (ErrorInputValue (runtimeValueText currentValue))))
-    _ ->
-      Nothing
-
-someRuntimeValueToRuntimeValue :: SomeRuntimeValue -> RuntimeValue
-someRuntimeValueToRuntimeValue (SomeRuntimeValue currentValue) =
-  runtimeTypedValueToRuntimeValue currentValue
-
-runtimeTypedValueToRuntimeValue :: RuntimeTypedValue value -> RuntimeValue
-runtimeTypedValueToRuntimeValue currentValue =
-  RuntimeValue
-    { runtimeValueType = runtimeTypedValueType currentValue
-    , runtimeValueText = runtimeTypedValueText currentValue
-    }
-
-typedValueFor :: ValueTag value -> Runtime -> Maybe (RuntimeTypedValue value)
-typedValueFor currentTag runtime =
-  firstJust
-    [ typedValueFromSome currentTag currentValue
-    | currentValue <- runtimeTypedValues runtime
-    ]
-
-typedValueFromSome :: ValueTag value -> SomeRuntimeValue -> Maybe (RuntimeTypedValue value)
-typedValueFromSome expectedTag (SomeRuntimeValue currentValue) =
-  case sameValueTag expectedTag (runtimeTypedValueTag currentValue) of
-    Just Refl ->
-      Just currentValue
-    Nothing ->
-      Nothing
-
-sameValueTag :: ValueTag left -> ValueTag right -> Maybe (left :~: right)
-sameValueTag (ValueTag leftType _) (ValueTag rightType _)
-  | leftType == rightType =
-      eqT
-  | otherwise =
-      Nothing
-
 applyRuntimeTransform ::
   TransformName ->
   RuntimeTransform ->
@@ -1620,30 +1494,6 @@ applyRuntimeTransform currentTransform (RuntimeTransform inputTag outputTag tran
             (valueTagTypeName inputTag)
             (someRuntimeValueType currentInput)
         )
-
-runtimeTransformInput :: RuntimeTransform -> TypeName
-runtimeTransformInput (RuntimeTransform inputTag _ _) =
-  valueTagTypeName inputTag
-
-runtimeTransformOutput :: RuntimeTransform -> TypeName
-runtimeTransformOutput (RuntimeTransform _ outputTag _) =
-  valueTagTypeName outputTag
-
-handlerFor :: HandlerRegistry -> SendName -> Maybe HandlerBinding
-handlerFor registry currentSend =
-  firstJust
-    [ Just binding
-    | binding <- handlerRegistryBindings registry
-    , handlerBindingSend binding == currentSend
-    ]
-
-transformFor :: TransformRegistry -> TransformName -> Maybe RuntimeTransform
-transformFor registry currentTransform =
-  firstJust
-    [ Just (transformBindingTransform binding)
-    | binding <- transformRegistryBindings registry
-    , transformBindingName binding == currentTransform
-    ]
 
 renderRuntimeError :: RuntimeError -> String
 renderRuntimeError =
@@ -1838,15 +1688,3 @@ joinLines [line] =
   line
 joinLines (line : rest) =
   line ++ "\n" ++ joinLines rest
-
-noInputTag :: ValueTag NoInputValue
-noInputTag =
-  ValueTag NoInput (\_ -> "")
-
-unitTag :: ValueTag UnitValue
-unitTag =
-  ValueTag Unit (\_ -> "")
-
-errorInputTag :: ValueTag ErrorInputValue
-errorInputTag =
-  ValueTag ErrorInput (\(ErrorInputValue text) -> text)

@@ -185,11 +185,11 @@ facade 模块：
 Framework.Ast             frontend AST / AppBlueprint / workflow 构造器
 Framework.Business        业务编写入口：capability/pipeline/policy/binding DSL，暴露 NoInput/Unit/ErrorInput authoring token 和业务命名类型
 Framework.Effect          normalized semantic IR / compatibility layer：effect/fact/needs/take/make/uses/externalMake
-Framework.Handler         handler implementation API：typed values、handlers、transforms、registries
+Framework.Handler         handler implementation API：typed values、handlers、transforms、registries，底层由 Runtime.Handlers / Runtime.Values 支撑
 Framework.TrustBase       架构自我迭代 API：bootstrap runtime、evidence、diagnosis、reports、codegen、TrustBase manifest、artifact gate
 Framework.Workflow        AST vocabulary 兼容别名
 Framework.Background      compatibility/devtools facade
-Framework.Runtime         internal/devtools typed RuntimeM interpreter API
+Framework.Runtime         internal/devtools typed RuntimeM interpreter API，保留兼容入口并组合 Runtime.Types / Runtime.Values / Runtime.Handlers
 ```
 
 内部层：

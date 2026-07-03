@@ -83,7 +83,9 @@ library
                      , Framework.Runtime.Concurrency
                      , Framework.Runtime.Diagnosis
                      , Framework.Runtime.Evidence
+                     , Framework.Runtime.Handlers
                      , Framework.Runtime.Types
+                     , Framework.Runtime.Values
                      , Framework.SelfArtifact
                      , Framework.TrustBase
                      , Framework.TrustBase.Manifest

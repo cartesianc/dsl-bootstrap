@@ -281,6 +281,8 @@ coreSurfaceSlices =
           , "Framework.Handler"
           , "Framework.Runtime"
           , "Framework.Runtime.Diagnosis"
+          , "Framework.Runtime.Handlers"
+          , "Framework.Runtime.Values"
           , "Framework.TrustBase"
           , "Framework.Background.RuntimeDiagnosis"
           ]

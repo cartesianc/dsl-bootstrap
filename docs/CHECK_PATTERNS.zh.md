@@ -34,21 +34,22 @@ artifact proof
 ```text
 check-fast
   build
-  bootstrap-report JSON
-  runtime-evidence JSON
+  framework-core frontend witness
+  business syntax witness
+  runtime diagnosis payload
   trust-base-manifest JSON
 
 check-semantic
   check-fast 范围
-  bootstrap runtime smoke
-  runtime diagnosis payload
+  domain-app report JSON
   workflow semantics payload
   runtime concurrency payload
-  framework-core frontend witness
-  fixed-point JSON
 
 check-release
   semantic gates
+  bootstrap-report JSON
+  runtime-evidence JSON
+  fixed-point JSON
   domain-app acceptance
   registry/codegen witness
   business syntax witness
@@ -73,14 +74,11 @@ check-release
 
 ```powershell
 stack build
-stack exec bootstrap-report
-stack exec bootstrap-report -- --json
-stack exec runtime-evidence-witness
-stack exec runtime-evidence-witness -- --json
+stack exec framework-core-frontend-witness
+stack exec business-syntax-witness
+stack exec runtime-diagnosis-witness -- --json
 stack exec trust-base-manifest-witness
 stack exec trust-base-manifest-witness -- --json
-stack exec fixed-point-smoke
-stack exec fixed-point-smoke -- --json
 ```
 
 这三条覆盖：

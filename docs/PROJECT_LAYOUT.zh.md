@@ -124,7 +124,12 @@ Bootstrap.Runtime
   bootstrap backend。用于自举、报告、fixed-point Stage 0。
 
 Framework.Runtime
-  typed runtime backend。用于 facade/domain 侧 RuntimeM 和 typed handlers。
+  typed runtime backend。用于 RuntimeM interpreter 入口和兼容 re-export。
+
+Framework.Runtime.Types
+Framework.Runtime.Values
+Framework.Runtime.Handlers
+  typed runtime 的数据、value conversion、handler/transform registry implementation。
 ```
 
 `Framework.Domain` 里的主构造器是：
@@ -197,5 +202,5 @@ business frontend -> Framework.Ast / Framework.Business
 handler implementation -> Framework.Handler
 self-iteration / evidence -> Framework.TrustBase
 lowering IR / compatibility -> Framework.Effect
-runtime internals -> Framework.Runtime / Bootstrap.Runtime.*
+runtime internals -> Framework.Runtime / Framework.Runtime.* / Bootstrap.Runtime.*
 ```
