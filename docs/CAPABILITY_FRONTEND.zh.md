@@ -58,7 +58,7 @@ transform
 
 这些词描述业务能力、业务事实、artifact 数据流、外部 send boundary、handler binding 和 transform binding。业务作者不需要手写 `needs`、`take`、`make`、`externalMake`。
 
-`NoInput`、`Unit` 和 `ErrorInput` 也从 `Framework.Business` 暴露，供 capability source 描述 send boundary 的输入输出形状。业务前台不需要为了这些 sentinel values 直接导入 `Framework.Effect`。
+`NoInput`、`Unit`、`ErrorInput` 和 `SendName` / `TypeName` / `HandlerName` / `TransformName` / `EffectName` 这类 authoring name 也从 `Framework.Business` 暴露。业务前台不需要为了 send boundary sentinel values 或命名类型直接导入 `Framework.Effect`。
 
 示例：
 
@@ -184,6 +184,7 @@ GenerateReport capability lowering 生成 needs/take/make/uses/externalMake/tran
 GenerateReport pipeline 生成 UserName -> ReportInput 和 ReportInput -> ReportOutput candidate
 Effects.* 等于对应 Domain.Business capability group lowering
 Domain.Business 导入 Framework.Business 且不导入 Framework.Effect
+Domain.EffectVocabulary 导入 Framework.Business 且不导入 Framework.Effect
 allDomainCapabilities 通过 business-shape checker
 runtime pipeline adapter 可以执行 transform 链
 ```

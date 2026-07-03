@@ -160,7 +160,7 @@ fixed-point-smoke: diffs: 0
 runtime-evidence-witness: ok runtime evidence 6 payload claims
 trust-base-manifest-witness: ok trust base manifest trust-base-manifest.v1
 workflow-semantics-witness: ok workflow semantics evidence 12 payload claims
-business-syntax-witness: ok business syntax evidence 11 claims
+business-syntax-witness: ok business syntax evidence 12 claims
 self-artifact-witness: passed (仅高危 artifact gate 轮次需要)
 ```
 
@@ -183,7 +183,7 @@ facade 模块：
 
 ```text
 Framework.Ast             frontend AST / AppBlueprint / workflow 构造器
-Framework.Business        业务编写入口：capability/pipeline/policy/binding DSL，暴露 NoInput/Unit/ErrorInput authoring token
+Framework.Business        业务编写入口：capability/pipeline/policy/binding DSL，暴露 NoInput/Unit/ErrorInput authoring token 和业务命名类型
 Framework.Effect          normalized semantic IR / compatibility layer：effect/fact/needs/take/make/uses/externalMake
 Framework.Handler         handler implementation API：typed values、handlers、transforms、registries
 Framework.TrustBase       架构自我迭代 API：bootstrap runtime、evidence、diagnosis、reports、codegen、TrustBase manifest、artifact gate
@@ -368,7 +368,7 @@ handler binding
 transform binding
 ```
 
-`NoInput`、`Unit` 和 `ErrorInput` 由 `Framework.Business` 暴露，业务 capability source 不需要为了 send boundary sentinel values 直接导入 `Framework.Effect`。
+`NoInput`、`Unit`、`ErrorInput` 和业务命名类型由 `Framework.Business` 暴露，业务 capability source 不需要为了 send boundary sentinel values 或 `SendName` / `TypeName` 这类 authoring name 直接导入 `Framework.Effect`。
 
 normalized semantic IR 仍然保留：
 

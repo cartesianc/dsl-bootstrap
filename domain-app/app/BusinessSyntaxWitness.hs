@@ -73,15 +73,16 @@ main :: IO ()
 main = do
   runtimePipelinePassed <- pipelineRuntimeAdapterPassed
   domainBusinessBoundaryPassed <- domainBusinessAuthoringBoundaryPassed
-  let claims = allClaims runtimePipelinePassed domainBusinessBoundaryPassed
+  domainVocabularyBoundaryPassed <- domainEffectVocabularyBoundaryPassed
+  let claims = allClaims runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed
   case failedClaims claims of
     [] ->
       putStrLn ("[witness] ok business syntax evidence " ++ show (length claims) ++ " claims")
     failures ->
       ioError (userError (unlines failures))
 
-allClaims :: Bool -> Bool -> [(String, Bool)]
-allClaims runtimePipelinePassed domainBusinessBoundaryPassed =
+allClaims :: Bool -> Bool -> Bool -> [(String, Bool)]
+allClaims runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed =
   [ ("needs lowering failed", needsLoweringPassed)
   , ("take lowering failed", takeLoweringPassed)
   , ("make lowering failed", makeLoweringPassed)
@@ -90,6 +91,7 @@ allClaims runtimePipelinePassed domainBusinessBoundaryPassed =
   , ("transform lowering failed", transformLoweringPassed)
   , ("Effects.* lowering facade drifted from Domain.Business", effectFacadeLoweringPassed)
   , ("Domain.Business authoring boundary drifted", domainBusinessBoundaryPassed)
+  , ("Domain.EffectVocabulary authoring boundary drifted", domainVocabularyBoundaryPassed)
   , ("handler binding alignment failed: " ++ unlines (map renderBusinessShapeIssue businessShapeIssues), null businessShapeIssues)
   , ("pipeline adjacent transform failed", pipelineLoweringPassed)
   , ("runtime pipeline adapter failed", runtimePipelinePassed)
@@ -150,6 +152,16 @@ domainBusinessAuthoringBoundaryPassed = do
   pure
     ( "import Framework.Business" `isInfixOf` source
         && not ("import Framework.Effect" `isInfixOf` source)
+    )
+
+domainEffectVocabularyBoundaryPassed :: IO Bool
+domainEffectVocabularyBoundaryPassed = do
+  source <- readFile "domain-app/src/Domain/EffectVocabulary.hs"
+  pure
+    ( "import Framework.Business" `isInfixOf` source
+        && not ("import Framework.Effect" `isInfixOf` source)
+        && not ("import Framework.Runtime" `isInfixOf` source)
+        && not ("import Bootstrap." `isInfixOf` source)
     )
 
 effectFacadeLoweringPassed :: Bool

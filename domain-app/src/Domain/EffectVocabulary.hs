@@ -27,7 +27,7 @@ module Domain.EffectVocabulary
   , pattern HandleUserNameError
   ) where
 
-import Framework.Effect
+import Framework.Business
   ( EffectName (..)
   , HandlerName (..)
   , SendName (..)

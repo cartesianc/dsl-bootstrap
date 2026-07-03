@@ -6,9 +6,15 @@ module Bootstrap.Business
   , CapabilityClause
   , CapabilityPolicy (..)
   , CapabilityUse (..)
+  , EffectName (..)
   , HandlerBindingSpec (..)
+  , HandlerName (..)
   , Pipeline (..)
+  , SendName (..)
   , TransformBindingSpec (..)
+  , TransformName (..)
+  , TypeName (..)
+  , WorkflowFact (..)
   , pattern ErrorInput
   , pattern NoInput
   , pattern Unit

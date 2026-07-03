@@ -39,7 +39,7 @@ Effects.*
   只做 lowering 薄层
 
 Domain.Vocabulary / Domain.EffectVocabulary
-  只放稳定命名
+  只放稳定命名，通过 Framework.Business 获取 capability authoring name
 
 Domain.Business
   业务声明入口：capability、pipeline、policy、handler binding、transform binding
@@ -57,4 +57,4 @@ Domain.SemanticEvidence
 
 业务编写从 `Framework.Business` capability 开始。`Framework.Effect` 用在 lowering 后的规范化语义 IR。
 
-`business-syntax-witness` 检查这条 vertical slice：capability lowering、`Effects.*` 与 `Domain.Business` lowering 一致、`Domain.Business` 不导入 `Framework.Effect`、business-shape 对齐，以及 typed runtime pipeline adapter。
+`business-syntax-witness` 检查这条 vertical slice：capability lowering、`Effects.*` 与 `Domain.Business` lowering 一致、`Domain.Business` / `Domain.EffectVocabulary` 不导入 `Framework.Effect`、business-shape 对齐，以及 typed runtime pipeline adapter。
