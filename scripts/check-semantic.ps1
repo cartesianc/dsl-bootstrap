@@ -12,7 +12,7 @@ $WorkspaceRoot = Split-Path -Parent $ScriptRoot
 $commands = @(
   ,@("stack", "--work-dir", $WorkDir, "build")
   ,@("stack", "--work-dir", $WorkDir, "exec", "framework-core-frontend-witness")
-  ,@("stack", "--work-dir", $WorkDir, "exec", "business-syntax-witness")
+  ,@("stack", "--work-dir", $WorkDir, "exec", "business-syntax-witness", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "domain-app-report", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "runtime-diagnosis-witness", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "workflow-semantics-witness", "--", "--json")

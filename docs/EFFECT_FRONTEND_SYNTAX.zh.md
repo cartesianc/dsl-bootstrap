@@ -197,6 +197,7 @@ Capability lowering 的最小 witness：
 
 ```powershell
 stack exec business-syntax-witness
+stack exec business-syntax-witness -- --json
 ```
 
 它验证：
@@ -213,7 +214,7 @@ runtime pipeline adapter 可以执行 transform 链
 期望输出：
 
 ```text
-[witness] ok business syntax evidence 11 claims
+[witness] ok business syntax evidence 13 payload claims
 ```
 
 日常 capability/lowering 语法改动只需要跑 `business-syntax-witness`。高危 `self-artifact-witness` artifact gate 内部也会包含这项检查，但不会因为语法文档或 README/docs-only 变更单独触发。

@@ -76,6 +76,7 @@ check-release
 stack build
 stack exec framework-core-frontend-witness
 stack exec business-syntax-witness
+stack exec business-syntax-witness -- --json
 stack exec runtime-diagnosis-witness -- --json
 stack exec trust-base-manifest-witness
 stack exec trust-base-manifest-witness -- --json
@@ -112,6 +113,7 @@ bootstrap-report: status passed
 bootstrap-report --json: framework-core-report.v1
 runtime-evidence-witness: ok runtime evidence 6 payload claims
 runtime-evidence-witness --json: runtime-evidence.v1
+business-syntax-witness -- --json: business-syntax-evidence.v1
 trust-base-manifest-witness: trust-base-manifest.v1
 trust-base-manifest-witness -- --evidence-json: trust-base-manifest-evidence.v1
 fixed-point-smoke: fixed-point diff evidence 14 payload claims

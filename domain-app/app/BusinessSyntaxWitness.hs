@@ -68,41 +68,172 @@ import "new-framework-core" Framework.TrustBase
   )
 import Data.List
   ( isInfixOf )
+import System.Environment
+  ( getArgs )
 
 main :: IO ()
 main = do
+  args <- getArgs
   runtimePipelinePassed <- pipelineRuntimeAdapterPassed
   domainBusinessBoundaryPassed <- domainBusinessAuthoringBoundaryPassed
   domainVocabularyBoundaryPassed <- domainEffectVocabularyBoundaryPassed
-  let claims = allClaims runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed
-  case failedClaims claims of
-    [] ->
-      putStrLn ("[witness] ok business syntax evidence " ++ show (length claims) ++ " claims")
-    failures ->
-      ioError (userError (unlines failures))
+  let payloads =
+        businessSyntaxEvidencePayloads
+          runtimePipelinePassed
+          domainBusinessBoundaryPassed
+          domainVocabularyBoundaryPassed
+      failures =
+        evidenceFailures payloads
+  case args of
+    ["--json"] -> do
+      putStrLn (renderBusinessSyntaxEvidencePayloadsJson payloads)
+      failWhenEvidenceFailed failures
+    _ ->
+      case failures of
+        [] ->
+          putStrLn ("[witness] ok business syntax evidence " ++ show (length payloads) ++ " payload claims")
+        currentFailures ->
+          ioError (userError (unlines currentFailures))
 
-allClaims :: Bool -> Bool -> Bool -> [(String, Bool)]
-allClaims runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed =
-  [ ("needs lowering failed", needsLoweringPassed)
-  , ("take lowering failed", takeLoweringPassed)
-  , ("make lowering failed", makeLoweringPassed)
-  , ("uses lowering failed", usesLoweringPassed)
-  , ("externalMake lowering failed", externalMakeLoweringPassed)
-  , ("transform lowering failed", transformLoweringPassed)
-  , ("Effects.* lowering facade drifted from Domain.Business", effectFacadeLoweringPassed)
-  , ("Domain.Business authoring boundary drifted", domainBusinessBoundaryPassed)
-  , ("Domain.EffectVocabulary authoring boundary drifted", domainVocabularyBoundaryPassed)
-  , ("handler binding alignment failed: " ++ unlines (map renderBusinessShapeIssue businessShapeIssues), null businessShapeIssues)
-  , ("pipeline adjacent transform failed", pipelineLoweringPassed)
-  , ("runtime pipeline adapter failed", runtimePipelinePassed)
+data BusinessSyntaxEvidencePayload = BusinessSyntaxEvidencePayload
+  { businessSyntaxEvidenceClaim :: String
+  , businessSyntaxEvidenceStatus :: BusinessSyntaxEvidenceStatus
+  , businessSyntaxEvidenceExpected :: String
+  , businessSyntaxEvidenceObserved :: String
+  , businessSyntaxEvidenceArtifact :: String
+  }
+  deriving (Eq, Show)
+
+data BusinessSyntaxEvidenceStatus
+  = BusinessSyntaxEvidencePassed
+  | BusinessSyntaxEvidenceFailed
+  deriving (Eq, Show)
+
+businessSyntaxEvidencePayloadPassed :: BusinessSyntaxEvidencePayload -> Bool
+businessSyntaxEvidencePayloadPassed payload =
+  businessSyntaxEvidenceStatus payload == BusinessSyntaxEvidencePassed
+
+businessSyntaxEvidencePayloads :: Bool -> Bool -> Bool -> [BusinessSyntaxEvidencePayload]
+businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed =
+  [ businessEvidence
+      "business-syntax-needs-lowering"
+      needsLoweringPassed
+      "capability requires lower to needs"
+      (observedBool needsLoweringPassed)
+      "BusinessNeedsLoweringArtifact"
+  , businessEvidence
+      "business-syntax-take-lowering"
+      takeLoweringPassed
+      "capability input lowers to take"
+      (observedBool takeLoweringPassed)
+      "BusinessTakeLoweringArtifact"
+  , businessEvidence
+      "business-syntax-make-lowering"
+      makeLoweringPassed
+      "capability output lowers to make"
+      (observedBool makeLoweringPassed)
+      "BusinessMakeLoweringArtifact"
+  , businessEvidence
+      "business-syntax-uses-lowering"
+      usesLoweringPassed
+      "capability uses lowers to uses"
+      (observedBool usesLoweringPassed)
+      "BusinessUsesLoweringArtifact"
+  , businessEvidence
+      "business-syntax-external-make-lowering"
+      externalMakeLoweringPassed
+      "capability uses also emits externalMake boundary"
+      (observedBool externalMakeLoweringPassed)
+      "BusinessExternalMakeLoweringArtifact"
+  , businessEvidence
+      "business-syntax-transform-lowering"
+      transformLoweringPassed
+      "capability transform lowers to transform step"
+      (observedBool transformLoweringPassed)
+      "BusinessTransformLoweringArtifact"
+  , businessEvidence
+      "business-syntax-effects-facade-lowering"
+      effectFacadeLoweringPassed
+      "Effects.* facade matches Domain.Business lowering"
+      (observedBool effectFacadeLoweringPassed)
+      "BusinessEffectsFacadeLoweringArtifact"
+  , businessEvidence
+      "business-syntax-domain-business-boundary"
+      domainBusinessBoundaryPassed
+      "Domain.Business imports Framework.Business without Framework.Effect"
+      (observedBool domainBusinessBoundaryPassed)
+      "DomainBusinessBoundaryArtifact"
+  , businessEvidence
+      "business-syntax-domain-effect-vocabulary-boundary"
+      domainVocabularyBoundaryPassed
+      "Domain.EffectVocabulary imports Framework.Business without Framework.Effect, Framework.Runtime, or Bootstrap.*"
+      (observedBool domainVocabularyBoundaryPassed)
+      "DomainEffectVocabularyBoundaryArtifact"
+  , businessEvidence
+      "business-syntax-handler-binding-alignment"
+      (null businessShapeIssues)
+      "handler bindings align with capability consumes/emits/claims"
+      (observedBusinessShapeIssues businessShapeIssues)
+      "BusinessHandlerBindingAlignmentArtifact"
+  , businessEvidence
+      "business-syntax-pipeline-adjacent-transform"
+      pipelineLoweringPassed
+      "pipeline adjacent types define transform candidates"
+      (observedBool pipelineLoweringPassed)
+      "BusinessPipelineTransformArtifact"
+  , businessEvidence
+      "business-syntax-runtime-pipeline-adapter"
+      runtimePipelinePassed
+      "typed runtime executes capability-lowered pipeline with transforms"
+      (observedBool runtimePipelinePassed)
+      "BusinessRuntimePipelineAdapterArtifact"
+  , businessEvidence
+      "effect-system-boundary-currently-global"
+      effectSystemBoundaryCurrentlyGlobal
+      "EffectSystem still exposes name + success facts only; imports/exports/private facts are not semantic fields yet"
+      (observedBool effectSystemBoundaryCurrentlyGlobal)
+      "EffectSystemCurrentBoundaryArtifact"
   ]
 
-failedClaims :: [(String, Bool)] -> [String]
-failedClaims claims =
-  [ message
-  | (message, passed) <- claims
-  , not passed
+businessEvidence :: String -> Bool -> String -> String -> String -> BusinessSyntaxEvidencePayload
+businessEvidence claim passed expected observed artifact =
+  BusinessSyntaxEvidencePayload
+    { businessSyntaxEvidenceClaim = claim
+    , businessSyntaxEvidenceStatus =
+        if passed
+          then BusinessSyntaxEvidencePassed
+          else BusinessSyntaxEvidenceFailed
+    , businessSyntaxEvidenceExpected = expected
+    , businessSyntaxEvidenceObserved = observed
+    , businessSyntaxEvidenceArtifact = artifact
+    }
+
+observedBool :: Bool -> String
+observedBool True =
+  "passed"
+observedBool False =
+  "failed"
+
+observedBusinessShapeIssues :: [BusinessShapeIssue] -> String
+observedBusinessShapeIssues [] =
+  "no business shape issues"
+observedBusinessShapeIssues issues =
+  joinWith "; " (map renderBusinessShapeIssue issues)
+
+evidenceFailures :: [BusinessSyntaxEvidencePayload] -> [String]
+evidenceFailures payloads =
+  [ businessSyntaxEvidenceClaim payload
+      ++ ": "
+      ++ businessSyntaxEvidenceObserved payload
+  | payload <- payloads
+  , not (businessSyntaxEvidencePayloadPassed payload)
   ]
+
+failWhenEvidenceFailed :: [String] -> IO ()
+failWhenEvidenceFailed [] =
+  pure ()
+failWhenEvidenceFailed failures =
+  ioError (userError (unlines failures))
 
 needsLoweringPassed :: Bool
 needsLoweringPassed =
@@ -145,6 +276,12 @@ pipelineLoweringPassed =
   where
     candidates =
       pipelineTransformCandidates generateReportCapability
+
+effectSystemBoundaryCurrentlyGlobal :: Bool
+effectSystemBoundaryCurrentlyGlobal =
+  case Workflow.effectSystem (Workflow.EffectSystemName "BoundaryProbe") (Workflow.factItems [pipelineAdapterFact]) of
+    Workflow.EffectSystem _ _ ->
+      True
 
 domainBusinessAuthoringBoundaryPassed :: IO Bool
 domainBusinessAuthoringBoundaryPassed = do
@@ -370,3 +507,72 @@ hasTypedValue expectedType expectedText runtime =
     matches value =
       someRuntimeValueType value == expectedType
         && someRuntimeValueText value == expectedText
+
+renderBusinessSyntaxEvidencePayloadsJson :: [BusinessSyntaxEvidencePayload] -> String
+renderBusinessSyntaxEvidencePayloadsJson payloads =
+  jsonObject
+    [ jsonField "schema" (jsonString "business-syntax-evidence.v1")
+    , jsonField "status" (jsonString statusText)
+    , jsonField "payloads" (jsonArray (map businessSyntaxEvidencePayloadJson payloads))
+    ]
+  where
+    statusText =
+      if all businessSyntaxEvidencePayloadPassed payloads
+        then "passed"
+        else "failed"
+
+businessSyntaxEvidencePayloadJson :: BusinessSyntaxEvidencePayload -> String
+businessSyntaxEvidencePayloadJson payload =
+  jsonObject
+    [ jsonField "claim" (jsonString (businessSyntaxEvidenceClaim payload))
+    , jsonField "status" (jsonString (renderBusinessSyntaxEvidenceStatus (businessSyntaxEvidenceStatus payload)))
+    , jsonField "expected" (jsonString (businessSyntaxEvidenceExpected payload))
+    , jsonField "observed" (jsonString (businessSyntaxEvidenceObserved payload))
+    , jsonField "artifact" (jsonString (businessSyntaxEvidenceArtifact payload))
+    ]
+
+renderBusinessSyntaxEvidenceStatus :: BusinessSyntaxEvidenceStatus -> String
+renderBusinessSyntaxEvidenceStatus BusinessSyntaxEvidencePassed =
+  "passed"
+renderBusinessSyntaxEvidenceStatus BusinessSyntaxEvidenceFailed =
+  "failed"
+
+jsonObject :: [String] -> String
+jsonObject fields =
+  "{" ++ joinWith "," fields ++ "}"
+
+jsonField :: String -> String -> String
+jsonField name value =
+  jsonString name ++ ":" ++ value
+
+jsonArray :: [String] -> String
+jsonArray values =
+  "[" ++ joinWith "," values ++ "]"
+
+jsonString :: String -> String
+jsonString value =
+  "\"" ++ concatMap jsonChar value ++ "\""
+
+jsonChar :: Char -> String
+jsonChar currentChar =
+  case currentChar of
+    '"' ->
+      "\\\""
+    '\\' ->
+      "\\\\"
+    '\n' ->
+      "\\n"
+    '\r' ->
+      "\\r"
+    '\t' ->
+      "\\t"
+    _ ->
+      [currentChar]
+
+joinWith :: String -> [String] -> String
+joinWith _ [] =
+  ""
+joinWith _ [item] =
+  item
+joinWith separator (item : rest) =
+  item ++ separator ++ joinWith separator rest

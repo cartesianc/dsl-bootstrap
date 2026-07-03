@@ -54,6 +54,7 @@ stack exec domain-app-report -- --json
 
 ```powershell
 stack exec business-syntax-witness
+stack exec business-syntax-witness -- --json
 ```
 
 检查 framework fixed point：
@@ -161,7 +162,7 @@ fixed-point-smoke: diffs: 0
 runtime-evidence-witness: ok runtime evidence 6 payload claims
 trust-base-manifest-witness: ok trust base manifest trust-base-manifest.v1
 workflow-semantics-witness: ok workflow semantics evidence 12 payload claims
-business-syntax-witness: ok business syntax evidence 12 claims
+business-syntax-witness: ok business syntax evidence 13 payload claims
 self-artifact-witness: passed (仅高危 artifact gate 轮次需要)
 ```
 
@@ -584,6 +585,7 @@ fixed-point-report.v1
 fixed-point-summary.v1
 trust-base-manifest.v1
 trust-base-manifest-evidence.v1
+business-syntax-evidence.v1
 runtime-evidence.v1
 runtime-diagnosis-evidence.v1
 workflow-semantics-evidence.v1

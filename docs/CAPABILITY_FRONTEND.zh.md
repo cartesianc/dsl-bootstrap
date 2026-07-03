@@ -175,6 +175,7 @@ Capability 前台的最小验收：
 
 ```powershell
 stack exec business-syntax-witness
+stack exec business-syntax-witness -- --json
 ```
 
 当前 witness 检查：
@@ -192,7 +193,7 @@ runtime pipeline adapter 可以执行 transform 链
 期望输出：
 
 ```text
-[witness] ok business syntax evidence 11 claims
+[witness] ok business syntax evidence 13 payload claims
 ```
 
-这轮只冻结 authoring surface。结构化 evidence payload、JSON report、fixed-point schema 和 runtime 继续拆分属于后续迭代。
+`--json` 输出 `business-syntax-evidence.v1`，用于记录 capability lowering、facade boundary、pipeline adapter 和当前 EffectSystem boundary。

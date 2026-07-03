@@ -16,7 +16,7 @@ $commands = @(
   ,@("stack", "--work-dir", $WorkDir, "exec", "mytest")
   ,@("stack", "--work-dir", $WorkDir, "exec", "domain-app-report", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "domain-app-self-smoke")
-  ,@("stack", "--work-dir", $WorkDir, "exec", "business-syntax-witness")
+  ,@("stack", "--work-dir", $WorkDir, "exec", "business-syntax-witness", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "framework-core-mytest")
   ,@("stack", "--work-dir", $WorkDir, "exec", "bootstrap-smoke")
   ,@("stack", "--work-dir", $WorkDir, "exec", "bootstrap-runtime-smoke")
