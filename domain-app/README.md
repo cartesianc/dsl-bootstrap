@@ -1,44 +1,58 @@
 # domain-app
 
-`domain-app` is the external-user example for the framework facade. It is intentionally small and declarative.
+`domain-app` 用来验证业务侧如何通过 framework facade 编写声明式 domain。
 
-The current business flow is:
+它当前保持小型、声明式，重点验证 facade 边界、capability lowering、handler/transform 和 evidence 是否能在 domain 侧闭合。
+
+当前业务流程：
 
 ```text
 configure app
   -> start app and prepare runtime
-  -> ask/recognize/remember user
+  -> ask / recognize / remember user
   -> open calculation report
-  -> calculate add/factorial/squares facts
+  -> calculate add / factorial / squares facts
   -> generate report
   -> finish app
 ```
 
-The frontend source should read like a config file:
+业务链路：
+
+```text
+Domain.Business capability
+  -> Effects.* lowering
+  -> effect IR
+  -> Domain.Runtime handler/transform
+  -> domain-app-report / business-syntax-witness
+```
+
+前台源码应该像配置文件：
 
 ```text
 Domain.AppBlueprint
-  app and hanging hook composition only
+  只组合 app flow 和 hanging hook
 
 Plugins.*
-  named workflow fragments only
+  只放命名 workflow fragment
 
 Effects.*
-  thin lowering facade only
+  只做 lowering 薄层
 
 Domain.Vocabulary / Domain.EffectVocabulary
-  stable names only
+  只放稳定命名
 
 Domain.Business
-  capability, pipeline, policy, handler binding, transform binding
+  业务声明入口：capability、pipeline、policy、handler binding、transform binding
 
 Domain.Runtime
-  handler and transform implementation
+  执行、IO、typed value conversion、handler 和 transform 实现
 
 Domain.SemanticEvidence
-  evidence probes and generated-source checks
+  evidence probe 和 generated-source check
 ```
 
-Do not put algorithms in `Domain.AppBlueprint`, `Plugins.*`, `Domain.Business`, or `Effects.*`. If a step needs computation, IO, retry behavior, or typed value conversion, express the capability/send/transform in `Domain.Business` and implement the work in `Domain.Runtime` handlers or transforms.
+算法、IO、retry 行为和 typed value conversion 放进 `Domain.Runtime`。`Domain.AppBlueprint`、`Plugins.*`、`Domain.Business` 和 `Effects.*` 只保留声明和 lowering。
 
-`Effects.*` should stay boring: each module lowers a small capability group with `Framework.Business.capabilitiesEffect`.
+`Effects.*` 每个模块只把一组 capability 通过 `Framework.Business.capabilitiesEffect` lower 成 effect IR。
+
+业务编写从 `Framework.Business` capability 开始。`Framework.Effect` 用在 lowering 后的规范化语义 IR。

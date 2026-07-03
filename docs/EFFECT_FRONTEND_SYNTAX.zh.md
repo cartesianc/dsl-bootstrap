@@ -1,26 +1,28 @@
-# Effect Frontend Syntax
+# Effect IR 与 Capability Lowering
 
-本文记录业务侧 effect 前台语法。目标是让业务作者写 capability、pipeline、policy、handler binding 和 transform binding；框架再 lower 到底层 effect IR。
+本文记录 capability 前台如何 lower 到 normalized effect IR。
 
-底层 IR 仍然是 proof、diagnosis、report 和 runtime closure 的语义来源。前台语法只改变作者入口，不改变 runtime 语义。
+业务作者从 `Framework.Business` 开始。`Framework.Effect` 用于 lowering 后的 normalized semantic IR、compatibility layer、framework/internal source 和 witness/test IR。
+
+底层 IR 仍然是 proof、diagnosis、report、runtime closure 和自举表达的语义来源。Capability 前台只改变作者入口，不改变 runtime 语义。
 
 ## 1. 分层
 
 ```text
 Domain.Business
-  业务 source of truth。只描述能力、输入输出、外部能力、业务状态和绑定关系。
+  业务声明入口。只描述 capability、输入输出、外部能力、业务状态和绑定关系。
 
 Effects.*
-  薄 facade。调用 Framework.Business.capabilitiesEffect，把业务能力 lower 成 EffectUnit。
+  lowering 薄层。调用 Framework.Business.capabilitiesEffect，把 capability group lower 成 EffectUnit。
 
 Bootstrap.Business / Framework.Business
-  capability DSL、pipeline DSL、lowering、handler/transform/business-shape checker。
+  业务编写入口。提供 capability DSL、pipeline DSL、lowering、handler/transform/business-shape checker。
 
 Bootstrap.Effect / Framework.Effect
-  normalized effect IR。保留 needs/take/make/uses/externalMake/transform/retry/idempotent。
+  normalized effect IR。保留 effect/fact/needs/take/make/uses/externalMake/transform/retry/idempotent。
 ```
 
-## 2. Capability DSL
+## 2. Capability 源码
 
 业务能力使用这些词：
 
@@ -37,7 +39,7 @@ handler
 transform
 ```
 
-示例：
+示例源码：
 
 ```haskell
 generateReportCapability =
@@ -56,7 +58,7 @@ generateReportCapability =
     ]
 ```
 
-业务作者不需要在这里手写 `take/make/externalMake`。这些仍然存在，只是进入 normalized IR。
+业务作者不需要在这里手写 `needs/take/make/externalMake`。这些仍然存在，只是进入 normalized IR。
 
 ## 3. Lowering
 
@@ -71,7 +73,7 @@ policy idempotent -> idempotent S
 transform A B N   -> transform A B N, only when A -> B is an adjacent pipeline edge
 ```
 
-Pipeline 只表达 artifact 数据流：
+`pipeline` 只表达 artifact 数据流：
 
 ```text
 pipeline GenerateReportPipeline
@@ -80,7 +82,41 @@ pipeline GenerateReportPipeline
 
 Pipeline 会生成相邻 transform candidate，但不会自动生成业务 fact。`ReportOutput` 是 runtime data，`ReportGeneratedFact` 是业务状态，二者必须显式区分。
 
-## 4. Fact / Artifact / Internal
+## 4. Normalized IR
+
+Lowering 后的 effect IR 继续使用这些语义构件：
+
+```text
+effect        effect theory 分组
+fact          可观察 fact producer
+needs         fact 依赖
+take          artifact 输入类型
+make          artifact 输出类型
+uses          外部 send boundary 使用
+externalMake  send boundary 输入输出签名
+transform     typed value 转换
+retry         retry policy
+idempotent    replay policy
+error         error handler 分发
+```
+
+可以直接写 effect IR 的位置：
+
+```text
+framework/internal source
+compatibility layer
+proof / report / diagnosis 支撑代码
+witness 或 test IR
+需要规范化语义的 bootstrap / self-expression 代码
+```
+
+普通业务前台保留给 capability：
+
+```text
+effect/fact/needs/take/make/uses/externalMake
+```
+
+## 5. Fact / Artifact / Internal
 
 Fact 是业务世界的可观察状态：
 
@@ -125,7 +161,7 @@ transform binding 必须是 pipeline 相邻边
 
 checker 只提示，不自动改名，不自动拆 fact。
 
-## 5. Handler 和 Transform Binding
+## 6. Binding Semantics
 
 Handler 绑定 capability：
 
@@ -155,20 +191,21 @@ transform 不调用外部 send
 transform 必须能在 pipeline 相邻边中找到
 ```
 
-## 6. Witness
+## 7. Witness
 
-新增 witness：
+Capability lowering 的最小 witness：
 
 ```powershell
 stack exec business-syntax-witness
 ```
 
-它验证三件事：
+它验证：
 
 ```text
 GenerateReport capability lowering 生成 needs/take/make/uses/externalMake/transform
 GenerateReport pipeline 生成 UserName -> ReportInput 和 ReportInput -> ReportOutput candidate
 allDomainCapabilities 通过 business-shape checker
+runtime pipeline adapter 可以执行 transform 链
 ```
 
-日常 effect 前台语法改动只需要跑 `business-syntax-witness`；高危 `self-artifact-witness` artifact gate 内部也会包含这项检查，但不会因为语法文档或 README/docs-only 变更单独触发。
+日常 capability/lowering 语法改动只需要跑 `business-syntax-witness`。高危 `self-artifact-witness` artifact gate 内部也会包含这项检查，但不会因为语法文档或 README/docs-only 变更单独触发。

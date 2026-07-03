@@ -23,7 +23,7 @@ import "domain-app" Domain.Runtime
   , domainHandlerRegistry
   )
 import "new-framework-core" Framework.Business
-  ( businessShapePassed
+  ( BusinessShapeIssue
   , capabilityEffectSections
   , checkBusinessShape
   , pipelineTransformCandidates
@@ -58,38 +58,66 @@ import "new-framework-core" Framework.TrustBase
 main :: IO ()
 main = do
   runtimePipelinePassed <- pipelineRuntimeAdapterPassed
-  case failedClaims runtimePipelinePassed of
+  let claims = allClaims runtimePipelinePassed
+  case failedClaims claims of
     [] ->
-      putStrLn "[witness] ok business syntax evidence 4 claims"
+      putStrLn ("[witness] ok business syntax evidence " ++ show (length claims) ++ " claims")
     failures ->
       ioError (userError (unlines failures))
 
-failedClaims :: Bool -> [String]
-failedClaims runtimePipelinePassed =
+allClaims :: Bool -> [(String, Bool)]
+allClaims runtimePipelinePassed =
+  [ ("needs lowering failed", needsLoweringPassed)
+  , ("take lowering failed", takeLoweringPassed)
+  , ("make lowering failed", makeLoweringPassed)
+  , ("uses lowering failed", usesLoweringPassed)
+  , ("externalMake lowering failed", externalMakeLoweringPassed)
+  , ("transform lowering failed", transformLoweringPassed)
+  , ("handler binding alignment failed: " ++ unlines (map renderBusinessShapeIssue businessShapeIssues), null businessShapeIssues)
+  , ("pipeline adjacent transform failed", pipelineLoweringPassed)
+  , ("runtime pipeline adapter failed", runtimePipelinePassed)
+  ]
+
+failedClaims :: [(String, Bool)] -> [String]
+failedClaims claims =
   [ message
-  | (message, passed) <-
-      [ ("capability lowering failed", capabilityLoweringPassed)
-      , ("pipeline lowering failed", pipelineLoweringPassed)
-      , ("business shape failed: " ++ unlines (map renderBusinessShapeIssue (checkBusinessShape allDomainCapabilities)), businessShapePassed allDomainCapabilities)
-      , ("runtime pipeline adapter failed", runtimePipelinePassed)
-      ]
+  | (message, passed) <- claims
   , not passed
   ]
 
-capabilityLoweringPassed :: Bool
-capabilityLoweringPassed =
+needsLoweringPassed :: Bool
+needsLoweringPassed =
   all
-    id
-    [ hasReportStep (Needs AddCalculatedFact)
-    , hasReportStep (Needs FactorialCalculatedFact)
-    , hasReportStep (Needs SquaresCalculatedFact)
-    , hasReportStep (Needs UserNameAskedFact)
-    , hasReportStep (Take UserName)
-    , hasReportStep (Transform UserName ReportInput UserNameToReportInput)
-    , hasReportStep (Uses GenerateReport)
-    , hasReportStep (Make ReportOutput)
-    , hasGenerateReportBoundary
+    hasReportStep
+    [ Needs AddCalculatedFact
+    , Needs FactorialCalculatedFact
+    , Needs SquaresCalculatedFact
+    , Needs UserNameAskedFact
     ]
+
+takeLoweringPassed :: Bool
+takeLoweringPassed =
+  hasReportStep (Take UserName)
+
+makeLoweringPassed :: Bool
+makeLoweringPassed =
+  hasReportStep (Make ReportOutput)
+
+usesLoweringPassed :: Bool
+usesLoweringPassed =
+  hasReportStep (Uses GenerateReport)
+
+externalMakeLoweringPassed :: Bool
+externalMakeLoweringPassed =
+  hasGenerateReportBoundary
+
+transformLoweringPassed :: Bool
+transformLoweringPassed =
+  hasReportStep (Transform UserName ReportInput UserNameToReportInput)
+
+businessShapeIssues :: [BusinessShapeIssue]
+businessShapeIssues =
+  checkBusinessShape allDomainCapabilities
 
 pipelineLoweringPassed :: Bool
 pipelineLoweringPassed =

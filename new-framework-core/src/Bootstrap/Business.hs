@@ -9,6 +9,9 @@ module Bootstrap.Business
   , HandlerBindingSpec (..)
   , Pipeline (..)
   , TransformBindingSpec (..)
+  , pattern ErrorInput
+  , pattern NoInput
+  , pattern Unit
   , businessShapePassed
   , capabilitiesEffect
   , capability

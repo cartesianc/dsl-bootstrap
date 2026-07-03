@@ -4,12 +4,15 @@
 
 `dsl-bootstrap` 是一个自举式 Haskell 业务框架实验仓库。它展示一套业务 DSL 如何用声明式源码表达 workflow、effect、runtime handler 和 semantic evidence，并把这些声明连接到 report、proof、diagnosis、codegen 和 artifact gate。
 
-这个仓库面向框架开发者、代码审查者，以及想理解自举机制的使用者。当前发布形态保留 framework core、自表达 domain、domain-side acceptance app 和 `TrustBase` gates，方便审查框架如何保持 facade 边界、如何自证、如何物化下一阶段 artifact。面向普通业务集成的裁剪版 SDK 会在单独发布边界里收敛。
+这个仓库面向框架开发者、代码审查者，以及想理解自举机制的使用者。当前发布形态保留 framework core、自表达 domain、domain 侧验收应用和 `TrustBase` gates，方便审查框架如何保持 facade 边界、如何自证、如何物化下一阶段 artifact。面向普通业务集成的裁剪版 SDK 会在单独发布边界里收敛。
+
+业务 authoring surface 从 `Framework.Business` capability 开始。`Framework.Effect` 承接 lowering 后的 normalized semantic IR、compatibility layer 和 framework/internal 表达。
 
 业务侧代码保持声明式：
 
 - workflow AST
-- effect theory
+- capability frontend
+- normalized effect/fact IR
 - typed runtime handlers
 - semantic evidence
 - framework 自证
@@ -21,7 +24,7 @@ new-framework-core
   framework/compiler core，包含 public facade、runtime、proof API、self-domain source 和 bootstrap reports
 
 domain-app
-  domain-side acceptance app，使用 Framework.* facade 编写业务声明、handler 和 semantic evidence
+  domain 侧验收应用，使用 Framework.* facade 编写业务声明、handler 和 semantic evidence
 ```
 
 说明性文档只服务阅读和维护，不进入 Stage 1 framework artifact。`self-artifact-witness` 只复制 framework/code inputs，用于生成隔离 artifact 并验证下一阶段框架。
@@ -46,7 +49,7 @@ stack exec mytest
 stack exec domain-app-report
 ```
 
-验证 effect 前台语法：
+验证 capability 前台和 lowering 语法：
 
 ```powershell
 stack exec business-syntax-witness
@@ -86,13 +89,14 @@ Runtime, workflow, and diagnosis semantics
   docs/DIAGNOSIS_SYSTEM.zh.md
 
 Frontend syntax and AST
+  docs/CAPABILITY_FRONTEND.zh.md
   docs/EFFECT_FRONTEND_SYNTAX.zh.md
   docs/AST_SPEC.zh.md
 
 Verification commands
   docs/CHECK_PATTERNS.zh.md
 
-Domain-side acceptance app
+Domain 侧验收应用
   domain-app/README.md
 ```
 
@@ -104,7 +108,8 @@ Domain-side acceptance app
 - [Runtime architecture](docs/RUNTIME_ARCHITECTURE.zh.md)
 - [Workflow semantics](docs/WORKFLOW_SEMANTICS.md)
 - [Diagnosis system](docs/DIAGNOSIS_SYSTEM.zh.md)
-- [Effect frontend syntax](docs/EFFECT_FRONTEND_SYNTAX.zh.md)
+- [Capability frontend](docs/CAPABILITY_FRONTEND.zh.md)
+- [Effect IR and capability lowering](docs/EFFECT_FRONTEND_SYNTAX.zh.md)
 - [AST specification](docs/AST_SPEC.zh.md)
 - [Common check patterns and automated boundaries](docs/CHECK_PATTERNS.zh.md)
 - [Domain app business flow](domain-app/README.md)
@@ -116,26 +121,31 @@ domain-app-report: status passed
 bootstrap-report: status passed
 fixed-point-smoke: diffs: 0
 workflow-semantics-witness: ok workflow semantics evidence
-business-syntax-witness: ok business syntax evidence 4 claims
+business-syntax-witness: ok business syntax evidence 9 claims
 self-artifact-witness: passed (仅高危 artifact gate 轮次需要)
 ```
 
 ## 架构
 
-业务作者使用 `Framework.*` facade：
+业务作者默认使用 capability 前台：
 
 ```haskell
 import Framework.Ast
-import Framework.Effect
 import Framework.Business
+```
+
+handler 实现使用：
+
+```haskell
+import Framework.Handler
 ```
 
 facade 模块：
 
 ```text
 Framework.Ast             frontend AST / AppBlueprint / workflow 构造器
-Framework.Business        effect 前台 capability/pipeline DSL
-Framework.Effect          effect theory DSL
+Framework.Business        业务编写入口：capability/pipeline/policy/binding DSL
+Framework.Effect          normalized semantic IR / compatibility layer：effect/fact/needs/take/make/uses/externalMake
 Framework.Handler         handler implementation API：typed values、handlers、transforms、registries
 Framework.TrustBase       架构自我迭代 API：bootstrap runtime、evidence、diagnosis、reports、codegen、artifact gate
 Framework.Workflow        AST vocabulary 兼容别名
@@ -182,8 +192,10 @@ rg -n "^import\s+Bootstrap\." domain-app/src domain-app/app
 ```text
 business frontend:
 Framework.Business
-Framework.Effect
 Framework.Ast
+
+normalized semantic IR:
+Framework.Effect
 
 handler implementation:
 Framework.Handler
@@ -219,6 +231,16 @@ domain-app/src/Domain/Runtime.hs
 domain-app/src/Domain/SemanticEvidence.hs
 domain-app/src/SelfDomainApp.hs
 domain-app/app/Main.hs
+```
+
+业务侧链路：
+
+```text
+Domain.Business capability
+  -> Effects.* lowering
+  -> effect IR
+  -> Domain.Runtime handler/transform
+  -> report/evidence
 ```
 
 ### 1. 定义词汇
@@ -288,11 +310,11 @@ appFlow =
     ]
 ```
 
-### 3. 声明业务能力和 Effect Theory
+### 3. 声明 Capability 并 Lower 到 Effect IR
 
-业务入口先在 `Domain.Business` 中使用 `Framework.Business` 声明 capability、pipeline、handler binding 和 transform binding。`Effects.*` 只负责调用 `capabilitiesEffect` lower 成底层 effect theory。
+业务入口在 `Domain.Business` 中使用 `Framework.Business` 声明 capability、pipeline、handler binding 和 transform binding。`Domain.Business` 是业务声明来源。`Effects.*` 只负责调用 `capabilitiesEffect` lower 成 effect IR。
 
-前台声明：
+业务编写入口：
 
 ```text
 capability
@@ -307,7 +329,9 @@ handler binding
 transform binding
 ```
 
-底层 IR 仍然保留：
+`NoInput`、`Unit` 和 `ErrorInput` 由 `Framework.Business` 暴露，业务 capability source 不需要为了 send boundary sentinel values 直接导入 `Framework.Effect`。
+
+normalized semantic IR 仍然保留：
 
 ```text
 needs          fact 依赖
@@ -323,7 +347,9 @@ retry          retry policy
 
 effect theory 把 workflow facts、runtime handlers、generated reports 连接成同一套契约。
 
-详细规范：[docs/EFFECT_FRONTEND_SYNTAX.zh.md](docs/EFFECT_FRONTEND_SYNTAX.zh.md)
+业务写法规范：[docs/CAPABILITY_FRONTEND.zh.md](docs/CAPABILITY_FRONTEND.zh.md)
+
+Effect IR 和 lowering 规范：[docs/EFFECT_FRONTEND_SYNTAX.zh.md](docs/EFFECT_FRONTEND_SYNTAX.zh.md)
 
 ### 4. 实现 Runtime Handlers
 

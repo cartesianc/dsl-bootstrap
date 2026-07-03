@@ -12,11 +12,6 @@ module Domain.Business
 import Domain.EffectVocabulary
 import Domain.Vocabulary
 import Framework.Business
-import Framework.Effect
-  ( pattern ErrorInput
-  , pattern NoInput
-  , pattern Unit
-  )
 
 allDomainCapabilities :: [Capability]
 allDomainCapabilities =
