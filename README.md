@@ -429,6 +429,7 @@ registry-codegen-effects
 stack exec domain-app-report
 stack exec domain-app-self-smoke
 stack exec runtime-diagnosis-witness
+stack exec runtime-diagnosis-witness -- --json
 ```
 
 `runtime-diagnosis-witness` 输出 `RuntimeDiagnosisEvidencePayload`，每条 diagnosis claim 都包含 `claim`、`status`、`expected`、`observed` 和 `artifact` 字段。
@@ -495,6 +496,7 @@ required  强制外部 solver 可用；缺失、失败、unknown 都会使 witne
 
 ```powershell
 stack exec runtime-diagnosis-witness
+stack exec runtime-diagnosis-witness -- --json
 stack exec constraint-proof-witness -- --smt=auto
 ```
 
@@ -546,6 +548,7 @@ framework-core-report.v1
 domain-report.v1
 fixed-point-report.v1
 trust-base-manifest.v1
+runtime-diagnosis-evidence.v1
 workflow-semantics-evidence.v1
 runtime-concurrency-evidence.v1
 ```

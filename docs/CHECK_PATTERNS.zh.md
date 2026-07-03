@@ -75,6 +75,7 @@ runtime 相关改动优先跑：
 ```powershell
 stack exec bootstrap-runtime-smoke
 stack exec runtime-diagnosis-witness
+stack exec runtime-diagnosis-witness -- --json
 stack exec workflow-semantics-witness
 stack exec workflow-semantics-witness -- --json
 stack exec workflow-semantics-witness -- --runtime-concurrency-json
@@ -138,6 +139,7 @@ artifact
 JSON schema：
 
 ```text
+runtime-diagnosis-evidence.v1
 workflow-semantics-evidence.v1
 runtime-concurrency-evidence.v1
 ```
@@ -151,7 +153,15 @@ runtime-concurrency-race-cancellation
 runtime-concurrency-race-exhausted
 ```
 
-注意：`RunRuntimeDiagnosisEvidence` 和 `RunRuntimeBackendParityEvidence` 仍然有 aggregate evidence 的成分。当前 diagnosis 的三个 policy 入口已经有一等 artifact handle 和可 diff payload；backend parity 已经由 `fixed-point-smoke` 输出 plan / fact closure / artifact / report 四条 payload；workflow semantics 已经由 `workflow-semantics-witness` 输出 12 条 payload。
+`RunRuntimeDiagnosisEvidence` 现在对应 3 条 `RuntimeDiagnosisEvidencePayload`：
+
+```text
+runtime-diagnosis-error-handler
+runtime-diagnosis-retry-probe
+runtime-diagnosis-non-idempotent-blocker
+```
+
+注意：`RunRuntimeBackendParityEvidence` 仍然有 aggregate evidence 的成分。backend parity 已经由 `fixed-point-smoke` 输出 plan / fact closure / artifact / report 四条 payload；workflow semantics 已经由 `workflow-semantics-witness` 输出 12 条 payload。
 
 ## 3. Framework Core 前台与 Codegen
 

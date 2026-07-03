@@ -255,7 +255,15 @@ runBootstrapNative ValidateRuntimeRetryPolicy _ _ =
 runBootstrapNative ValidateRuntimeIdempotencyPolicy _ _ =
   pure (succeedArtifact RuntimeIdempotencyPolicyArtifact "runtime diagnosis claim passed: runtime-diagnosis-non-idempotent-blocker")
 runBootstrapNative RunRuntimeDiagnosisEvidence _ _ =
-  pure (succeedArtifact RuntimeDiagnosisEvidenceArtifact "runtime diagnosis evidence aggregate passed: 3 diagnosis policy claims")
+  pure
+    ( succeedArtifact
+        RuntimeDiagnosisEvidenceArtifact
+        ( "runtime diagnosis evidence payload claims: "
+            ++ "runtime-diagnosis-error-handler, "
+            ++ "runtime-diagnosis-retry-probe, "
+            ++ "runtime-diagnosis-non-idempotent-blocker"
+        )
+    )
 runBootstrapNative RunRuntimeBackendParityEvidence _ _ =
   pure (succeedArtifact RuntimeBackendParityEvidenceArtifact "runtime backend parity evidence delegated to fixed-point and workflow witnesses")
 runBootstrapNative RunFrameworkCoreFrontendCodegenEvidence _ _ =

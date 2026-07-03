@@ -11,15 +11,20 @@ import Framework.Domain
 import Framework.TrustBase
   ( RuntimeDiagnosisEvidencePayload (..)
   , renderRuntimeDiagnosisEvidencePayload
+  , renderRuntimeDiagnosisEvidencePayloadsJson
+  , runtimeDiagnosisEvidenceClaimNames
   , runtimeDiagnosisEvidencePayloadPassed
   )
 import Domain.SemanticEvidence
   ( runtimeDiagnosisEvidencePayloads )
 import SelfDomainApp
   ( domainAppDomain )
+import System.Environment
+  ( getArgs )
 
 main :: IO ()
 main = do
+  args <- getArgs
   report <- buildDomainReport domainAppDomain
   payloads <- runtimeDiagnosisEvidencePayloads
   let missing =
@@ -41,9 +46,13 @@ main = do
         ]
   case (missing, failed, failedPayloads) of
     ([], [], []) -> do
-      putStrLn "[witness] runtime diagnosis evidence payloads"
-      mapM_ putStrLn (concatMap renderPayloadBlock payloads)
-      putStrLn ("[witness] ok runtime diagnosis evidence " ++ show (length expectedEvidence) ++ " payload claims")
+      case args of
+        ["--json"] ->
+          putStrLn (renderRuntimeDiagnosisEvidencePayloadsJson payloads)
+        _ -> do
+          putStrLn "[witness] runtime diagnosis evidence payloads"
+          mapM_ putStrLn (concatMap renderPayloadBlock payloads)
+          putStrLn ("[witness] ok runtime diagnosis evidence " ++ show (length expectedEvidence) ++ " payload claims")
     _ ->
       ioError
         ( userError
@@ -64,10 +73,7 @@ renderPayloadBlock payload =
 
 expectedEvidence :: [String]
 expectedEvidence =
-  [ "runtime-diagnosis-error-handler"
-  , "runtime-diagnosis-retry-probe"
-  , "runtime-diagnosis-non-idempotent-blocker"
-  ]
+  runtimeDiagnosisEvidenceClaimNames
 
 evidencePresent :: String -> DomainReport -> Bool
 evidencePresent name report =

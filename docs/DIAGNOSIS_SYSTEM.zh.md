@@ -70,6 +70,12 @@ observed
 artifact
 ```
 
+JSON 输出 schema：
+
+```text
+runtime-diagnosis-evidence.v1
+```
+
 当前三条 payload claim：
 
 ```text

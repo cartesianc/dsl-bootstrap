@@ -13,8 +13,11 @@ module Framework.Runtime.Diagnosis
   , completeDiagnosisProbe
   , diagnosisProbePairs
   , renderRuntimeDiagnosisEvidencePayload
+  , renderRuntimeDiagnosisEvidencePayloadsJson
   , renderRuntimeDiagnosisEvidenceStatus
   , recordRuntimeDiagnosis
+  , runtimeDiagnosisEvidenceArtifactSummary
+  , runtimeDiagnosisEvidenceClaimNames
   , runtimeDiagnosisEvidencePayloadPassed
   , renderRuntimeFailureDiagnosis
   ) where
@@ -316,6 +319,18 @@ runtimeDiagnosisEvidencePayloadPassed :: RuntimeDiagnosisEvidencePayload -> Bool
 runtimeDiagnosisEvidencePayloadPassed payload =
   runtimeDiagnosisEvidenceStatus payload == RuntimeDiagnosisEvidencePassed
 
+runtimeDiagnosisEvidenceClaimNames :: [String]
+runtimeDiagnosisEvidenceClaimNames =
+  [ "runtime-diagnosis-error-handler"
+  , "runtime-diagnosis-retry-probe"
+  , "runtime-diagnosis-non-idempotent-blocker"
+  ]
+
+runtimeDiagnosisEvidenceArtifactSummary :: String
+runtimeDiagnosisEvidenceArtifactSummary =
+  "runtime diagnosis evidence payload claims: "
+    ++ joinWith ", " runtimeDiagnosisEvidenceClaimNames
+
 renderRuntimeDiagnosisEvidencePayload :: RuntimeDiagnosisEvidencePayload -> [String]
 renderRuntimeDiagnosisEvidencePayload payload =
   [ "claim: " ++ runtimeDiagnosisEvidenceClaim payload
@@ -330,6 +345,29 @@ renderRuntimeDiagnosisEvidenceStatus RuntimeDiagnosisEvidencePassed =
   "passed"
 renderRuntimeDiagnosisEvidenceStatus RuntimeDiagnosisEvidenceFailed =
   "failed"
+
+renderRuntimeDiagnosisEvidencePayloadsJson :: [RuntimeDiagnosisEvidencePayload] -> String
+renderRuntimeDiagnosisEvidencePayloadsJson payloads =
+  jsonObject
+    [ jsonField "schema" (jsonString "runtime-diagnosis-evidence.v1")
+    , jsonField "status" (jsonString statusText)
+    , jsonField "payloads" (jsonArray (map runtimeDiagnosisEvidencePayloadJson payloads))
+    ]
+  where
+    statusText =
+      if all runtimeDiagnosisEvidencePayloadPassed payloads
+        then "passed"
+        else "failed"
+
+runtimeDiagnosisEvidencePayloadJson :: RuntimeDiagnosisEvidencePayload -> String
+runtimeDiagnosisEvidencePayloadJson payload =
+  jsonObject
+    [ jsonField "claim" (jsonString (runtimeDiagnosisEvidenceClaim payload))
+    , jsonField "status" (jsonString (renderRuntimeDiagnosisEvidenceStatus (runtimeDiagnosisEvidenceStatus payload)))
+    , jsonField "expected" (jsonString (runtimeDiagnosisEvidenceExpected payload))
+    , jsonField "observed" (jsonString (runtimeDiagnosisEvidenceObserved payload))
+    , jsonField "artifact" (jsonString (runtimeDiagnosisEvidenceArtifact payload))
+    ]
 
 nativeRuleFor :: NativeAppPlan -> WorkflowFact -> Maybe NativeFactRule
 nativeRuleFor plan currentFact =
@@ -382,3 +420,43 @@ firstJust (currentItem : rest) =
       Just item
     Nothing ->
       firstJust rest
+
+jsonObject :: [String] -> String
+jsonObject fields =
+  "{" ++ joinWith "," fields ++ "}"
+
+jsonField :: String -> String -> String
+jsonField name value =
+  jsonString name ++ ":" ++ value
+
+jsonArray :: [String] -> String
+jsonArray values =
+  "[" ++ joinWith "," values ++ "]"
+
+jsonString :: String -> String
+jsonString value =
+  "\"" ++ concatMap jsonChar value ++ "\""
+
+jsonChar :: Char -> String
+jsonChar currentChar =
+  case currentChar of
+    '"' ->
+      "\\\""
+    '\\' ->
+      "\\\\"
+    '\n' ->
+      "\\n"
+    '\r' ->
+      "\\r"
+    '\t' ->
+      "\\t"
+    _ ->
+      [currentChar]
+
+joinWith :: String -> [String] -> String
+joinWith _ [] =
+  ""
+joinWith _ [item] =
+  item
+joinWith separator (item : rest) =
+  item ++ separator ++ joinWith separator rest
