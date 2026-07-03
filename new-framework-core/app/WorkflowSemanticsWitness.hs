@@ -9,6 +9,13 @@ import Control.Concurrent
   , takeMVar
   , threadDelay
   )
+import Control.Exception
+  ( SomeException
+  , displayException
+  , try
+  )
+import System.Environment
+  ( getArgs )
 import System.Timeout
   ( timeout
   )
@@ -17,22 +24,152 @@ import qualified Bootstrap.Runtime as Native
 import qualified Framework.Effect as E
 import qualified Framework.Runtime as R
 import qualified Framework.Workflow as W
+import Framework.Workflow.Semantics
+  ( WorkflowSemanticsEvidencePayload (..)
+  , WorkflowSemanticsEvidenceStatus (..)
+  , renderWorkflowSemanticsEvidencePayload
+  , renderWorkflowSemanticsEvidencePayloadsJson
+  , workflowSemanticsEvidencePayloadPassed
+  )
 
 main :: IO ()
 main = do
-  parallelConcurrencyWitness
-  parallelConflictWitness
-  raceCancellationWitness
-  raceExhaustedWitness
-  fallbackIsolationWitness
-  choiceSelectedBranchWitness
-  factAnyFallbackWitness
-  loopFixedPointWitness
-  middlewareFailureWitness
-  suspenseSnapshotWitness
-  callbackFailureWitness
-  nativeFrameworkAlignmentWitness
-  putStrLn "[witness] ok workflow semantics evidence 12 claims"
+  args <- getArgs
+  payloads <- mapM runWorkflowSemanticsClaim workflowSemanticsClaims
+  let failures =
+        filter (not . workflowSemanticsEvidencePayloadPassed) payloads
+  case args of
+    ["--json"] ->
+      putStrLn (renderWorkflowSemanticsEvidencePayloadsJson payloads)
+    _ -> do
+      putStrLn "[witness] workflow semantics evidence payloads"
+      mapM_ putStrLn (concatMap renderPayloadBlock payloads)
+      if null failures
+        then putStrLn ("[witness] ok workflow semantics evidence " ++ show (length payloads) ++ " payload claims")
+        else putStrLn ("[witness] failed workflow semantics evidence " ++ show (length failures) ++ " payload claims")
+  case failures of
+    [] ->
+      pure ()
+    failedPayloads ->
+      ioError
+        ( userError
+            ( "workflow semantics evidence failed\n"
+                ++ unlines (map workflowSemanticsEvidenceClaim failedPayloads)
+            )
+        )
+
+data WorkflowSemanticsClaim = WorkflowSemanticsClaim
+  { workflowSemanticsClaimName :: String
+  , workflowSemanticsClaimExpected :: String
+  , workflowSemanticsClaimObserved :: String
+  , workflowSemanticsClaimArtifact :: String
+  , workflowSemanticsClaimAction :: IO ()
+  }
+
+workflowSemanticsClaims :: [WorkflowSemanticsClaim]
+workflowSemanticsClaims =
+  [ WorkflowSemanticsClaim
+      "workflow-parallel-concurrency"
+      "parallel branches run concurrently and merge independent facts"
+      "left and right branch facts are both available after parallel execution"
+      "WorkflowParallelConcurrencyArtifact"
+      parallelConcurrencyWitness
+  , WorkflowSemanticsClaim
+      "workflow-parallel-conflict"
+      "parallel merge rejects conflicting writes to the same runtime value type"
+      "RuntimeParallelMergeConflict is reported for shared output type"
+      "WorkflowParallelConflictArtifact"
+      parallelConflictWitness
+  , WorkflowSemanticsClaim
+      "workflow-race-cancellation"
+      "race keeps the winning branch and excludes loser facts"
+      "fast branch fact is available and slow branch fact is absent"
+      "WorkflowRaceCancellationArtifact"
+      raceCancellationWitness
+  , WorkflowSemanticsClaim
+      "workflow-race-exhausted"
+      "race reports exhaustion when every branch fails"
+      "RuntimeRaceExhausted is reported"
+      "WorkflowRaceExhaustedArtifact"
+      raceExhaustedWitness
+  , WorkflowSemanticsClaim
+      "workflow-fallback-isolation"
+      "fallback isolates failed branch facts and claims"
+      "success fact is available while failed fact and failed claim are absent"
+      "WorkflowFallbackIsolationArtifact"
+      fallbackIsolationWitness
+  , WorkflowSemanticsClaim
+      "workflow-choice-selected-branch"
+      "choice executes only the selected branch"
+      "selected fact is available and unselected fact is absent"
+      "WorkflowChoiceSelectedBranchArtifact"
+      choiceSelectedBranchWitness
+  , WorkflowSemanticsClaim
+      "workflow-fact-any-fallback"
+      "factAny succeeds when one branch can produce the requested fact"
+      "success fact is available and failed fact is absent"
+      "WorkflowFactAnyFallbackArtifact"
+      factAnyFallbackWitness
+  , WorkflowSemanticsClaim
+      "workflow-loop-fixed-point"
+      "loop reaches a stable fixed point without duplicating facts forever"
+      "loop fact is available and trace records loop fixed point"
+      "WorkflowLoopFixedPointArtifact"
+      loopFixedPointWitness
+  , WorkflowSemanticsClaim
+      "workflow-middleware-failure"
+      "middleware entry and exit are recorded even when wrapped workflow fails"
+      "middleware entered and exited events are both present"
+      "WorkflowMiddlewareFailureArtifact"
+      middlewareFailureWitness
+  , WorkflowSemanticsClaim
+      "workflow-suspense-snapshot"
+      "suspense records target status and runtime snapshot"
+      "suspense event carries completed target and rendered snapshot"
+      "WorkflowSuspenseSnapshotArtifact"
+      suspenseSnapshotWitness
+  , WorkflowSemanticsClaim
+      "workflow-callback-failure"
+      "callback failure is recorded without erasing completed target flow"
+      "callback failed event is present for target flow"
+      "WorkflowCallbackFailureArtifact"
+      callbackFailureWitness
+  , WorkflowSemanticsClaim
+      "workflow-native-framework-alignment"
+      "native bootstrap runtime and framework runtime agree on final facts"
+      "native and framework available facts render identically"
+      "WorkflowNativeFrameworkAlignmentArtifact"
+      nativeFrameworkAlignmentWitness
+  ]
+
+runWorkflowSemanticsClaim :: WorkflowSemanticsClaim -> IO WorkflowSemanticsEvidencePayload
+runWorkflowSemanticsClaim currentClaim = do
+  result <- try (workflowSemanticsClaimAction currentClaim)
+  case result of
+    Right () ->
+      pure
+        ( WorkflowSemanticsEvidencePayload
+            { workflowSemanticsEvidenceClaim = workflowSemanticsClaimName currentClaim
+            , workflowSemanticsEvidenceStatus = WorkflowSemanticsEvidencePassed
+            , workflowSemanticsEvidenceExpected = workflowSemanticsClaimExpected currentClaim
+            , workflowSemanticsEvidenceObserved = workflowSemanticsClaimObserved currentClaim
+            , workflowSemanticsEvidenceArtifact = workflowSemanticsClaimArtifact currentClaim
+            }
+        )
+    Left exception ->
+      pure
+        ( WorkflowSemanticsEvidencePayload
+            { workflowSemanticsEvidenceClaim = workflowSemanticsClaimName currentClaim
+            , workflowSemanticsEvidenceStatus = WorkflowSemanticsEvidenceFailed
+            , workflowSemanticsEvidenceExpected = workflowSemanticsClaimExpected currentClaim
+            , workflowSemanticsEvidenceObserved = displayException (exception :: SomeException)
+            , workflowSemanticsEvidenceArtifact = workflowSemanticsClaimArtifact currentClaim
+            }
+        )
+
+renderPayloadBlock :: WorkflowSemanticsEvidencePayload -> [String]
+renderPayloadBlock payload =
+  map ("  " ++) (renderWorkflowSemanticsEvidencePayload payload)
 
 parallelConcurrencyWitness :: IO ()
 parallelConcurrencyWitness = do

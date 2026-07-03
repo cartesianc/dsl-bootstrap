@@ -29,6 +29,7 @@ suspense   记录目标状态和轻量 RuntimeSnapshot
 
 ```powershell
 stack exec workflow-semantics-witness
+stack exec workflow-semantics-witness -- --json
 ```
 
 witness 覆盖：
@@ -46,4 +47,20 @@ middleware 失败路径退出事件
 suspense snapshot
 callback 失败记录
 Bootstrap.Runtime / Framework.Runtime fact 对齐
+```
+
+每个 witness claim 输出 `WorkflowSemanticsEvidencePayload`：
+
+```text
+claim
+status
+expected
+observed
+artifact
+```
+
+JSON 输出 schema：
+
+```text
+workflow-semantics-evidence.v1
 ```

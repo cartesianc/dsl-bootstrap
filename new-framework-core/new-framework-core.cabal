@@ -86,6 +86,7 @@ library
                      , Framework.TrustBase
                      , Framework.TrustBase.Manifest
                      , Framework.Workflow
+                     , Framework.Workflow.Semantics
                      , FrameworkCore.BaseApp
                      , FrameworkCore.CurrentApp
                      , FrameworkCore.CurrentAst

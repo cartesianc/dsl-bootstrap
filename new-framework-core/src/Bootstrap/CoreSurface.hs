@@ -78,6 +78,7 @@ explicitCoreSurfaceModules :: [CoreSurfaceModule]
 explicitCoreSurfaceModules =
   [ astFacade
   , workflowFacade
+  , workflowSemanticsFacade
   , effectFacade
   , businessFacade
   , handlerFacade
@@ -600,6 +601,23 @@ workflowFacade =
           ]
     )
 
+workflowSemanticsFacade :: CoreSurfaceModule
+workflowSemanticsFacade =
+  moduleSurface
+    "Framework.Workflow.Semantics"
+    "machine-readable workflow semantics evidence payload model"
+    ( map typeCapability
+        [ "WorkflowSemanticsEvidencePayload"
+        , "WorkflowSemanticsEvidenceStatus"
+        ]
+        ++ map valueCapability
+          [ "renderWorkflowSemanticsEvidencePayload"
+          , "renderWorkflowSemanticsEvidencePayloadsJson"
+          , "renderWorkflowSemanticsEvidenceStatus"
+          , "workflowSemanticsEvidencePayloadPassed"
+          ]
+    )
+
 effectFacade :: CoreSurfaceModule
 effectFacade =
   moduleSurface
@@ -763,6 +781,8 @@ trustBaseFacade =
         , "RuntimeBackendParityEvidenceStatus"
         , "ArtifactManifest"
         , "TrustBaseManifest"
+        , "WorkflowSemanticsEvidencePayload"
+        , "WorkflowSemanticsEvidenceStatus"
         , "GeneratedSource"
         ]
         ++ map valueCapability
@@ -787,6 +807,9 @@ trustBaseFacade =
           , "defaultTrustBaseManifest"
           , "renderTrustBaseManifest"
           , "renderTrustBaseManifestJson"
+          , "renderWorkflowSemanticsEvidencePayload"
+          , "renderWorkflowSemanticsEvidencePayloadsJson"
+          , "workflowSemanticsEvidencePayloadPassed"
           ]
     )
 

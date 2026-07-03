@@ -37,6 +37,7 @@ module Framework.TrustBase
   , module Framework.Runtime.Diagnosis
   , module Framework.SelfArtifact
   , module Framework.TrustBase.Manifest
+  , module Framework.Workflow.Semantics
   ) where
 
 import Bootstrap.Effect
@@ -81,6 +82,7 @@ import Framework.Runtime
 import Framework.Runtime.Diagnosis
 import Framework.SelfArtifact
 import Framework.TrustBase.Manifest
+import Framework.Workflow.Semantics
 
 type TrustBaseRuntimeEffectEnvironment = Native.RuntimeEffectEnvironment
 

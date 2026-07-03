@@ -74,6 +74,7 @@ runtime 相关改动优先跑：
 stack exec bootstrap-runtime-smoke
 stack exec runtime-diagnosis-witness
 stack exec workflow-semantics-witness
+stack exec workflow-semantics-witness -- --json
 ```
 
 自动覆盖的 runtime 边界：
@@ -121,7 +122,23 @@ observed
 artifact
 ```
 
-注意：`RunRuntimeConcurrencyEvidence`、`RunRuntimeDiagnosisEvidence`、`RunRuntimeBackendParityEvidence` 仍然有 aggregate evidence 的成分。当前 diagnosis 的三个 policy 入口已经有一等 artifact handle 和可 diff payload；backend parity 已经由 `fixed-point-smoke` 输出 plan / fact closure / artifact / report 四条 payload；concurrency payload 仍待细拆。
+`workflow-semantics-witness` 现在输出 `WorkflowSemanticsEvidencePayload`：
+
+```text
+claim
+status
+expected
+observed
+artifact
+```
+
+JSON schema：
+
+```text
+workflow-semantics-evidence.v1
+```
+
+注意：`RunRuntimeConcurrencyEvidence`、`RunRuntimeDiagnosisEvidence`、`RunRuntimeBackendParityEvidence` 仍然有 aggregate evidence 的成分。当前 diagnosis 的三个 policy 入口已经有一等 artifact handle 和可 diff payload；backend parity 已经由 `fixed-point-smoke` 输出 plan / fact closure / artifact / report 四条 payload；workflow semantics 已经由 `workflow-semantics-witness` 输出 12 条 payload；concurrency 的 effect-level aggregate send 仍待继续拆细。
 
 ## 3. Framework Core 前台与 Codegen
 
@@ -318,8 +335,8 @@ stack exec self-artifact-witness
 后续还值得继续升级：
 
 ```text
-workflow-semantics-witness 的每个 claim 变成结构化 artifact payload
 fixed-point 从文本 diff 进一步升级为 evidence payload diff
+concurrency 的 effect-level aggregate send 拆成更细 payload
 TrustBase manifest 的 schema versioning 和 gate policy 分层
 ```
 

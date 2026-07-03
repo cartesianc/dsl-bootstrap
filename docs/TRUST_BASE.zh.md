@@ -170,8 +170,8 @@ stack exec trust-base-manifest-witness -- --json
 后续可以继续把以下能力移出 trust base：
 
 ```text
-workflow semantics witness payload
 machine-readable fixed-point diff
+concurrency effect-level payload split
 JSON schema versioning after v1
 artifact runner manifest policy split
 ```

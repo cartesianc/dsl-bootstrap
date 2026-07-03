@@ -56,6 +56,7 @@ defaultTrustBaseManifest =
         , "Framework.RegistryCodegen"
         , "Framework.Runtime.Diagnosis"
         , "Framework.SelfArtifact"
+        , "Framework.Workflow.Semantics"
         ]
     , trustBaseManifestReportExecutables =
         [ "bootstrap-report"
