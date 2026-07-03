@@ -82,6 +82,7 @@ explicitCoreSurfaceModules =
   , businessFacade
   , handlerFacade
   , trustBaseFacade
+  , trustBaseManifestFacade
   , hyloFacade
   , backgroundAppBuild
   , backgroundBootstrapBoundary
@@ -761,6 +762,7 @@ trustBaseFacade =
         , "RuntimeBackendParityEvidencePayload"
         , "RuntimeBackendParityEvidenceStatus"
         , "ArtifactManifest"
+        , "TrustBaseManifest"
         , "GeneratedSource"
         ]
         ++ map valueCapability
@@ -782,6 +784,24 @@ trustBaseFacade =
           , "renderRuntimeBackendParityEvidencePayload"
           , "runtimeBackendParityEvidencePayloads"
           , "runSelfArtifactGate"
+          , "defaultTrustBaseManifest"
+          , "renderTrustBaseManifest"
+          , "renderTrustBaseManifestJson"
+          ]
+    )
+
+trustBaseManifestFacade :: CoreSurfaceModule
+trustBaseManifestFacade =
+  moduleSurface
+    "Framework.TrustBase.Manifest"
+    "machine-readable trust base boundary, gate inventory, and artifact manifest summary"
+    ( map typeCapability
+        [ "TrustBaseManifest"
+        ]
+        ++ map valueCapability
+          [ "defaultTrustBaseManifest"
+          , "renderTrustBaseManifest"
+          , "renderTrustBaseManifestJson"
           ]
     )
 

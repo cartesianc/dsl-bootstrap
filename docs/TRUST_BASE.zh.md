@@ -138,7 +138,32 @@ domain-app-report
 
 编译期、报告和 gate 可以重复验证。业务执行只运行当前 workflow/effect plan。
 
-## 5. 后续收缩方向
+## 5. Machine-readable manifest
+
+`Framework.TrustBase.Manifest` 输出当前 trust base 的结构化边界：
+
+```text
+trust-base-manifest.v1
+host boundary
+kernel modules
+facade modules
+report executables
+witness executables
+artifact gate executable
+artifact sources
+artifact commands
+```
+
+轻量 witness：
+
+```powershell
+stack exec trust-base-manifest-witness
+stack exec trust-base-manifest-witness -- --json
+```
+
+这条 witness 只读取当前 cabal 和 `defaultSelfArtifactManifest`，检查 manifest 里声明的 module、executable、artifact sources 和 artifact commands 没有漂移。它不物化 Stage 1 artifact，也不执行 `self-artifact-witness`。
+
+## 6. 后续收缩方向
 
 优先收缩 kernel，避免扩大 runtime。
 
@@ -148,7 +173,7 @@ domain-app-report
 workflow semantics witness payload
 machine-readable fixed-point diff
 JSON schema versioning after v1
-artifact runner manifest validation
+artifact runner manifest policy split
 ```
 
 每次收缩都必须保持：
@@ -159,6 +184,7 @@ stack exec bootstrap-report
 stack exec fixed-point-smoke
 stack exec workflow-semantics-witness
 stack exec runtime-diagnosis-witness
+stack exec trust-base-manifest-witness
 ```
 
 高危 artifact gate 只在大构建和轻量 gates 完成后最多运行一次：
@@ -166,7 +192,7 @@ stack exec runtime-diagnosis-witness
 ```powershell
 stack exec self-artifact-witness
 ```
-## 6. Facade 化后的 Trust Base 入口
+## 7. Facade 化后的 Trust Base 入口
 
 当前 trust base 不再要求业务或 handler 直接碰 `Framework.Runtime` / `Framework.Background`。
 
@@ -175,10 +201,10 @@ Framework.Ast       业务 AST 前台
 Framework.Effect    effect theory 前台
 Framework.Business  capability / pipeline 前台
 Framework.Handler   handler / transform 实现前台
-Framework.TrustBase 架构自我迭代、证据、诊断、fixed point、artifact gate
+Framework.TrustBase 架构自我迭代、证据、诊断、fixed point、TrustBase manifest、artifact gate
 ```
 
-`Framework.TrustBase` 是“允许框架自我迭代触碰的额外组件”，承接 bootstrap runtime、native runner、typed runtime evidence、diagnosis、constraint proof、registry codegen、fixed point 和 self artifact gate。业务热路径不运行这些 evidence；它们只在 witness/report/gate 中运行。
+`Framework.TrustBase` 是“允许框架自我迭代触碰的额外组件”，承接 bootstrap runtime、native runner、typed runtime evidence、diagnosis、constraint proof、registry codegen、fixed point、TrustBase manifest 和 self artifact gate。业务热路径不运行这些 evidence；它们只在 witness/report/gate 中运行。
 
 这条边界的目标是把 trust base 命名并缩小：
 

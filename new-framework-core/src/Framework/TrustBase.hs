@@ -36,6 +36,7 @@ module Framework.TrustBase
   , module Framework.RegistryCodegen
   , module Framework.Runtime.Diagnosis
   , module Framework.SelfArtifact
+  , module Framework.TrustBase.Manifest
   ) where
 
 import Bootstrap.Effect
@@ -79,6 +80,7 @@ import Framework.Runtime
   )
 import Framework.Runtime.Diagnosis
 import Framework.SelfArtifact
+import Framework.TrustBase.Manifest
 
 type TrustBaseRuntimeEffectEnvironment = Native.RuntimeEffectEnvironment
 

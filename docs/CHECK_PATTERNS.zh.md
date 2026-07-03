@@ -29,6 +29,8 @@ artifact proof
 stack build
 stack exec bootstrap-report
 stack exec bootstrap-report -- --json
+stack exec trust-base-manifest-witness
+stack exec trust-base-manifest-witness -- --json
 stack exec fixed-point-smoke
 stack exec fixed-point-smoke -- --json
 ```
@@ -59,6 +61,7 @@ fixed-point-smoke
 ```text
 bootstrap-report: status passed
 bootstrap-report --json: framework-core-report.v1
+trust-base-manifest-witness: trust-base-manifest.v1
 fixed-point-smoke: diffs: 0
 fixed-point-smoke --json: fixed-point-report.v1
 ```
@@ -172,6 +175,16 @@ CheckLanguageSpec
 CheckElaborationContract
 ```
 
+`trust-base-manifest-witness` 会自动检查：
+
+```text
+TrustBase manifest schema
+kernel modules -> cabal exposed-modules
+facade modules -> cabal exposed-modules
+report/witness/artifact gate executables -> cabal executable names
+artifact sources/commands -> defaultSelfArtifactManifest
+```
+
 其中关键导入边界是：
 
 ```text
@@ -281,6 +294,7 @@ framework-core frontend/codegen 改动：
 ```powershell
 stack build
 stack exec framework-core-frontend-witness
+stack exec trust-base-manifest-witness
 stack exec bootstrap-report
 stack exec fixed-point-smoke
 ```
@@ -306,6 +320,7 @@ stack exec self-artifact-witness
 ```text
 workflow-semantics-witness 的每个 claim 变成结构化 artifact payload
 fixed-point 从文本 diff 进一步升级为 evidence payload diff
+TrustBase manifest 的 schema versioning 和 gate policy 分层
 ```
 
 这不会改变业务运行热路径；这些检查仍然属于 report/witness/gate 编译验证路径。

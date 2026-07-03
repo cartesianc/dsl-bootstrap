@@ -62,6 +62,13 @@ stack exec business-syntax-witness
 stack exec fixed-point-smoke
 ```
 
+检查 TrustBase manifest：
+
+```powershell
+stack exec trust-base-manifest-witness
+stack exec trust-base-manifest-witness -- --json
+```
+
 验证 workflow 真实语义：
 
 ```powershell
@@ -121,6 +128,7 @@ Domain 侧验收应用
 domain-app-report: status passed
 bootstrap-report: status passed
 fixed-point-smoke: diffs: 0
+trust-base-manifest-witness: ok trust base manifest trust-base-manifest.v1
 workflow-semantics-witness: ok workflow semantics evidence
 business-syntax-witness: ok business syntax evidence 11 claims
 self-artifact-witness: passed (仅高危 artifact gate 轮次需要)
@@ -148,7 +156,7 @@ Framework.Ast             frontend AST / AppBlueprint / workflow 构造器
 Framework.Business        业务编写入口：capability/pipeline/policy/binding DSL，暴露 NoInput/Unit/ErrorInput authoring token
 Framework.Effect          normalized semantic IR / compatibility layer：effect/fact/needs/take/make/uses/externalMake
 Framework.Handler         handler implementation API：typed values、handlers、transforms、registries
-Framework.TrustBase       架构自我迭代 API：bootstrap runtime、evidence、diagnosis、reports、codegen、artifact gate
+Framework.TrustBase       架构自我迭代 API：bootstrap runtime、evidence、diagnosis、reports、codegen、TrustBase manifest、artifact gate
 Framework.Workflow        AST vocabulary 兼容别名
 Framework.Background      compatibility/devtools facade
 Framework.Runtime         internal/devtools typed RuntimeM interpreter API
@@ -525,6 +533,8 @@ stack exec bootstrap-report
 stack exec bootstrap-report -- --json
 stack exec fixed-point-smoke
 stack exec fixed-point-smoke -- --json
+stack exec trust-base-manifest-witness
+stack exec trust-base-manifest-witness -- --json
 ```
 
 JSON 输出带 schema 字段：
@@ -533,6 +543,7 @@ JSON 输出带 schema 字段：
 framework-core-report.v1
 domain-report.v1
 fixed-point-report.v1
+trust-base-manifest.v1
 ```
 
 fixed-point 比较：
@@ -559,6 +570,8 @@ stack exec bootstrap-report
 stack exec fixed-point-smoke
 stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
+stack exec runtime-diagnosis-witness
+stack exec framework-core-frontend-witness
 stack exec domain-app-report
 stack exec registry-codegen-witness
 stack exec business-syntax-witness
