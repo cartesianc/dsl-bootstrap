@@ -96,7 +96,13 @@ workflow wait gate
 
 ```text
 Framework.Runtime
-  typed runtime backend and public diagnosis data types
+  typed runtime backend facade and interpreter entry
+
+Framework.Runtime.Types
+  shared runtime records, fact claims, typed values, events, and diagnosis data types
+
+Framework.Runtime.Diagnosis
+  diagnosis builder, probe completion, evidence payload rendering, and failure diagnosis rendering
 
 Framework.Background.RuntimeDiagnosis
   public diagnosis facade

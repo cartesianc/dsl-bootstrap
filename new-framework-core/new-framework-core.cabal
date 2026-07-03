@@ -81,6 +81,7 @@ library
                      , Framework.RegistryCodegen
                      , Framework.Runtime
                      , Framework.Runtime.Diagnosis
+                     , Framework.Runtime.Types
                      , Framework.SelfArtifact
                      , Framework.TrustBase
                      , Framework.Workflow

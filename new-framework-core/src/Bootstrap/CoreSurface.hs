@@ -94,6 +94,7 @@ explicitCoreSurfaceModules =
   , backgroundWorkflowRender
   , backgroundRuntime
   , runtimeDiagnosisFacade
+  , runtimeTypesFacade
   , backgroundRuntimeDiagnosis
   , registryCodegenFacade
   , selfArtifactFacade
@@ -1237,7 +1238,35 @@ runtimeDiagnosisFacade =
           , "completeDiagnosisProbe"
           , "diagnosisProbePairs"
           , "recordRuntimeDiagnosis"
-          , "renderRuntimeFailureDiagnosis"
+        , "renderRuntimeFailureDiagnosis"
+        ]
+    )
+
+runtimeTypesFacade :: CoreSurfaceModule
+runtimeTypesFacade =
+  moduleSurface
+    "Framework.Runtime.Types"
+    "shared typed runtime records, claims, values, and diagnosis data types"
+    ( map typeCapability
+        [ "Runtime"
+        , "RuntimeSnapshot"
+        , "RuntimeFactClaim"
+        , "RuntimeFactFailure"
+        , "RuntimeFactStatus"
+        , "RuntimeFailureDiagnosis"
+        , "RuntimeDiagnosisNode"
+        , "RuntimeDiagnosisProbe"
+        , "RuntimeValue"
+        , "RuntimeTypedValue"
+        , "SomeRuntimeValue"
+        , "ValueTag"
+        ]
+        ++ map valueCapability
+          [ "runtimeTypedValueText"
+          , "runtimeTypedValueType"
+          , "someRuntimeValueText"
+          , "someRuntimeValueType"
+          , "valueTagTypeName"
           ]
     )
 
