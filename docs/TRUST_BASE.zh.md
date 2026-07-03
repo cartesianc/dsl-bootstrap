@@ -137,6 +137,20 @@ runtime-backend-parity-evidence
 
 业务 runtime 热路径不运行自举 evidence。
 
+推荐入口：
+
+```powershell
+.\scripts\check-fast.cmd
+.\scripts\check-semantic.cmd
+.\scripts\check-release.cmd
+```
+
+`check-release` 默认跳过 `self-artifact-witness`。高危 artifact gate 需要显式开关：
+
+```powershell
+.\scripts\check-release.cmd -IncludeSelfArtifact
+```
+
 以下入口可以运行 evidence：
 
 ```text
@@ -201,7 +215,7 @@ stack exec trust-base-manifest-witness
 高危 artifact gate 只在大构建和轻量 gates 完成后最多运行一次：
 
 ```powershell
-stack exec self-artifact-witness
+.\scripts\check-release.cmd -IncludeSelfArtifact
 ```
 ## 7. Facade 化后的 Trust Base 入口
 

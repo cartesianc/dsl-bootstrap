@@ -84,6 +84,26 @@ stack exec workflow-semantics-witness -- --json
 stack exec workflow-semantics-witness -- --runtime-concurrency-json
 ```
 
+Check facade：
+
+```powershell
+.\scripts\check-fast.cmd
+.\scripts\check-semantic.cmd
+.\scripts\check-release.cmd
+```
+
+`check-release` 默认跳过 `self-artifact-witness`。发布轮次需要运行高危 artifact gate 时显式执行：
+
+```powershell
+.\scripts\check-release.cmd -IncludeSelfArtifact
+```
+
+先查看命令清单：
+
+```powershell
+.\scripts\check-release.cmd -List
+```
+
 Stage 1 artifact 验证不属于快速开始。`self-artifact-witness` 是高危/重型 artifact gate，只有一轮大构建和轻量 gates 都完成后才允许运行一次；同一轮第二次不允许继续跑，README/docs-only 变更也不触发它。
 
 ## 文档地图
@@ -621,7 +641,7 @@ stack exec business-syntax-witness
 运行：
 
 ```powershell
-stack exec self-artifact-witness
+.\scripts\check-release.cmd -IncludeSelfArtifact
 ```
 
 详细 gate 规则：[docs/SELF_BOOTSTRAP_GATE.md](docs/SELF_BOOTSTRAP_GATE.md)
@@ -683,5 +703,5 @@ stack exec registry-codegen-witness
 高危 artifact gate（大构建完成后最多一次）：
 
 ```powershell
-stack exec self-artifact-witness
+.\scripts\check-release.cmd -IncludeSelfArtifact
 ```

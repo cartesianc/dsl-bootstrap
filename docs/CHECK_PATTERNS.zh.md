@@ -21,6 +21,52 @@ artifact proof
   当前源码能物化出隔离 Stage1 artifact，并且 artifact 内部也能跑核心 gates。
 ```
 
+## 0. Check Facade
+
+日常检查优先使用脚本入口：
+
+```powershell
+.\scripts\check-fast.cmd
+.\scripts\check-semantic.cmd
+.\scripts\check-release.cmd
+```
+
+```text
+check-fast
+  build
+  bootstrap-report JSON
+  runtime-evidence JSON
+  trust-base-manifest JSON
+
+check-semantic
+  check-fast 范围
+  bootstrap runtime smoke
+  runtime diagnosis payload
+  workflow semantics payload
+  runtime concurrency payload
+  framework-core frontend witness
+  fixed-point JSON
+
+check-release
+  semantic gates
+  domain-app acceptance
+  registry/codegen witness
+  business syntax witness
+  constraint proof
+```
+
+`check-release` 默认跳过 `self-artifact-witness`。高危 artifact gate 需要显式开关：
+
+```powershell
+.\scripts\check-release.cmd -IncludeSelfArtifact
+```
+
+先查看命令清单：
+
+```powershell
+.\scripts\check-release.cmd -List
+```
+
 ## 1. 快速内圈
 
 日常小改优先跑：
@@ -315,7 +361,7 @@ domain report status
 允许运行时使用：
 
 ```powershell
-stack exec self-artifact-witness
+.\scripts\check-release.cmd -IncludeSelfArtifact
 ```
 
 这条命令会：
@@ -332,6 +378,7 @@ stack exec self-artifact-witness
 stack build
 stack exec bootstrap-report
 stack exec fixed-point-smoke
+stack exec runtime-evidence-witness
 stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
 stack exec runtime-diagnosis-witness
@@ -382,7 +429,7 @@ stack build
 高危 artifact gate 只在大构建和轻量 gates 完成后最多运行一次：
 
 ```powershell
-stack exec self-artifact-witness
+.\scripts\check-release.cmd -IncludeSelfArtifact
 ```
 
 ## 8. 目前还没完全自动化的部分

@@ -50,6 +50,12 @@ framework 改动完成前必须通过编译和自证。
 提交前运行：
 
 ```powershell
+.\scripts\check-release.cmd
+```
+
+展开命令：
+
+```powershell
 stack build
 stack exec mytest
 stack exec domain-app-report
@@ -109,19 +115,20 @@ gate 步骤：
 ```text
 1. 在目标提交完成大构建和轻量 gates。
 2. 确认当前轮还没有运行过 self-artifact-witness。
-3. 运行 stack exec self-artifact-witness。
+3. 运行 .\scripts\check-release.cmd -IncludeSelfArtifact。
 4. witness 创建 .generated/stage1-framework。
 5. Stage 1 artifact 运行 stack build。
 6. Stage 1 artifact 运行 bootstrap-report。
 7. Stage 1 artifact 运行 fixed-point-smoke。
-8. Stage 1 artifact 运行 constraint-proof-witness -- --smt=auto。
-9. Stage 1 artifact 运行 workflow-semantics-witness。
-10. Stage 1 artifact 运行 domain-app-report。
-11. Stage 1 artifact 运行 registry-codegen-witness。
-12. Stage 1 artifact 运行 business-syntax-witness。
+8. Stage 1 artifact 运行 runtime-evidence-witness。
+9. Stage 1 artifact 运行 constraint-proof-witness -- --smt=auto。
+10. Stage 1 artifact 运行 workflow-semantics-witness。
+11. Stage 1 artifact 运行 domain-app-report。
+12. Stage 1 artifact 运行 registry-codegen-witness。
+13. Stage 1 artifact 运行 business-syntax-witness。
 ```
 
-十二步全部通过后，旧 framework 保留为参考和回滚点。
+十三步全部通过后，旧 framework 保留为参考和回滚点。
 
 ## 替换 Gate
 
