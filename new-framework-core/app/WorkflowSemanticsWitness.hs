@@ -176,6 +176,12 @@ workflowSemanticsClaims =
       "valid contracts pass while undeclared send, transform, missing policy, and policy mismatch fail plan validation"
       "WorkflowEffectSystemContractsArtifact"
       effectSystemContractWitness
+  , WorkflowSemanticsClaim
+      "workflow-effect-system-pipeline"
+      "EffectSystemBoundary pipeline artifacts and transform edges constrain explicit private and export rules"
+      "valid pipeline passes while missing artifact and non-adjacent transform edge fail plan validation"
+      "WorkflowEffectSystemPipelineArtifact"
+      effectSystemPipelineWitness
   ]
 
 runWorkflowSemanticsClaim :: WorkflowSemanticsClaim -> IO WorkflowSemanticsEvidencePayload
@@ -530,6 +536,12 @@ effectSystemContractWitness = do
   requirePlanFails "missing send policy contract" missingPolicyBlueprint contractTheory
   requirePlanFails "send policy mismatch" validContractBlueprint contractTheoryWithoutPolicies
 
+effectSystemPipelineWitness :: IO ()
+effectSystemPipelineWitness = do
+  requirePlanPasses "valid effect system pipeline" validPipelineBlueprint contractTheory
+  requirePlanFails "missing pipeline artifact" missingPipelineArtifactBlueprint contractTheory
+  requirePlanFails "non-adjacent transform edge" missingPipelineEdgeBlueprint contractTheory
+
 runFrameworkSuccess ::
   String ->
   R.RuntimeEffectEnvironment ->
@@ -832,10 +844,63 @@ contractBlueprint ::
   [W.EffectSystemBoundaryPolicy] ->
   W.AppBlueprint
 contractBlueprint sends transforms policies =
+  contractBlueprintWithPipelines sends transforms policies []
+
+validPipelineBlueprint :: W.AppBlueprint
+validPipelineBlueprint =
+  contractBlueprintWithPipelines
+    [W.boundarySend (show boundaryContractSend)]
+    [W.boundaryTransform (show boundaryContractTransform)]
+    [ W.boundaryIdempotent (show boundaryContractSend)
+    , W.boundaryRetryOnce (show boundaryContractSend)
+    ]
+    [ boundaryContractPipeline
+        [ boundaryContractInputType
+        , boundaryContractOutputType
+        , boundaryContractSendOutputType
+        ]
+    ]
+
+missingPipelineArtifactBlueprint :: W.AppBlueprint
+missingPipelineArtifactBlueprint =
+  contractBlueprintWithPipelines
+    [W.boundarySend (show boundaryContractSend)]
+    [W.boundaryTransform (show boundaryContractTransform)]
+    [ W.boundaryIdempotent (show boundaryContractSend)
+    , W.boundaryRetryOnce (show boundaryContractSend)
+    ]
+    [ boundaryContractPipeline
+        [ boundaryContractInputType
+        , boundaryContractOutputType
+        ]
+    ]
+
+missingPipelineEdgeBlueprint :: W.AppBlueprint
+missingPipelineEdgeBlueprint =
+  contractBlueprintWithPipelines
+    [W.boundarySend (show boundaryContractSend)]
+    [W.boundaryTransform (show boundaryContractTransform)]
+    [ W.boundaryIdempotent (show boundaryContractSend)
+    , W.boundaryRetryOnce (show boundaryContractSend)
+    ]
+    [ boundaryContractPipeline
+        [ boundaryContractInputType
+        , boundaryContractSendOutputType
+        , boundaryContractOutputType
+        ]
+    ]
+
+contractBlueprintWithPipelines ::
+  [W.EffectSystemBoundarySend] ->
+  [W.EffectSystemBoundaryTransform] ->
+  [W.EffectSystemBoundaryPolicy] ->
+  [W.EffectSystemBoundaryPipeline] ->
+  W.AppBlueprint
+contractBlueprintWithPipelines sends transforms policies pipelines =
   blueprint
     ( W.run
         ( W.effectSystemFromBoundary
-            ( W.systemBoundaryWithPolicies
+            ( W.systemBoundaryWithPipelines
                 boundaryContractFlow
                 []
                 [boundaryContractInputFact]
@@ -843,9 +908,16 @@ contractBlueprint sends transforms policies =
                 sends
                 transforms
                 policies
+                pipelines
             )
         )
     )
+
+boundaryContractPipeline :: [E.TypeName] -> W.EffectSystemBoundaryPipeline
+boundaryContractPipeline artifacts =
+  W.boundaryPipeline
+    "WorkflowSemanticsBoundaryContractPipeline"
+    (map (W.boundaryArtifact . show) artifacts)
 
 workflowSemanticsEffect :: E.EffectName
 workflowSemanticsEffect =

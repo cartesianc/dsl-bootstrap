@@ -309,6 +309,7 @@ effectSystemScopeConstraints rules contracts systems =
     , concatMap (systemPrivateScopeConstraints systems) systems
     , concatMap (systemRuleClosureConstraints rules) systems
     , concatMap (systemRuleContractConstraints rules contracts) systems
+    , concatMap (systemRulePipelineConstraints rules contracts) systems
     ]
 
 systemBoundaryNameConstraint :: Workflow.EffectSystem WorkflowFact -> NativeConstraint
@@ -577,6 +578,111 @@ sendContractByName contracts currentSend =
     | contract <- contracts
     , show (sendContractName contract) == currentSend
     ]
+
+systemRulePipelineConstraints :: [NativeFactRule] -> [SendContract] -> Workflow.EffectSystem WorkflowFact -> [NativeConstraint]
+systemRulePipelineConstraints rules contracts system
+  | not (Workflow.effectSystemBoundaryExplicit system) =
+      []
+  | null (Workflow.effectSystemBoundaryPipelines boundary) =
+      []
+  | otherwise =
+      concatMap constraintsForRule systemRules
+  where
+    boundary =
+      Workflow.effectSystemBoundary system
+    systemName =
+      Workflow.effectSystemName system
+    declaredArtifacts =
+      boundaryPipelineArtifacts boundary
+    declaredEdges =
+      boundaryPipelineEdges boundary
+    systemRules =
+      [ rule
+      | currentFact <- unique (Workflow.effectSystemBoundaryPrivateFacts boundary ++ Workflow.effectSystemBoundaryExports boundary)
+      , Just rule <- [ruleByFact rules currentFact]
+      ]
+    constraintsForRule rule =
+      [ NativeConstraint
+          ("effect system pipeline artifacts " ++ show systemName ++ " " ++ show (nativeRuleFact rule))
+          (all (`elem` declaredArtifacts) usedArtifacts)
+          ( "effect system rule touches artifacts outside pipeline: "
+              ++ show systemName
+              ++ " "
+              ++ show (nativeRuleFact rule)
+              ++ " "
+              ++ show (filter (`notElem` declaredArtifacts) usedArtifacts)
+          )
+      , NativeConstraint
+          ("effect system pipeline transform edges " ++ show systemName ++ " " ++ show (nativeRuleFact rule))
+          (all (`elem` declaredEdges) usedTransformEdges)
+          ( "effect system rule uses transform outside pipeline edge: "
+              ++ show systemName
+              ++ " "
+              ++ show (nativeRuleFact rule)
+              ++ " "
+              ++ show (filter (`notElem` declaredEdges) usedTransformEdges)
+          )
+      ]
+      where
+        usedArtifacts =
+          rulePipelineArtifacts contracts rule
+        usedTransformEdges =
+          ruleTransformEdges rule
+
+rulePipelineArtifacts :: [SendContract] -> NativeFactRule -> [String]
+rulePipelineArtifacts contracts rule =
+  unique
+    ( map show (filter isPipeType (nativeRuleTakes rule))
+        ++ map show (filter isPipeType (nativeRuleMakes rule))
+        ++ concatMap transformArtifacts (nativeRuleTransforms rule)
+        ++ concatMap sendArtifacts (nativeRuleUses rule)
+    )
+  where
+    transformArtifacts (input, output, _) =
+      map show (filter isPipeType [input, output])
+    sendArtifacts currentSend =
+      case sendContractByName contracts (show currentSend) of
+        Nothing ->
+          []
+        Just contract ->
+          map show
+            ( filter
+                isPipeType
+                [ sendInput (sendContractSignature contract)
+                , sendOutput (sendContractSignature contract)
+                ]
+            )
+
+ruleTransformEdges :: NativeFactRule -> [(String, String)]
+ruleTransformEdges rule =
+  unique
+    [ (show input, show output)
+    | (input, output, _) <- nativeRuleTransforms rule
+    ]
+
+boundaryPipelineArtifacts :: Workflow.EffectSystemBoundary WorkflowFact -> [String]
+boundaryPipelineArtifacts boundary =
+  unique
+    [ show artifact
+    | pipeline <- Workflow.effectSystemBoundaryPipelines boundary
+    , artifact <- Workflow.effectSystemBoundaryPipelineArtifacts pipeline
+    ]
+
+boundaryPipelineEdges :: Workflow.EffectSystemBoundary WorkflowFact -> [(String, String)]
+boundaryPipelineEdges boundary =
+  unique
+    ( concatMap
+        (adjacentPairs . map show . Workflow.effectSystemBoundaryPipelineArtifacts)
+        (Workflow.effectSystemBoundaryPipelines boundary)
+    )
+
+adjacentPairs :: [item] -> [(item, item)]
+adjacentPairs [] =
+  []
+adjacentPairs [_] =
+  []
+adjacentPairs (left : right : rest) =
+  (left, right) : adjacentPairs (right : rest)
 
 exportedFacts :: [Workflow.EffectSystem WorkflowFact] -> [WorkflowFact]
 exportedFacts systems =

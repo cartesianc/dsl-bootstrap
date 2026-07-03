@@ -51,6 +51,7 @@ Bootstrap.Runtime / Framework.Runtime fact 对齐
 EffectSystemBoundary imports / private facts / exports 执行语义
 EffectSystem scope validation 和显式 boundary rule closure
 EffectSystem send/transform/policy contract validation
+EffectSystem pipeline artifact/edge validation
 ```
 
 ## EffectSystem boundary
@@ -63,9 +64,11 @@ private facts 不能被其他 system import/export
 private/export fact 的 rule closure 只能依赖本 system 的 imports/private facts/exports
 private/export fact 只能使用 boundary 声明过的 send/transform
 retry/idempotency policy 必须由 boundary 声明并由 EffectTheory backing
+private/export fact 触碰的 pipeline artifact 必须在 boundary pipeline 中
+transform 必须是 boundary pipeline 的相邻 edge
 ```
 
-rule closure 目前覆盖 `needs`、`take` 对应的 maker fact，以及 `transform` 输入对应的 maker fact。send/transform contract 由 `systemBoundaryWithContracts` 声明；policy contract 由 `systemBoundaryWithPolicies` 声明。旧 `effectSystem` 入口保持兼容层语义，用 `success` facts 形成 exports，不启用显式 rule closure 与 contract 约束。
+rule closure 目前覆盖 `needs`、`take` 对应的 maker fact，以及 `transform` 输入对应的 maker fact。send/transform contract 由 `systemBoundaryWithContracts` 声明；policy contract 由 `systemBoundaryWithPolicies` 声明；pipeline contract 由 `systemBoundaryWithPipelines` 声明。旧 `effectSystem` 入口保持兼容层语义，用 `success` facts 形成 exports，不启用显式 rule closure 与 contract 约束。
 
 每个 witness claim 输出 `WorkflowSemanticsEvidencePayload`：
 

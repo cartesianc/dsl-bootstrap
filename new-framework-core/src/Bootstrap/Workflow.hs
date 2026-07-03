@@ -7,7 +7,9 @@ module Bootstrap.Workflow
   , Choice (..)
   , ChoiceKey (..)
   , EffectSystem (..)
+  , EffectSystemBoundaryArtifact (..)
   , EffectSystemBoundary (..)
+  , EffectSystemBoundaryPipeline (..)
   , EffectSystemBoundaryPolicy (..)
   , EffectSystemBoundarySend (..)
   , EffectSystemBoundaryTransform (..)
@@ -28,7 +30,9 @@ module Bootstrap.Workflow
   , Workflow (..)
   , WorkflowFact (..)
   , callback
+  , boundaryArtifact
   , boundaryIdempotent
+  , boundaryPipeline
   , boundaryRetryOnce
   , boundarySend
   , boundaryTransform
@@ -65,6 +69,7 @@ module Bootstrap.Workflow
   , suspense
   , systemBoundary
   , systemBoundaryWithContracts
+  , systemBoundaryWithPipelines
   , systemBoundaryWithPolicies
   , wait
   ) where
@@ -192,7 +197,23 @@ data EffectSystemBoundary fact = EffectSystemBoundary
   , effectSystemBoundarySends :: [EffectSystemBoundarySend]
   , effectSystemBoundaryTransforms :: [EffectSystemBoundaryTransform]
   , effectSystemBoundaryPolicies :: [EffectSystemBoundaryPolicy]
+  , effectSystemBoundaryPipelines :: [EffectSystemBoundaryPipeline]
   }
+
+data EffectSystemBoundaryPipeline = EffectSystemBoundaryPipeline
+  { effectSystemBoundaryPipelineName :: String
+  , effectSystemBoundaryPipelineArtifacts :: [EffectSystemBoundaryArtifact]
+  }
+  deriving (Eq, Show)
+
+newtype EffectSystemBoundaryArtifact = EffectSystemBoundaryArtifact
+  { effectSystemBoundaryArtifactText :: String
+  }
+  deriving (Eq)
+
+instance Show EffectSystemBoundaryArtifact where
+  show =
+    effectSystemBoundaryArtifactText
 
 data EffectSystemBoundaryPolicy
   = EffectSystemBoundaryIdempotent EffectSystemBoundarySend
@@ -320,6 +341,7 @@ effectSystem name successFacts =
           , effectSystemBoundarySends = []
           , effectSystemBoundaryTransforms = []
           , effectSystemBoundaryPolicies = []
+          , effectSystemBoundaryPipelines = []
           }
     , effectSystemBoundaryExplicit = False
     }
@@ -349,6 +371,19 @@ systemBoundaryWithPolicies ::
   [EffectSystemBoundaryPolicy] ->
   EffectSystemBoundary fact
 systemBoundaryWithPolicies name imports privateFacts exports sends transforms policies =
+  systemBoundaryWithPipelines name imports privateFacts exports sends transforms policies []
+
+systemBoundaryWithPipelines ::
+  EffectSystemName ->
+  [fact] ->
+  [fact] ->
+  [fact] ->
+  [EffectSystemBoundarySend] ->
+  [EffectSystemBoundaryTransform] ->
+  [EffectSystemBoundaryPolicy] ->
+  [EffectSystemBoundaryPipeline] ->
+  EffectSystemBoundary fact
+systemBoundaryWithPipelines name imports privateFacts exports sends transforms policies pipelines =
   EffectSystemBoundary
     { effectSystemBoundaryName = name
     , effectSystemBoundaryImports = imports
@@ -357,6 +392,7 @@ systemBoundaryWithPolicies name imports privateFacts exports sends transforms po
     , effectSystemBoundarySends = sends
     , effectSystemBoundaryTransforms = transforms
     , effectSystemBoundaryPolicies = policies
+    , effectSystemBoundaryPipelines = pipelines
     }
 
 boundarySend :: String -> EffectSystemBoundarySend
@@ -374,6 +410,14 @@ boundaryIdempotent =
 boundaryRetryOnce :: String -> EffectSystemBoundaryPolicy
 boundaryRetryOnce =
   EffectSystemBoundaryRetryOnce . boundarySend
+
+boundaryArtifact :: String -> EffectSystemBoundaryArtifact
+boundaryArtifact =
+  EffectSystemBoundaryArtifact
+
+boundaryPipeline :: String -> [EffectSystemBoundaryArtifact] -> EffectSystemBoundaryPipeline
+boundaryPipeline =
+  EffectSystemBoundaryPipeline
 
 effectSystemFromBoundary :: EffectSystemBoundary fact -> EffectSystem fact
 effectSystemFromBoundary boundary =
