@@ -37,6 +37,7 @@ module Framework.TrustBase
   , module Framework.Runtime.Concurrency
   , module Framework.Runtime.Diagnosis
   , module Framework.Runtime.Evidence
+  , module Framework.Runtime.Policy
   , module Framework.SelfArtifact
   , module Framework.TrustBase.Manifest
   , module Framework.Workflow.Semantics
@@ -84,6 +85,7 @@ import Framework.Runtime.Interpreter
   )
 import Framework.Runtime.Diagnosis
 import Framework.Runtime.Evidence
+import Framework.Runtime.Policy
 import Framework.SelfArtifact
 import Framework.TrustBase.Manifest
 import Framework.Workflow.Semantics

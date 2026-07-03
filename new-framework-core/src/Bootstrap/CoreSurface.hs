@@ -100,6 +100,7 @@ explicitCoreSurfaceModules =
   , runtimeConcurrencyFacade
   , runtimeDiagnosisFacade
   , runtimeEvidenceFacade
+  , runtimePolicyFacade
   , runtimeTypesFacade
   , backgroundRuntimeDiagnosis
   , registryCodegenFacade
@@ -284,6 +285,7 @@ coreSurfaceSlices =
           , "Framework.Runtime.Interpreter"
           , "Framework.Runtime.Diagnosis"
           , "Framework.Runtime.Handlers"
+          , "Framework.Runtime.Policy"
           , "Framework.Runtime.Values"
           , "Framework.TrustBase"
           , "Framework.Background.RuntimeDiagnosis"
@@ -822,6 +824,8 @@ trustBaseFacade =
         , "RuntimeConcurrencyEvidenceStatus"
         , "RuntimeEvidencePayload"
         , "RuntimeEvidenceStatus"
+        , "RuntimePolicyEvidencePayload"
+        , "RuntimePolicyEvidenceStatus"
         , "DomainRegistration"
         , "DomainSemanticCheck"
         , "DomainSemanticEvidence"
@@ -869,6 +873,13 @@ trustBaseFacade =
           , "runtimeEvidenceClaimNames"
           , "runtimeEvidencePayloadPassed"
           , "runtimeEvidencePayloads"
+          , "renderRuntimePolicyEvidencePayload"
+          , "renderRuntimePolicyEvidencePayloadsJson"
+          , "renderRuntimePolicyEvidenceStatus"
+          , "runtimePolicyEvidenceArtifactSummary"
+          , "runtimePolicyEvidenceClaimNames"
+          , "runtimePolicyEvidencePayloadPassed"
+          , "runtimePolicyEvidencePayloads"
           , "diffGeneratedLines"
           , "generatedLinesMatch"
           , "buildFixedPointReport"
@@ -1513,6 +1524,26 @@ runtimeEvidenceFacade =
           , "runtimeEvidenceClaimNames"
           , "runtimeEvidencePayloadPassed"
           , "runtimeEvidencePayloads"
+          ]
+    )
+
+runtimePolicyFacade :: CoreSurfaceModule
+runtimePolicyFacade =
+  moduleSurface
+    "Framework.Runtime.Policy"
+    "runtime policy evidence payload model for error dispatch, retry, and idempotency claims"
+    ( map typeCapability
+        [ "RuntimePolicyEvidencePayload"
+        , "RuntimePolicyEvidenceStatus"
+        ]
+        ++ map valueCapability
+          [ "renderRuntimePolicyEvidencePayload"
+          , "renderRuntimePolicyEvidencePayloadsJson"
+          , "renderRuntimePolicyEvidenceStatus"
+          , "runtimePolicyEvidenceArtifactSummary"
+          , "runtimePolicyEvidenceClaimNames"
+          , "runtimePolicyEvidencePayloadPassed"
+          , "runtimePolicyEvidencePayloads"
           ]
     )
 

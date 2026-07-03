@@ -158,6 +158,7 @@ bootstrap-report
 fixed-point-smoke
 workflow-semantics-witness
 runtime-evidence-witness
+runtime-policy-witness
 runtime-diagnosis-witness
 domain-app-report
 ```
@@ -214,6 +215,7 @@ stack build
 stack exec bootstrap-report
 stack exec fixed-point-smoke
 stack exec runtime-evidence-witness
+stack exec runtime-policy-witness
 stack exec workflow-semantics-witness
 stack exec runtime-diagnosis-witness
 stack exec trust-base-manifest-witness
