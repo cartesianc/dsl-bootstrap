@@ -8,6 +8,8 @@ module Bootstrap.Workflow
   , ChoiceKey (..)
   , EffectSystem (..)
   , EffectSystemBoundary (..)
+  , EffectSystemBoundarySend (..)
+  , EffectSystemBoundaryTransform (..)
   , EffectSystemName (..)
   , FactExpr (..)
   , Fallback (..)
@@ -25,6 +27,8 @@ module Bootstrap.Workflow
   , Workflow (..)
   , WorkflowFact (..)
   , callback
+  , boundarySend
+  , boundaryTransform
   , chain
   , chainItems
   , choice
@@ -57,6 +61,7 @@ module Bootstrap.Workflow
   , run
   , suspense
   , systemBoundary
+  , systemBoundaryWithContracts
   , wait
   ) where
 
@@ -180,7 +185,27 @@ data EffectSystemBoundary fact = EffectSystemBoundary
   , effectSystemBoundaryImports :: [fact]
   , effectSystemBoundaryPrivateFacts :: [fact]
   , effectSystemBoundaryExports :: [fact]
+  , effectSystemBoundarySends :: [EffectSystemBoundarySend]
+  , effectSystemBoundaryTransforms :: [EffectSystemBoundaryTransform]
   }
+
+newtype EffectSystemBoundarySend = EffectSystemBoundarySend
+  { effectSystemBoundarySendText :: String
+  }
+  deriving (Eq)
+
+instance Show EffectSystemBoundarySend where
+  show =
+    effectSystemBoundarySendText
+
+newtype EffectSystemBoundaryTransform = EffectSystemBoundaryTransform
+  { effectSystemBoundaryTransformText :: String
+  }
+  deriving (Eq)
+
+instance Show EffectSystemBoundaryTransform where
+  show =
+    effectSystemBoundaryTransformText
 
 data Workflow fact hook
   = RunWorkflow (EffectSystem fact)
@@ -274,13 +299,41 @@ effectSystem name successFacts =
           , effectSystemBoundaryImports = []
           , effectSystemBoundaryPrivateFacts = []
           , effectSystemBoundaryExports = factExprFacts successFacts
+          , effectSystemBoundarySends = []
+          , effectSystemBoundaryTransforms = []
           }
     , effectSystemBoundaryExplicit = False
     }
 
 systemBoundary :: EffectSystemName -> [fact] -> [fact] -> [fact] -> EffectSystemBoundary fact
-systemBoundary =
+systemBoundary name imports privateFacts exports =
+  systemBoundaryWithContracts name imports privateFacts exports [] []
+
+systemBoundaryWithContracts ::
+  EffectSystemName ->
+  [fact] ->
+  [fact] ->
+  [fact] ->
+  [EffectSystemBoundarySend] ->
+  [EffectSystemBoundaryTransform] ->
+  EffectSystemBoundary fact
+systemBoundaryWithContracts name imports privateFacts exports sends transforms =
   EffectSystemBoundary
+    { effectSystemBoundaryName = name
+    , effectSystemBoundaryImports = imports
+    , effectSystemBoundaryPrivateFacts = privateFacts
+    , effectSystemBoundaryExports = exports
+    , effectSystemBoundarySends = sends
+    , effectSystemBoundaryTransforms = transforms
+    }
+
+boundarySend :: String -> EffectSystemBoundarySend
+boundarySend =
+  EffectSystemBoundarySend
+
+boundaryTransform :: String -> EffectSystemBoundaryTransform
+boundaryTransform =
+  EffectSystemBoundaryTransform
 
 effectSystemFromBoundary :: EffectSystemBoundary fact -> EffectSystem fact
 effectSystemFromBoundary boundary =

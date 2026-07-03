@@ -170,6 +170,12 @@ workflowSemanticsClaims =
       "valid scope passes while missing exporter, private import, and out-of-bound rule dependency fail plan validation"
       "WorkflowEffectSystemScopeArtifact"
       effectSystemScopeWitness
+  , WorkflowSemanticsClaim
+      "workflow-effect-system-contracts"
+      "EffectSystemBoundary send/transform contracts constrain explicit private and export rules"
+      "valid contracts pass while undeclared send and transform usage fail plan validation"
+      "WorkflowEffectSystemContractsArtifact"
+      effectSystemContractWitness
   ]
 
 runWorkflowSemanticsClaim :: WorkflowSemanticsClaim -> IO WorkflowSemanticsEvidencePayload
@@ -516,6 +522,12 @@ effectSystemScopeWitness = do
   requirePlanFails "private import" privateImportBlueprint boundaryTheory
   requirePlanFails "out-of-bound rule dependency" outOfScopeDependencyBlueprint outOfScopeDependencyTheory
 
+effectSystemContractWitness :: IO ()
+effectSystemContractWitness = do
+  requirePlanPasses "valid effect system contracts" validContractBlueprint contractTheory
+  requirePlanFails "undeclared send contract" undeclaredSendBlueprint contractTheory
+  requirePlanFails "undeclared transform contract" undeclaredTransformBlueprint contractTheory
+
 runFrameworkSuccess ::
   String ->
   R.RuntimeEffectEnvironment ->
@@ -711,6 +723,19 @@ outOfScopeDependencyTheory =
     , factPure boundaryOutOfScopeFact
     ]
 
+contractTheory :: E.EffectTheory
+contractTheory =
+  theory
+    [ external boundaryContractSend boundaryContractSendOutputType
+    , E.fact boundaryContractInputFact [E.make boundaryContractInputType]
+    , E.fact
+        boundaryContractExportFact
+        [ E.take boundaryContractInputType
+        , E.transform boundaryContractInputType boundaryContractOutputType boundaryContractTransform
+        , E.uses boundaryContractSend
+        ]
+    ]
+
 validScopeBlueprint :: W.AppBlueprint
 validScopeBlueprint =
   blueprint
@@ -753,6 +778,40 @@ privateImportBlueprint =
 outOfScopeDependencyBlueprint :: W.AppBlueprint
 outOfScopeDependencyBlueprint =
   validScopeBlueprint
+
+validContractBlueprint :: W.AppBlueprint
+validContractBlueprint =
+  contractBlueprint
+    [W.boundarySend (show boundaryContractSend)]
+    [W.boundaryTransform (show boundaryContractTransform)]
+
+undeclaredSendBlueprint :: W.AppBlueprint
+undeclaredSendBlueprint =
+  contractBlueprint
+    []
+    [W.boundaryTransform (show boundaryContractTransform)]
+
+undeclaredTransformBlueprint :: W.AppBlueprint
+undeclaredTransformBlueprint =
+  contractBlueprint
+    [W.boundarySend (show boundaryContractSend)]
+    []
+
+contractBlueprint :: [W.EffectSystemBoundarySend] -> [W.EffectSystemBoundaryTransform] -> W.AppBlueprint
+contractBlueprint sends transforms =
+  blueprint
+    ( W.run
+        ( W.effectSystemFromBoundary
+            ( W.systemBoundaryWithContracts
+                boundaryContractFlow
+                []
+                [boundaryContractInputFact]
+                [boundaryContractExportFact]
+                sends
+                transforms
+            )
+        )
+    )
 
 workflowSemanticsEffect :: E.EffectName
 workflowSemanticsEffect =
@@ -874,6 +933,10 @@ boundaryProviderFlow :: W.EffectSystemName
 boundaryProviderFlow =
   W.EffectSystemName "WorkflowSemanticsBoundaryProviderFlow"
 
+boundaryContractFlow :: W.EffectSystemName
+boundaryContractFlow =
+  W.EffectSystemName "WorkflowSemanticsBoundaryContractFlow"
+
 selectedChoice :: W.ChoiceKey
 selectedChoice =
   W.ChoiceKey "selected"
@@ -905,3 +968,31 @@ boundaryMissingImportFact =
 boundaryOutOfScopeFact :: W.WorkflowFact
 boundaryOutOfScopeFact =
   W.WorkflowFact "WorkflowSemanticsBoundaryOutOfScopeFact"
+
+boundaryContractInputFact :: W.WorkflowFact
+boundaryContractInputFact =
+  W.WorkflowFact "WorkflowSemanticsBoundaryContractInputFact"
+
+boundaryContractExportFact :: W.WorkflowFact
+boundaryContractExportFact =
+  W.WorkflowFact "WorkflowSemanticsBoundaryContractExportFact"
+
+boundaryContractSend :: E.SendName
+boundaryContractSend =
+  E.SendName "WorkflowSemanticsBoundaryContractSend"
+
+boundaryContractTransform :: E.TransformName
+boundaryContractTransform =
+  E.TransformName "WorkflowSemanticsBoundaryContractTransform"
+
+boundaryContractInputType :: E.TypeName
+boundaryContractInputType =
+  E.TypeName "WorkflowSemanticsBoundaryContractInput"
+
+boundaryContractOutputType :: E.TypeName
+boundaryContractOutputType =
+  E.TypeName "WorkflowSemanticsBoundaryContractOutput"
+
+boundaryContractSendOutputType :: E.TypeName
+boundaryContractSendOutputType =
+  E.TypeName "WorkflowSemanticsBoundaryContractSendOutput"

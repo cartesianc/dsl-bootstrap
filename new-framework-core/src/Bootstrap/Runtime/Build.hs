@@ -308,6 +308,7 @@ effectSystemScopeConstraints rules systems =
     , concatMap (systemImportExportConstraints systems) systems
     , concatMap (systemPrivateScopeConstraints systems) systems
     , concatMap (systemRuleClosureConstraints rules) systems
+    , concatMap (systemRuleContractConstraints rules) systems
     ]
 
 systemBoundaryNameConstraint :: Workflow.EffectSystem WorkflowFact -> NativeConstraint
@@ -422,6 +423,57 @@ ruleDependencyFacts rules rule =
         | (input, _, _) <- nativeRuleTransforms rule
         , isPipeType input
         ]
+
+systemRuleContractConstraints :: [NativeFactRule] -> Workflow.EffectSystem WorkflowFact -> [NativeConstraint]
+systemRuleContractConstraints rules system
+  | not (Workflow.effectSystemBoundaryExplicit system) =
+      []
+  | otherwise =
+      concatMap constraintsForRule systemRules
+  where
+    boundary =
+      Workflow.effectSystemBoundary system
+    systemName =
+      Workflow.effectSystemName system
+    allowedSends =
+      map show (Workflow.effectSystemBoundarySends boundary)
+    allowedTransforms =
+      map show (Workflow.effectSystemBoundaryTransforms boundary)
+    systemRules =
+      [ rule
+      | currentFact <- unique (Workflow.effectSystemBoundaryPrivateFacts boundary ++ Workflow.effectSystemBoundaryExports boundary)
+      , Just rule <- [ruleByFact rules currentFact]
+      ]
+    constraintsForRule rule =
+      [ NativeConstraint
+          ("effect system send contract " ++ show systemName ++ " " ++ show (nativeRuleFact rule))
+          (all (`elem` allowedSends) usedSends)
+          ( "effect system rule uses undeclared send: "
+              ++ show systemName
+              ++ " "
+              ++ show (nativeRuleFact rule)
+              ++ " uses "
+              ++ show (filter (`notElem` allowedSends) usedSends)
+          )
+      , NativeConstraint
+          ("effect system transform contract " ++ show systemName ++ " " ++ show (nativeRuleFact rule))
+          (all (`elem` allowedTransforms) usedTransforms)
+          ( "effect system rule uses undeclared transform: "
+              ++ show systemName
+              ++ " "
+              ++ show (nativeRuleFact rule)
+              ++ " uses "
+              ++ show (filter (`notElem` allowedTransforms) usedTransforms)
+          )
+      ]
+      where
+        usedSends =
+          map show (nativeRuleUses rule)
+        usedTransforms =
+          unique
+            [ show transformName
+            | (_, _, transformName) <- nativeRuleTransforms rule
+            ]
 
 exportedFacts :: [Workflow.EffectSystem WorkflowFact] -> [WorkflowFact]
 exportedFacts systems =
