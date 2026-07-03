@@ -170,6 +170,7 @@ domain-app-report
 
 ```text
 trust-base-manifest.v1
+trust-base-manifest-evidence.v1
 host boundary
 kernel modules
 facade modules
@@ -185,9 +186,12 @@ artifact commands
 ```powershell
 stack exec trust-base-manifest-witness
 stack exec trust-base-manifest-witness -- --json
+stack exec trust-base-manifest-witness -- --evidence-json
 ```
 
-这条 witness 只读取当前 cabal 和 `defaultSelfArtifactManifest`，检查 manifest 里声明的 module、executable、artifact sources 和 artifact commands 没有漂移。它不物化 Stage 1 artifact，也不执行 `self-artifact-witness`。
+`--json` 输出 `trust-base-manifest.v1` 清单本体；`--evidence-json` 输出 `trust-base-manifest-evidence.v1`，包含 module、executable、artifact 和 CoreSurface coverage 的 payload。
+
+这条 witness 只读取当前 cabal、CoreSurface 和 `defaultSelfArtifactManifest`，检查 manifest 里声明的 module、executable、artifact sources、artifact commands 和 CoreSurface coverage 没有漂移。它不物化 Stage 1 artifact，也不执行 `self-artifact-witness`。
 
 ## 6. 后续收缩方向
 

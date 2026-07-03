@@ -37,7 +37,7 @@ check-fast
   framework-core frontend witness
   business syntax witness
   runtime diagnosis payload
-  trust-base-manifest JSON
+  trust-base-manifest evidence JSON
 
 check-semantic
   check-fast 范围
@@ -79,6 +79,7 @@ stack exec business-syntax-witness
 stack exec runtime-diagnosis-witness -- --json
 stack exec trust-base-manifest-witness
 stack exec trust-base-manifest-witness -- --json
+stack exec trust-base-manifest-witness -- --evidence-json
 ```
 
 这三条覆盖：
@@ -112,6 +113,7 @@ bootstrap-report --json: framework-core-report.v1
 runtime-evidence-witness: ok runtime evidence 6 payload claims
 runtime-evidence-witness --json: runtime-evidence.v1
 trust-base-manifest-witness: trust-base-manifest.v1
+trust-base-manifest-witness -- --evidence-json: trust-base-manifest-evidence.v1
 fixed-point-smoke: fixed-point diff evidence 14 payload claims
 fixed-point-smoke: diffs: 0
 fixed-point-smoke --json: fixed-point-report.v1
@@ -299,6 +301,7 @@ CheckElaborationContract
 
 ```text
 TrustBase manifest schema
+TrustBase manifest evidence schema
 kernel modules -> cabal exposed-modules
 facade modules -> cabal exposed-modules
 report/witness/artifact gate executables -> cabal executable names

@@ -74,6 +74,7 @@ stack exec runtime-evidence-witness -- --json
 ```powershell
 stack exec trust-base-manifest-witness
 stack exec trust-base-manifest-witness -- --json
+stack exec trust-base-manifest-witness -- --evidence-json
 ```
 
 验证 workflow 真实语义：
@@ -571,6 +572,7 @@ stack exec fixed-point-smoke -- --json
 stack exec fixed-point-smoke -- --summary-json
 stack exec trust-base-manifest-witness
 stack exec trust-base-manifest-witness -- --json
+stack exec trust-base-manifest-witness -- --evidence-json
 ```
 
 JSON 输出带 schema 字段：
@@ -581,6 +583,7 @@ domain-report.v1
 fixed-point-report.v1
 fixed-point-summary.v1
 trust-base-manifest.v1
+trust-base-manifest-evidence.v1
 runtime-evidence.v1
 runtime-diagnosis-evidence.v1
 workflow-semantics-evidence.v1

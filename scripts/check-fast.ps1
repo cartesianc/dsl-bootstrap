@@ -14,7 +14,7 @@ $commands = @(
   ,@("stack", "--work-dir", $WorkDir, "exec", "framework-core-frontend-witness")
   ,@("stack", "--work-dir", $WorkDir, "exec", "business-syntax-witness")
   ,@("stack", "--work-dir", $WorkDir, "exec", "runtime-diagnosis-witness", "--", "--json")
-  ,@("stack", "--work-dir", $WorkDir, "exec", "trust-base-manifest-witness", "--", "--json")
+  ,@("stack", "--work-dir", $WorkDir, "exec", "trust-base-manifest-witness", "--", "--evidence-json")
 )
 
 Push-Location $WorkspaceRoot

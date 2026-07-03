@@ -1,8 +1,17 @@
 module Framework.TrustBase.Manifest
   ( TrustBaseManifest (..)
+  , TrustBaseManifestEvidencePayload (..)
+  , TrustBaseManifestEvidenceStatus (..)
   , defaultTrustBaseManifest
   , renderTrustBaseManifest
+  , renderTrustBaseManifestEvidencePayload
+  , renderTrustBaseManifestEvidencePayloadsJson
+  , renderTrustBaseManifestEvidenceStatus
   , renderTrustBaseManifestJson
+  , trustBaseManifestEvidenceArtifactSummary
+  , trustBaseManifestEvidenceClaimNames
+  , trustBaseManifestEvidencePayloadPassed
+  , trustBaseManifestRequiredCoreSurfaceModules
   ) where
 
 import Framework.SelfArtifact
@@ -57,6 +66,7 @@ defaultTrustBaseManifest =
         , "Framework.Runtime.Concurrency"
         , "Framework.Runtime.Diagnosis"
         , "Framework.Runtime.Evidence"
+        , "Framework.Runtime.Interpreter"
         , "Framework.SelfArtifact"
         , "Framework.Workflow.Semantics"
         ]
@@ -82,6 +92,63 @@ defaultTrustBaseManifest =
         map renderArtifactCommand (artifactManifestCommands defaultSelfArtifactManifest)
     }
 
+data TrustBaseManifestEvidencePayload = TrustBaseManifestEvidencePayload
+  { trustBaseManifestEvidenceClaim :: String
+  , trustBaseManifestEvidenceStatus :: TrustBaseManifestEvidenceStatus
+  , trustBaseManifestEvidenceExpected :: String
+  , trustBaseManifestEvidenceObserved :: String
+  , trustBaseManifestEvidenceArtifact :: String
+  }
+  deriving (Eq, Show)
+
+data TrustBaseManifestEvidenceStatus
+  = TrustBaseManifestEvidencePassed
+  | TrustBaseManifestEvidenceFailed
+  deriving (Eq, Show)
+
+trustBaseManifestEvidencePayloadPassed :: TrustBaseManifestEvidencePayload -> Bool
+trustBaseManifestEvidencePayloadPassed payload =
+  trustBaseManifestEvidenceStatus payload == TrustBaseManifestEvidencePassed
+
+trustBaseManifestEvidenceClaimNames :: [String]
+trustBaseManifestEvidenceClaimNames =
+  [ "trust-base-kernel-modules-exposed"
+  , "trust-base-facade-modules-exposed"
+  , "trust-base-report-executables-present"
+  , "trust-base-witness-executables-present"
+  , "trust-base-artifact-gate-executable-present"
+  , "trust-base-artifact-sources-synced"
+  , "trust-base-artifact-commands-synced"
+  , "trust-base-core-surface-covered"
+  ]
+
+trustBaseManifestEvidenceArtifactSummary :: String
+trustBaseManifestEvidenceArtifactSummary =
+  "trust base manifest evidence payload claims: "
+    ++ joinWith ", " trustBaseManifestEvidenceClaimNames
+
+trustBaseManifestRequiredCoreSurfaceModules :: [String]
+trustBaseManifestRequiredCoreSurfaceModules =
+  [ "Bootstrap.Runtime"
+  , "Bootstrap.Runtime.BootstrapHandlers"
+  , "Bootstrap.Runtime.Boundary"
+  , "Bootstrap.Runtime.Build"
+  , "Bootstrap.Runtime.Contract"
+  , "Bootstrap.Runtime.Interpreter"
+  , "Bootstrap.Runtime.Types"
+  , "Framework.Background.ConstraintProof"
+  , "Framework.FixedPoint"
+  , "Framework.RegistryCodegen"
+  , "Framework.Runtime.Concurrency"
+  , "Framework.Runtime.Diagnosis"
+  , "Framework.Runtime.Evidence"
+  , "Framework.Runtime.Interpreter"
+  , "Framework.SelfArtifact"
+  , "Framework.TrustBase"
+  , "Framework.TrustBase.Manifest"
+  , "Framework.Workflow.Semantics"
+  ]
+
 renderTrustBaseManifest :: TrustBaseManifest -> [String]
 renderTrustBaseManifest manifest =
   [ "trust base manifest"
@@ -103,6 +170,44 @@ renderTrustBaseManifest manifest =
     ++ indentLines 2 (trustBaseManifestArtifactSources manifest)
     ++ ["artifact commands:"]
     ++ indentLines 2 (trustBaseManifestArtifactCommands manifest)
+
+renderTrustBaseManifestEvidencePayload :: TrustBaseManifestEvidencePayload -> [String]
+renderTrustBaseManifestEvidencePayload payload =
+  [ "claim: " ++ trustBaseManifestEvidenceClaim payload
+  , "status: " ++ renderTrustBaseManifestEvidenceStatus (trustBaseManifestEvidenceStatus payload)
+  , "expected: " ++ trustBaseManifestEvidenceExpected payload
+  , "observed: " ++ trustBaseManifestEvidenceObserved payload
+  , "artifact: " ++ trustBaseManifestEvidenceArtifact payload
+  ]
+
+renderTrustBaseManifestEvidenceStatus :: TrustBaseManifestEvidenceStatus -> String
+renderTrustBaseManifestEvidenceStatus TrustBaseManifestEvidencePassed =
+  "passed"
+renderTrustBaseManifestEvidenceStatus TrustBaseManifestEvidenceFailed =
+  "failed"
+
+renderTrustBaseManifestEvidencePayloadsJson :: [TrustBaseManifestEvidencePayload] -> String
+renderTrustBaseManifestEvidencePayloadsJson payloads =
+  jsonObject
+    [ jsonField "schema" (jsonString "trust-base-manifest-evidence.v1")
+    , jsonField "status" (jsonString statusText)
+    , jsonField "payloads" (jsonArray (map trustBaseManifestEvidencePayloadJson payloads))
+    ]
+  where
+    statusText =
+      if all trustBaseManifestEvidencePayloadPassed payloads
+        then "passed"
+        else "failed"
+
+trustBaseManifestEvidencePayloadJson :: TrustBaseManifestEvidencePayload -> String
+trustBaseManifestEvidencePayloadJson payload =
+  jsonObject
+    [ jsonField "claim" (jsonString (trustBaseManifestEvidenceClaim payload))
+    , jsonField "status" (jsonString (renderTrustBaseManifestEvidenceStatus (trustBaseManifestEvidenceStatus payload)))
+    , jsonField "expected" (jsonString (trustBaseManifestEvidenceExpected payload))
+    , jsonField "observed" (jsonString (trustBaseManifestEvidenceObserved payload))
+    , jsonField "artifact" (jsonString (trustBaseManifestEvidenceArtifact payload))
+    ]
 
 renderTrustBaseManifestJson :: TrustBaseManifest -> String
 renderTrustBaseManifestJson manifest =
@@ -134,6 +239,10 @@ jsonObject fields =
 jsonField :: String -> String -> String
 jsonField name value =
   jsonString name ++ ":" ++ value
+
+jsonArray :: [String] -> String
+jsonArray values =
+  "[" ++ joinWith "," values ++ "]"
 
 jsonStringArray :: [String] -> String
 jsonStringArray values =

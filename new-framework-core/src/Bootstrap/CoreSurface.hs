@@ -796,6 +796,8 @@ trustBaseFacade =
         , "RuntimeBackendParityEvidenceStatus"
         , "ArtifactManifest"
         , "TrustBaseManifest"
+        , "TrustBaseManifestEvidencePayload"
+        , "TrustBaseManifestEvidenceStatus"
         , "WorkflowSemanticsEvidencePayload"
         , "WorkflowSemanticsEvidenceStatus"
         , "GeneratedSource"
@@ -848,7 +850,14 @@ trustBaseFacade =
           , "runSelfArtifactGate"
           , "defaultTrustBaseManifest"
           , "renderTrustBaseManifest"
+          , "renderTrustBaseManifestEvidencePayload"
+          , "renderTrustBaseManifestEvidencePayloadsJson"
+          , "renderTrustBaseManifestEvidenceStatus"
           , "renderTrustBaseManifestJson"
+          , "trustBaseManifestEvidenceArtifactSummary"
+          , "trustBaseManifestEvidenceClaimNames"
+          , "trustBaseManifestEvidencePayloadPassed"
+          , "trustBaseManifestRequiredCoreSurfaceModules"
           , "renderWorkflowSemanticsEvidencePayload"
           , "renderWorkflowSemanticsEvidencePayloadsJson"
           , "workflowSemanticsEvidencePayloadPassed"
@@ -862,11 +871,20 @@ trustBaseManifestFacade =
     "machine-readable trust base boundary, gate inventory, and artifact manifest summary"
     ( map typeCapability
         [ "TrustBaseManifest"
+        , "TrustBaseManifestEvidencePayload"
+        , "TrustBaseManifestEvidenceStatus"
         ]
         ++ map valueCapability
           [ "defaultTrustBaseManifest"
           , "renderTrustBaseManifest"
+          , "renderTrustBaseManifestEvidencePayload"
+          , "renderTrustBaseManifestEvidencePayloadsJson"
+          , "renderTrustBaseManifestEvidenceStatus"
           , "renderTrustBaseManifestJson"
+          , "trustBaseManifestEvidenceArtifactSummary"
+          , "trustBaseManifestEvidenceClaimNames"
+          , "trustBaseManifestEvidencePayloadPassed"
+          , "trustBaseManifestRequiredCoreSurfaceModules"
           ]
     )
 
