@@ -32,6 +32,7 @@ import Bootstrap.Effect
 import Bootstrap.Runtime.Types
 import Bootstrap.Workflow
   ( AppBlueprint (..)
+  , EffectSystemName
   , FactExpr (..)
   , Workflow (..)
   , WorkflowFact
@@ -46,14 +47,16 @@ import qualified Bootstrap.Workflow as Workflow
 
 buildNativeApp :: AppBlueprint -> EffectTheory -> Either String NativeAppPlan
 buildNativeApp blueprint effects =
-  let rootFacts =
+  let systems =
+        collectWorkflowSystems (blueprintApp blueprint)
+      rootFacts =
         collectWorkflowFacts (blueprintApp blueprint)
       factRules =
         nativeFactRules effects
       sendContracts =
         nativeSendContracts effects
       constraints =
-        nativeConstraints rootFacts factRules sendContracts
+        nativeConstraints rootFacts factRules sendContracts systems
    in Right
         NativeAppPlan
           { nativeAppPlanFacts = map nativeRuleFact factRules
@@ -239,14 +242,15 @@ sendPolicyRetryFor currentSend policies =
         ]
     )
 
-nativeConstraints :: [WorkflowFact] -> [NativeFactRule] -> [SendContract] -> [NativeConstraint]
-nativeConstraints rootFacts rules contracts =
+nativeConstraints :: [WorkflowFact] -> [NativeFactRule] -> [SendContract] -> [Workflow.EffectSystem WorkflowFact] -> [NativeConstraint]
+nativeConstraints rootFacts rules contracts systems =
   concat
     [ map (factDeclaredConstraint rules) rootFacts
     , map (ruleNeedsDeclaredConstraint rules) rules
     , map (ruleSendsDeclaredConstraint contracts) rules
     , duplicatePipeMakerConstraints rules
     , map (ruleTakesHaveMakerConstraint rules) rules
+    , effectSystemScopeConstraints systems
     ]
 
 factDeclaredConstraint :: [NativeFactRule] -> WorkflowFact -> NativeConstraint
@@ -297,6 +301,107 @@ ruleTakesHaveMakerConstraint rules rule =
     hasSingleMaker currentType =
       length (sourceFactsForTypeFromRules rules currentType) == 1
 
+effectSystemScopeConstraints :: [Workflow.EffectSystem WorkflowFact] -> [NativeConstraint]
+effectSystemScopeConstraints systems =
+  concat
+    [ map systemBoundaryNameConstraint systems
+    , concatMap (systemImportExportConstraints systems) systems
+    , concatMap (systemPrivateScopeConstraints systems) systems
+    ]
+
+systemBoundaryNameConstraint :: Workflow.EffectSystem WorkflowFact -> NativeConstraint
+systemBoundaryNameConstraint system =
+  NativeConstraint
+    ("effect system boundary name " ++ show (Workflow.effectSystemName system))
+    (Workflow.effectSystemBoundaryName boundary == Workflow.effectSystemName system)
+    ("effect system boundary name mismatch: " ++ show (Workflow.effectSystemName system) ++ " / " ++ show (Workflow.effectSystemBoundaryName boundary))
+  where
+    boundary =
+      Workflow.effectSystemBoundary system
+
+systemImportExportConstraints :: [Workflow.EffectSystem WorkflowFact] -> Workflow.EffectSystem WorkflowFact -> [NativeConstraint]
+systemImportExportConstraints systems system =
+  [ NativeConstraint
+      ("effect system import exported " ++ show systemName ++ " " ++ show currentFact)
+      (currentFact `elem` exportedFacts systems)
+      ("effect system import has no exporter: " ++ show systemName ++ " imports " ++ show currentFact)
+  | currentFact <- Workflow.effectSystemBoundaryImports boundary
+  ]
+    ++
+  [ NativeConstraint
+      ("effect system import public " ++ show systemName ++ " " ++ show currentFact)
+      (not (factPrivateInOtherSystem systems systemName currentFact))
+      ("effect system import references private fact: " ++ show systemName ++ " imports " ++ show currentFact)
+  | currentFact <- Workflow.effectSystemBoundaryImports boundary
+  ]
+  where
+    boundary =
+      Workflow.effectSystemBoundary system
+    systemName =
+      Workflow.effectSystemName system
+
+systemPrivateScopeConstraints :: [Workflow.EffectSystem WorkflowFact] -> Workflow.EffectSystem WorkflowFact -> [NativeConstraint]
+systemPrivateScopeConstraints systems system =
+  concatMap privateFactConstraints (Workflow.effectSystemBoundaryPrivateFacts boundary)
+  where
+    boundary =
+      Workflow.effectSystemBoundary system
+    systemName =
+      Workflow.effectSystemName system
+    privateFactConstraints currentFact =
+      [ NativeConstraint
+          ("effect system private not exported " ++ show systemName ++ " " ++ show currentFact)
+          (not (currentFact `elem` exportedFacts systems))
+          ("effect system private fact exported: " ++ show systemName ++ " " ++ show currentFact)
+      , NativeConstraint
+          ("effect system private not imported " ++ show systemName ++ " " ++ show currentFact)
+          (not (currentFact `elem` importedFacts systems))
+          ("effect system private fact imported: " ++ show systemName ++ " " ++ show currentFact)
+      , NativeConstraint
+          ("effect system private owner unique " ++ show systemName ++ " " ++ show currentFact)
+          (privateFactOwnerCount systems currentFact == 1)
+          ("effect system private fact has multiple owners: " ++ show currentFact)
+      ]
+
+exportedFacts :: [Workflow.EffectSystem WorkflowFact] -> [WorkflowFact]
+exportedFacts systems =
+  unique
+    [ currentFact
+    | system <- systems
+    , currentFact <- Workflow.effectSystemBoundaryExports (Workflow.effectSystemBoundary system)
+    ]
+
+importedFacts :: [Workflow.EffectSystem WorkflowFact] -> [WorkflowFact]
+importedFacts systems =
+  unique
+    [ currentFact
+    | system <- systems
+    , currentFact <- Workflow.effectSystemBoundaryImports (Workflow.effectSystemBoundary system)
+    ]
+
+factPrivateInOtherSystem :: [Workflow.EffectSystem WorkflowFact] -> EffectSystemName -> WorkflowFact -> Bool
+factPrivateInOtherSystem systems systemName currentFact =
+  any
+    ( \(owner, privateFact) ->
+        owner /= systemName && privateFact == currentFact
+    )
+    (privateFactOwners systems)
+
+privateFactOwnerCount :: [Workflow.EffectSystem WorkflowFact] -> WorkflowFact -> Int
+privateFactOwnerCount systems currentFact =
+  length
+    [ ()
+    | (_, privateFact) <- privateFactOwners systems
+    , privateFact == currentFact
+    ]
+
+privateFactOwners :: [Workflow.EffectSystem WorkflowFact] -> [(EffectSystemName, WorkflowFact)]
+privateFactOwners systems =
+  [ (Workflow.effectSystemName system, currentFact)
+  | system <- systems
+  , currentFact <- Workflow.effectSystemBoundaryPrivateFacts (Workflow.effectSystemBoundary system)
+  ]
+
 sourceFactsForTypeFromRules :: [NativeFactRule] -> TypeName -> [WorkflowFact]
 sourceFactsForTypeFromRules rules currentType =
   [ nativeRuleFact rule
@@ -321,6 +426,24 @@ collectWorkflowFacts workflow =
       unique (concatMap (collectWorkflowFacts . snd) (choiceItems branches))
     WaitWorkflow wait body ->
       unique (collectFactExpr (Workflow.waitFacts wait) ++ collectWorkflowFacts body)
+
+collectWorkflowSystems :: Workflow.Workflow WorkflowFact hook -> [Workflow.EffectSystem WorkflowFact]
+collectWorkflowSystems workflow =
+  case workflow of
+    RunWorkflow system ->
+      [system]
+    ChainWorkflow steps ->
+      concatMap collectWorkflowSystems (chainItems steps)
+    ParallelWorkflow branches ->
+      concatMap collectWorkflowSystems (parallelItems branches)
+    FallbackWorkflow branches ->
+      concatMap collectWorkflowSystems (fallbackItems branches)
+    RaceWorkflow branches ->
+      concatMap collectWorkflowSystems (raceItems branches)
+    ChoiceWorkflow _ branches ->
+      concatMap (collectWorkflowSystems . snd) (choiceItems branches)
+    WaitWorkflow _ body ->
+      collectWorkflowSystems body
 
 collectFactExpr :: FactExpr WorkflowFact -> [WorkflowFact]
 collectFactExpr expression =

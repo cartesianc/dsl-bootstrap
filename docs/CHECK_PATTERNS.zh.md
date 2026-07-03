@@ -240,7 +240,7 @@ runtime-backend-parity-artifact
 runtime-backend-parity-report
 ```
 
-workflow semantics 已经由 `workflow-semantics-witness` 输出 13 条 payload。
+workflow semantics 已经由 `workflow-semantics-witness` 输出 14 条 payload。
 
 ## 3. Framework Core 前台与 Codegen
 

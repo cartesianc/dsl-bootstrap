@@ -164,6 +164,12 @@ workflowSemanticsClaims =
       "import, private, and export facts are available while success facts remain exports"
       "WorkflowEffectSystemBoundaryArtifact"
       effectSystemBoundaryWitness
+  , WorkflowSemanticsClaim
+      "workflow-effect-system-scope"
+      "EffectSystem imports must target exported facts and private facts cannot be imported"
+      "valid scope passes while missing exporter and private import fail plan validation"
+      "WorkflowEffectSystemScopeArtifact"
+      effectSystemScopeWitness
   ]
 
 runWorkflowSemanticsClaim :: WorkflowSemanticsClaim -> IO WorkflowSemanticsEvidencePayload
@@ -475,7 +481,15 @@ nativeFrameworkAlignmentWitness = do
 
 effectSystemBoundaryWitness :: IO ()
 effectSystemBoundaryWitness = do
-  let boundary =
+  let providerSystem =
+        W.effectSystemFromBoundary
+          ( W.systemBoundary
+              boundaryProviderFlow
+              []
+              []
+              [boundaryImportFact]
+          )
+      boundary =
         W.systemBoundary
           boundaryFlow
           [boundaryImportFact]
@@ -487,13 +501,19 @@ effectSystemBoundaryWitness = do
     runFrameworkSuccess
       "effect system boundary"
       (frameworkEnvironment [])
-      (blueprint (W.run system))
+      (blueprint (W.chain [W.run providerSystem, W.run system]))
       (theory [factPure boundaryImportFact, factPure boundaryPrivateFact, factPure boundaryExportFact])
   require "boundary import fact" (boundaryImportFact `elem` R.availableFacts runtime)
   require "boundary private fact" (boundaryPrivateFact `elem` R.availableFacts runtime)
   require "boundary export fact" (boundaryExportFact `elem` R.availableFacts runtime)
   require "boundary success exports" (successFacts system == [boundaryExportFact])
   require "boundary runtime facts" (runtimeFacts system == [boundaryImportFact, boundaryPrivateFact, boundaryExportFact])
+
+effectSystemScopeWitness :: IO ()
+effectSystemScopeWitness = do
+  requirePlanPasses "valid effect system scope" validScopeBlueprint boundaryTheory
+  requirePlanFails "missing import exporter" missingExporterBlueprint boundaryTheory
+  requirePlanFails "private import" privateImportBlueprint boundaryTheory
 
 runFrameworkSuccess ::
   String ->
@@ -586,6 +606,28 @@ fact :: W.WorkflowFact -> W.App
 fact currentFact =
   runFactAs (W.EffectSystemName (show currentFact)) currentFact
 
+requirePlanPasses :: String -> W.AppBlueprint -> E.EffectTheory -> IO ()
+requirePlanPasses label appBlueprint effects =
+  case Native.buildNativeApp appBlueprint effects of
+    Right plan
+      | Native.nativePlanPassed plan ->
+          pure ()
+      | otherwise ->
+          failWitness label (Native.renderNativePlanErrors plan)
+    Left message ->
+      failWitness label message
+
+requirePlanFails :: String -> W.AppBlueprint -> E.EffectTheory -> IO ()
+requirePlanFails label appBlueprint effects =
+  case Native.buildNativeApp appBlueprint effects of
+    Right plan
+      | Native.nativePlanPassed plan ->
+          failWitness label "plan unexpectedly passed"
+      | otherwise ->
+          pure ()
+    Left _ ->
+      pure ()
+
 runFactAs :: W.EffectSystemName -> W.WorkflowFact -> W.App
 runFactAs name currentFact =
   W.run (W.effectSystem name (W.factItems [currentFact]))
@@ -649,6 +691,54 @@ alignmentTheory =
     [ factPure alignmentFirstFact
     , E.fact alignmentSecondFact [E.needs alignmentFirstFact]
     ]
+
+boundaryTheory :: E.EffectTheory
+boundaryTheory =
+  theory
+    [ factPure boundaryImportFact
+    , factPure boundaryPrivateFact
+    , factPure boundaryExportFact
+    , factPure boundaryMissingImportFact
+    ]
+
+validScopeBlueprint :: W.AppBlueprint
+validScopeBlueprint =
+  blueprint
+    ( W.chain
+        [ W.run
+            ( W.effectSystemFromBoundary
+                (W.systemBoundary boundaryProviderFlow [] [] [boundaryImportFact])
+            )
+        , W.run
+            ( W.effectSystemFromBoundary
+                (W.systemBoundary boundaryFlow [boundaryImportFact] [boundaryPrivateFact] [boundaryExportFact])
+            )
+        ]
+    )
+
+missingExporterBlueprint :: W.AppBlueprint
+missingExporterBlueprint =
+  blueprint
+    ( W.run
+        ( W.effectSystemFromBoundary
+            (W.systemBoundary boundaryFlow [boundaryMissingImportFact] [] [boundaryExportFact])
+        )
+    )
+
+privateImportBlueprint :: W.AppBlueprint
+privateImportBlueprint =
+  blueprint
+    ( W.chain
+        [ W.run
+            ( W.effectSystemFromBoundary
+                (W.systemBoundary boundaryProviderFlow [] [boundaryPrivateFact] [boundaryImportFact])
+            )
+        , W.run
+            ( W.effectSystemFromBoundary
+                (W.systemBoundary boundaryFlow [boundaryPrivateFact] [] [boundaryExportFact])
+            )
+        ]
+    )
 
 workflowSemanticsEffect :: E.EffectName
 workflowSemanticsEffect =
@@ -766,6 +856,10 @@ boundaryFlow :: W.EffectSystemName
 boundaryFlow =
   W.EffectSystemName "WorkflowSemanticsBoundaryFlow"
 
+boundaryProviderFlow :: W.EffectSystemName
+boundaryProviderFlow =
+  W.EffectSystemName "WorkflowSemanticsBoundaryProviderFlow"
+
 selectedChoice :: W.ChoiceKey
 selectedChoice =
   W.ChoiceKey "selected"
@@ -789,3 +883,7 @@ boundaryPrivateFact =
 boundaryExportFact :: W.WorkflowFact
 boundaryExportFact =
   W.WorkflowFact "WorkflowSemanticsBoundaryExportFact"
+
+boundaryMissingImportFact :: W.WorkflowFact
+boundaryMissingImportFact =
+  W.WorkflowFact "WorkflowSemanticsBoundaryMissingImportFact"

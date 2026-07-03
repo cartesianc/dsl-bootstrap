@@ -49,6 +49,7 @@ suspense snapshot
 callback 失败记录
 Bootstrap.Runtime / Framework.Runtime fact 对齐
 EffectSystemBoundary imports / private facts / exports 执行语义
+EffectSystem scope validation
 ```
 
 每个 witness claim 输出 `WorkflowSemanticsEvidencePayload`：
