@@ -50,9 +50,14 @@ library
                      , Bootstrap.Effects.CoreRuntime.Facts.RuntimeEvidencePassed
                      , Bootstrap.Effects.CoreRuntime.Registration.Effect
                      , Bootstrap.Effects.CoreSurface.Registration.Effect
+                     , Bootstrap.RegistryCodegen
                      , Bootstrap.Report
                      , Bootstrap.Runtime
+                     , Bootstrap.Runtime.BootstrapHandlers
                      , Bootstrap.Runtime.Boundary
+                     , Bootstrap.Runtime.Build
+                     , Bootstrap.Runtime.Contract
+                     , Bootstrap.Runtime.Interpreter
                      , Bootstrap.Runtime.SourceGraph
                      , Bootstrap.Runtime.Types
                      , Bootstrap.Vocabulary
@@ -67,14 +72,22 @@ library
                      , Framework.Background
                      , Framework.Background.ConstraintProof
                      , Framework.Background.RuntimeDiagnosis
+                     , Framework.Ast
                      , Framework.Business
                      , Framework.Domain
                      , Framework.Effect
                      , Framework.FixedPoint
+                     , Framework.Handler
                      , Framework.RegistryCodegen
                      , Framework.Runtime
                      , Framework.SelfArtifact
+                     , Framework.TrustBase
                      , Framework.Workflow
+                     , FrameworkCore.BaseApp
+                     , FrameworkCore.CurrentApp
+                     , FrameworkCore.CurrentAst
+                     , FrameworkCore.CurrentEffects
+                     , FrameworkCore.CurrentInterpreter
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , directory
@@ -254,6 +267,22 @@ executable workflow-semantics-witness
 executable constraint-proof-witness
   hs-source-dirs:      app
   main-is:             ConstraintProofWitness.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable framework-core-frontend-witness
+  hs-source-dirs:      app
+  main-is:             FrameworkCoreFrontendWitness.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , new-framework-core

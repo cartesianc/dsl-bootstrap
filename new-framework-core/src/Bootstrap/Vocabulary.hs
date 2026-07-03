@@ -42,6 +42,8 @@ module Bootstrap.Vocabulary
   , pattern FormalizeCoreSurfaceModule
   , pattern FrameworkCoreExpressedFact
   , pattern FrameworkCoreFlow
+  , pattern FrameworkCoreFrontendArtifact
+  , pattern FrameworkCoreFrontendGeneratedFact
   , pattern FrameworkCoreModuleCatalog
   , pattern FrameworkCoreModulesClassifiedFact
   , pattern FrameworkCoreNativeValidatedFact
@@ -69,23 +71,69 @@ module Bootstrap.Vocabulary
   , pattern RegistryCodegenArtifact
   , pattern RegistryCodegenEvidencePassedFact
   , pattern RegistryCodegenExpressedFact
+  , pattern RunFrameworkCoreFrontendCodegenEvidence
   , pattern RunRegistryCodegenEvidence
   , pattern RunSelfArtifactManifestEvidence
+  , pattern BuildRuntimePlan
   , pattern RuntimeEvidenceArtifact
   , pattern RuntimeBackendAdapterExpressedFact
   , pattern RuntimeBackendParityExpressedFact
+  , pattern RuntimeBackendParityEvidenceArtifact
+  , pattern RuntimeBackendParityEvidencePassedFact
   , pattern RuntimeBranchExpressionFlow
+  , pattern RuntimeArtifactClosureArtifact
+  , pattern RuntimeArtifactClosureValidatedFact
+  , pattern RuntimeConcurrencyEvidenceArtifact
+  , pattern RuntimeConcurrencyEvidencePassedFact
   , pattern RuntimeConcurrencySemanticsExpressedFact
+  , pattern RuntimeErrorDispatchArtifact
+  , pattern RuntimeErrorDispatchValidatedFact
+  , pattern RuntimeFactRuleClosureArtifact
+  , pattern RuntimeFactRuleClosureValidatedFact
+  , pattern RuntimeHandlerRegistryArtifact
+  , pattern RuntimeHandlerRegistryValidatedFact
+  , pattern RuntimeIdempotencyPolicyArtifact
+  , pattern RuntimeIdempotencyPolicyValidatedFact
+  , pattern RuntimePlanArtifact
+  , pattern RuntimePlanBuiltFact
+  , pattern RuntimeRetryPolicyArtifact
+  , pattern RuntimeRetryPolicyValidatedFact
+  , pattern RuntimeSendBoundaryCoverageArtifact
+  , pattern RuntimeSendBoundaryCoveredFact
+  , pattern RuntimeTransformRegistryArtifact
+  , pattern RuntimeTransformRegistryValidatedFact
+  , pattern ValidateRuntimeArtifactClosure
+  , pattern ValidateRuntimeErrorDispatch
+  , pattern ValidateRuntimeFactRuleClosure
+  , pattern ValidateRuntimeHandlerRegistry
+  , pattern ValidateRuntimeIdempotencyPolicy
+  , pattern RunRuntimeBackendParityEvidence
+  , pattern RunRuntimeConcurrencyEvidence
+  , pattern RunRuntimeDiagnosisEvidence
+  , pattern RunRuntimeExecutionEvidence
   , pattern RunRuntimeEvidence
+  , pattern RunRuntimePlanBuildEvidence
+  , pattern RunRuntimeValidationEvidence
   , pattern RunSmtProof
+  , pattern ValidateRuntimeRetryPolicy
+  , pattern ValidateRuntimeSendBoundaryCoverage
+  , pattern ValidateRuntimeTransformRegistry
+  , pattern RuntimeDiagnosisEvidenceArtifact
+  , pattern RuntimeDiagnosisEvidencePassedFact
   , pattern RuntimeDiagnosisExpressedFact
   , pattern SelfArtifactManifestArtifact
   , pattern SelfArtifactManifestEvidencePassedFact
   , pattern SelfArtifactManifestExpressedFact
   , pattern SmtProofEvidence
   , pattern RuntimeEvidencePassedFact
+  , pattern RuntimeExecutionEvidenceArtifact
+  , pattern RuntimeExecutionEvidencePassedFact
   , pattern RuntimeExecutionSemanticsExpressedFact
+  , pattern RuntimePlanBuildEvidenceArtifact
+  , pattern RuntimePlanBuildEvidencePassedFact
   , pattern SmtProofPassedFact
+  , pattern RuntimeValidationEvidenceArtifact
+  , pattern RuntimeValidationEvidencePassedFact
   , pattern RuntimePlanBuildExpressedFact
   , pattern RuntimeTypesExpressedFact
   , pattern RuntimeValidationExpressedFact
@@ -178,6 +226,54 @@ pattern SmtProofPassedFact = WorkflowFact "SmtProofPassedFact"
 
 pattern RuntimeEvidencePassedFact :: WorkflowFact
 pattern RuntimeEvidencePassedFact = WorkflowFact "RuntimeEvidencePassedFact"
+
+pattern RuntimePlanBuiltFact :: WorkflowFact
+pattern RuntimePlanBuiltFact = WorkflowFact "RuntimePlanBuiltFact"
+
+pattern RuntimeFactRuleClosureValidatedFact :: WorkflowFact
+pattern RuntimeFactRuleClosureValidatedFact = WorkflowFact "RuntimeFactRuleClosureValidatedFact"
+
+pattern RuntimeArtifactClosureValidatedFact :: WorkflowFact
+pattern RuntimeArtifactClosureValidatedFact = WorkflowFact "RuntimeArtifactClosureValidatedFact"
+
+pattern RuntimeSendBoundaryCoveredFact :: WorkflowFact
+pattern RuntimeSendBoundaryCoveredFact = WorkflowFact "RuntimeSendBoundaryCoveredFact"
+
+pattern RuntimeHandlerRegistryValidatedFact :: WorkflowFact
+pattern RuntimeHandlerRegistryValidatedFact = WorkflowFact "RuntimeHandlerRegistryValidatedFact"
+
+pattern RuntimeTransformRegistryValidatedFact :: WorkflowFact
+pattern RuntimeTransformRegistryValidatedFact = WorkflowFact "RuntimeTransformRegistryValidatedFact"
+
+pattern RuntimePlanBuildEvidencePassedFact :: WorkflowFact
+pattern RuntimePlanBuildEvidencePassedFact = WorkflowFact "RuntimePlanBuildEvidencePassedFact"
+
+pattern RuntimeValidationEvidencePassedFact :: WorkflowFact
+pattern RuntimeValidationEvidencePassedFact = WorkflowFact "RuntimeValidationEvidencePassedFact"
+
+pattern RuntimeExecutionEvidencePassedFact :: WorkflowFact
+pattern RuntimeExecutionEvidencePassedFact = WorkflowFact "RuntimeExecutionEvidencePassedFact"
+
+pattern RuntimeConcurrencyEvidencePassedFact :: WorkflowFact
+pattern RuntimeConcurrencyEvidencePassedFact = WorkflowFact "RuntimeConcurrencyEvidencePassedFact"
+
+pattern RuntimeErrorDispatchValidatedFact :: WorkflowFact
+pattern RuntimeErrorDispatchValidatedFact = WorkflowFact "RuntimeErrorDispatchValidatedFact"
+
+pattern RuntimeRetryPolicyValidatedFact :: WorkflowFact
+pattern RuntimeRetryPolicyValidatedFact = WorkflowFact "RuntimeRetryPolicyValidatedFact"
+
+pattern RuntimeIdempotencyPolicyValidatedFact :: WorkflowFact
+pattern RuntimeIdempotencyPolicyValidatedFact = WorkflowFact "RuntimeIdempotencyPolicyValidatedFact"
+
+pattern RuntimeDiagnosisEvidencePassedFact :: WorkflowFact
+pattern RuntimeDiagnosisEvidencePassedFact = WorkflowFact "RuntimeDiagnosisEvidencePassedFact"
+
+pattern RuntimeBackendParityEvidencePassedFact :: WorkflowFact
+pattern RuntimeBackendParityEvidencePassedFact = WorkflowFact "RuntimeBackendParityEvidencePassedFact"
+
+pattern FrameworkCoreFrontendGeneratedFact :: WorkflowFact
+pattern FrameworkCoreFrontendGeneratedFact = WorkflowFact "FrameworkCoreFrontendGeneratedFact"
 
 pattern RegistryCodegenEvidencePassedFact :: WorkflowFact
 pattern RegistryCodegenEvidencePassedFact = WorkflowFact "RegistryCodegenEvidencePassedFact"
@@ -311,6 +407,54 @@ pattern SmtProofEvidence = TypeName "SmtProofEvidence"
 pattern RuntimeEvidenceArtifact :: TypeName
 pattern RuntimeEvidenceArtifact = TypeName "RuntimeEvidenceArtifact"
 
+pattern RuntimePlanArtifact :: TypeName
+pattern RuntimePlanArtifact = TypeName "RuntimePlanArtifact"
+
+pattern RuntimeFactRuleClosureArtifact :: TypeName
+pattern RuntimeFactRuleClosureArtifact = TypeName "RuntimeFactRuleClosureArtifact"
+
+pattern RuntimeArtifactClosureArtifact :: TypeName
+pattern RuntimeArtifactClosureArtifact = TypeName "RuntimeArtifactClosureArtifact"
+
+pattern RuntimeSendBoundaryCoverageArtifact :: TypeName
+pattern RuntimeSendBoundaryCoverageArtifact = TypeName "RuntimeSendBoundaryCoverageArtifact"
+
+pattern RuntimeHandlerRegistryArtifact :: TypeName
+pattern RuntimeHandlerRegistryArtifact = TypeName "RuntimeHandlerRegistryArtifact"
+
+pattern RuntimeTransformRegistryArtifact :: TypeName
+pattern RuntimeTransformRegistryArtifact = TypeName "RuntimeTransformRegistryArtifact"
+
+pattern RuntimePlanBuildEvidenceArtifact :: TypeName
+pattern RuntimePlanBuildEvidenceArtifact = TypeName "RuntimePlanBuildEvidenceArtifact"
+
+pattern RuntimeValidationEvidenceArtifact :: TypeName
+pattern RuntimeValidationEvidenceArtifact = TypeName "RuntimeValidationEvidenceArtifact"
+
+pattern RuntimeExecutionEvidenceArtifact :: TypeName
+pattern RuntimeExecutionEvidenceArtifact = TypeName "RuntimeExecutionEvidenceArtifact"
+
+pattern RuntimeConcurrencyEvidenceArtifact :: TypeName
+pattern RuntimeConcurrencyEvidenceArtifact = TypeName "RuntimeConcurrencyEvidenceArtifact"
+
+pattern RuntimeErrorDispatchArtifact :: TypeName
+pattern RuntimeErrorDispatchArtifact = TypeName "RuntimeErrorDispatchArtifact"
+
+pattern RuntimeRetryPolicyArtifact :: TypeName
+pattern RuntimeRetryPolicyArtifact = TypeName "RuntimeRetryPolicyArtifact"
+
+pattern RuntimeIdempotencyPolicyArtifact :: TypeName
+pattern RuntimeIdempotencyPolicyArtifact = TypeName "RuntimeIdempotencyPolicyArtifact"
+
+pattern RuntimeDiagnosisEvidenceArtifact :: TypeName
+pattern RuntimeDiagnosisEvidenceArtifact = TypeName "RuntimeDiagnosisEvidenceArtifact"
+
+pattern RuntimeBackendParityEvidenceArtifact :: TypeName
+pattern RuntimeBackendParityEvidenceArtifact = TypeName "RuntimeBackendParityEvidenceArtifact"
+
+pattern FrameworkCoreFrontendArtifact :: TypeName
+pattern FrameworkCoreFrontendArtifact = TypeName "FrameworkCoreFrontendArtifact"
+
 pattern RegistryCodegenArtifact :: TypeName
 pattern RegistryCodegenArtifact = TypeName "RegistryCodegenArtifact"
 
@@ -362,8 +506,56 @@ pattern GenerateConstraintIR = SendName "GenerateConstraintIR"
 pattern RunSmtProof :: SendName
 pattern RunSmtProof = SendName "RunSmtProof"
 
+pattern BuildRuntimePlan :: SendName
+pattern BuildRuntimePlan = SendName "BuildRuntimePlan"
+
+pattern ValidateRuntimeFactRuleClosure :: SendName
+pattern ValidateRuntimeFactRuleClosure = SendName "ValidateRuntimeFactRuleClosure"
+
+pattern ValidateRuntimeArtifactClosure :: SendName
+pattern ValidateRuntimeArtifactClosure = SendName "ValidateRuntimeArtifactClosure"
+
+pattern ValidateRuntimeSendBoundaryCoverage :: SendName
+pattern ValidateRuntimeSendBoundaryCoverage = SendName "ValidateRuntimeSendBoundaryCoverage"
+
+pattern ValidateRuntimeHandlerRegistry :: SendName
+pattern ValidateRuntimeHandlerRegistry = SendName "ValidateRuntimeHandlerRegistry"
+
+pattern ValidateRuntimeTransformRegistry :: SendName
+pattern ValidateRuntimeTransformRegistry = SendName "ValidateRuntimeTransformRegistry"
+
+pattern ValidateRuntimeErrorDispatch :: SendName
+pattern ValidateRuntimeErrorDispatch = SendName "ValidateRuntimeErrorDispatch"
+
+pattern ValidateRuntimeRetryPolicy :: SendName
+pattern ValidateRuntimeRetryPolicy = SendName "ValidateRuntimeRetryPolicy"
+
+pattern ValidateRuntimeIdempotencyPolicy :: SendName
+pattern ValidateRuntimeIdempotencyPolicy = SendName "ValidateRuntimeIdempotencyPolicy"
+
 pattern RunRuntimeEvidence :: SendName
 pattern RunRuntimeEvidence = SendName "RunRuntimeEvidence"
+
+pattern RunRuntimePlanBuildEvidence :: SendName
+pattern RunRuntimePlanBuildEvidence = SendName "RunRuntimePlanBuildEvidence"
+
+pattern RunRuntimeValidationEvidence :: SendName
+pattern RunRuntimeValidationEvidence = SendName "RunRuntimeValidationEvidence"
+
+pattern RunRuntimeExecutionEvidence :: SendName
+pattern RunRuntimeExecutionEvidence = SendName "RunRuntimeExecutionEvidence"
+
+pattern RunRuntimeConcurrencyEvidence :: SendName
+pattern RunRuntimeConcurrencyEvidence = SendName "RunRuntimeConcurrencyEvidence"
+
+pattern RunRuntimeDiagnosisEvidence :: SendName
+pattern RunRuntimeDiagnosisEvidence = SendName "RunRuntimeDiagnosisEvidence"
+
+pattern RunRuntimeBackendParityEvidence :: SendName
+pattern RunRuntimeBackendParityEvidence = SendName "RunRuntimeBackendParityEvidence"
+
+pattern RunFrameworkCoreFrontendCodegenEvidence :: SendName
+pattern RunFrameworkCoreFrontendCodegenEvidence = SendName "RunFrameworkCoreFrontendCodegenEvidence"
 
 pattern RunRegistryCodegenEvidence :: SendName
 pattern RunRegistryCodegenEvidence = SendName "RunRegistryCodegenEvidence"

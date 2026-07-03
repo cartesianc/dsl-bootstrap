@@ -3,7 +3,9 @@ module Bootstrap.Effects.CoreRegistry.Registration.Effect
   ) where
 
 import Bootstrap.Effects.CoreRegistry.Facts.RegistryCodegenEvidencePassed
-  ( registryCodegenEvidencePassedFact )
+  ( frameworkCoreFrontendGeneratedFact
+  , registryCodegenEvidencePassedFact
+  )
 import Bootstrap.Vocabulary
 import Bootstrap.Effect
   ( EffectSection
@@ -15,10 +17,16 @@ import Bootstrap.Effect
 coreRegistryEffect :: EffectUnit
 coreRegistryEffect =
   effect CoreRegistryEffect
-    [ registryCodegenEvidencePassedFact
+    [ frameworkCoreFrontendGeneratedFact
+    , registryCodegenEvidencePassedFact
+    , runFrameworkCoreFrontendCodegenEvidenceBoundary
     , runRegistryCodegenEvidenceBoundary
     ]
 
+runFrameworkCoreFrontendCodegenEvidenceBoundary :: EffectSection
+runFrameworkCoreFrontendCodegenEvidenceBoundary =
+  externalMake RunFrameworkCoreFrontendCodegenEvidence MinimalCoreReportArtifact FrameworkCoreFrontendArtifact
+
 runRegistryCodegenEvidenceBoundary :: EffectSection
 runRegistryCodegenEvidenceBoundary =
-  externalMake RunRegistryCodegenEvidence MinimalCoreReportArtifact RegistryCodegenArtifact
+  externalMake RunRegistryCodegenEvidence FrameworkCoreFrontendArtifact RegistryCodegenArtifact

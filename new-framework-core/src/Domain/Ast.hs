@@ -8,7 +8,7 @@ module Domain.Ast
 
 import Domain.AppBlueprint
   ( frameworkCoreBlueprint )
-import Framework.Workflow
+import Framework.Ast
   ( AppBlueprint
   )
 

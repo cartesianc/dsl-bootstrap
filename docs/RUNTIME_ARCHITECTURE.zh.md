@@ -74,20 +74,43 @@ RuntimeTypesExpressedFact
 
 RuntimePlanBuildExpressedFact
   needs MinimalCoreReportBuiltFact
+  needs RuntimePlanBuiltFact
+  needs RuntimeFactRuleClosureValidatedFact
+  needs RuntimeArtifactClosureValidatedFact
+  needs RuntimeSendBoundaryCoveredFact
+  needs RuntimePlanBuildEvidencePassedFact
 
 RuntimeValidationExpressedFact
   needs MinimalCoreReportBuiltFact
   needs ConstraintIRBuiltFact
   needs SmtProofPassedFact
+  needs RuntimeFactRuleClosureValidatedFact
+  needs RuntimeArtifactClosureValidatedFact
+  needs RuntimeValidationEvidencePassedFact
 
 RuntimeExecutionSemanticsExpressedFact
 RuntimeConcurrencySemanticsExpressedFact
+  needs Runtime*EvidencePassedFact
+
 RuntimeDiagnosisExpressedFact
-  needs RuntimeEvidencePassedFact
+  needs RuntimeErrorDispatchValidatedFact
+  needs RuntimeRetryPolicyValidatedFact
+  needs RuntimeIdempotencyPolicyValidatedFact
+  needs RuntimeDiagnosisEvidencePassedFact
 
 RuntimeBackendAdapterExpressedFact
+  needs CoreSurfaceFormalizedFact
+  needs RuntimeHandlerRegistryValidatedFact
+  needs RuntimeTransformRegistryValidatedFact
+  needs RuntimeExecutionEvidencePassedFact
+
 RuntimeBackendParityExpressedFact
   needs CoreSurfaceFormalizedFact
+  needs RuntimeBackendParityEvidencePassedFact
+
+RuntimeFactClosureExpressedFact
+  needs RuntimeArtifactClosureValidatedFact
+  needs RuntimeSendBoundaryCoveredFact
   needs RuntimeEvidencePassedFact
 ```
 
@@ -117,16 +140,29 @@ Bootstrap.Runtime.Boundary
   language spec check
   elaboration contract check
   source root declarations
+
+Bootstrap.Runtime.Build
+  Workflow AST + EffectTheory -> NativeAppPlan
+  fact rule / send contract / native constraint build
+
+Bootstrap.Runtime.Contract
+  plan built / fact rule closure / artifact closure
+  send boundary coverage
+  handler registry / transform registry validation
+
+Bootstrap.Runtime.Interpreter
+  native workflow/fact closure interpreter
+
+Bootstrap.Runtime.BootstrapHandlers
+  bootstrap send boundary dispatcher
 ```
 
 后续继续拆分时，建议保持这个方向：
 
 ```text
-Bootstrap.Runtime.Build
-Bootstrap.Runtime.Validation
-Bootstrap.Runtime.Interpreter
 Bootstrap.Runtime.Concurrent
-Bootstrap.Runtime.BootstrapHandlers
+Bootstrap.Runtime.EvidencePayload
+Bootstrap.Runtime.Policy
 ```
 
 每一步都应只搬移职责，不改变 `Workflow` 语义和 `EffectTheory` 闭包。

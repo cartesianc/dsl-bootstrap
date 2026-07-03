@@ -399,6 +399,9 @@ data WorkflowBranchResult
   = WorkflowBranchSucceeded Int Runtime
   | WorkflowBranchFailed Int RuntimeError Runtime
 
+data RuntimeTransformUse
+  = RuntimeTransformUse TypeName TypeName TransformName RuntimeTransform
+
 data RuntimeResult a
   = RuntimeSucceeded a RuntimeState
   | RuntimeFailed RuntimeError RuntimeState
@@ -1094,10 +1097,7 @@ ensureFact stack currentFact = do
                 Right _ -> do
                   directResult <-
                     catchRuntime
-                      ( do
-                          runRuleTransforms rule
-                          runRuleSends rule
-                      )
+                      (runRulePipeline rule)
                   case directResult of
                     Left errorReport ->
                       handleRuleDirectFailure rule errorReport
@@ -1142,12 +1142,24 @@ ensureRuleTakes stack rule =
             sources ->
               throwRuntimeError (RuntimeWaitBlocked ("duplicate producers for pipe type " ++ show currentType ++ ": " ++ show sources))
 
-runRuleTransforms :: NativeFactRule -> RuntimeM ()
-runRuleTransforms rule =
-  mapM_ runTransform (nativeRuleTransforms rule)
+runRulePipeline :: NativeFactRule -> RuntimeM ()
+runRulePipeline rule = do
+  transforms <- resolveRuleTransforms rule
+  pendingBeforeSends <- runAvailableTransforms transforms
+  pendingAfterSends <- runPipelineSends pendingBeforeSends (nativeRuleUses rule)
+  unresolved <- runAvailableTransforms pendingAfterSends
+  case unresolved of
+    [] ->
+      pure ()
+    RuntimeTransformUse expectedInput _ transformName _ : _ ->
+      throwRuntimeError (RuntimeMissingTransformInput transformName expectedInput)
 
-runTransform :: (TypeName, TypeName, TransformName) -> RuntimeM ()
-runTransform (expectedInput, expectedOutput, transformName) = do
+resolveRuleTransforms :: NativeFactRule -> RuntimeM [RuntimeTransformUse]
+resolveRuleTransforms rule =
+  mapM resolveTransform (nativeRuleTransforms rule)
+
+resolveTransform :: (TypeName, TypeName, TransformName) -> RuntimeM RuntimeTransformUse
+resolveTransform (expectedInput, expectedOutput, transformName) = do
   environment <- currentEffectEnvironment
   case transformFor (runtimeEffectTransforms environment) transformName of
     Nothing ->
@@ -1164,22 +1176,61 @@ runTransform (expectedInput, expectedOutput, transformName) = do
                 (runtimeTransformInput currentTransform)
                 (runtimeTransformOutput currentTransform)
             )
-        else do
-          runtime <- getRuntimeState
-          case typedValueByType expectedInput runtime of
-            Nothing ->
-              throwRuntimeError (RuntimeMissingTransformInput transformName expectedInput)
-            Just currentInput ->
-              case applyRuntimeTransform transformName currentTransform currentInput of
-                Left errorReport ->
-                  throwRuntimeError errorReport
-                Right currentOutput -> do
-                  modifyRuntimeState (recordRuntimeTypedValues [currentOutput])
-                  traceRuntimeM ("transform " ++ show transformName)
+        else
+          pure (RuntimeTransformUse expectedInput expectedOutput transformName currentTransform)
 
-runRuleSends :: NativeFactRule -> RuntimeM ()
-runRuleSends rule =
-  mapM_ runSendWithPolicyOrThrow (nativeRuleUses rule)
+runPipelineSends :: [RuntimeTransformUse] -> [SendName] -> RuntimeM [RuntimeTransformUse]
+runPipelineSends pending [] =
+  pure pending
+runPipelineSends pending (currentSend : rest) = do
+  readyBeforeSend <- runAvailableTransforms pending
+  runSendWithPolicyOrThrow currentSend
+  readyAfterSend <- runAvailableTransforms readyBeforeSend
+  runPipelineSends readyAfterSend rest
+
+runAvailableTransforms :: [RuntimeTransformUse] -> RuntimeM [RuntimeTransformUse]
+runAvailableTransforms transforms = do
+  (remaining, changed) <- runAvailableTransformPass transforms
+  if changed
+    then runAvailableTransforms remaining
+    else pure remaining
+
+runAvailableTransformPass :: [RuntimeTransformUse] -> RuntimeM ([RuntimeTransformUse], Bool)
+runAvailableTransformPass [] =
+  pure ([], False)
+runAvailableTransformPass (currentTransform : rest) = do
+  currentResult <- runTransformIfAvailable currentTransform
+  (remainingRest, restChanged) <- runAvailableTransformPass rest
+  case currentResult of
+    TransformApplied ->
+      pure (remainingRest, True)
+    TransformAlreadySatisfied ->
+      pure (remainingRest, restChanged)
+    TransformWaiting ->
+      pure (currentTransform : remainingRest, restChanged)
+
+data RuntimeTransformProgress
+  = TransformApplied
+  | TransformAlreadySatisfied
+  | TransformWaiting
+
+runTransformIfAvailable :: RuntimeTransformUse -> RuntimeM RuntimeTransformProgress
+runTransformIfAvailable (RuntimeTransformUse expectedInput expectedOutput transformName currentTransform) = do
+  runtime <- getRuntimeState
+  if artifactAvailable expectedOutput runtime
+    then pure TransformAlreadySatisfied
+    else
+      case typedValueByType expectedInput runtime of
+        Nothing ->
+          pure TransformWaiting
+        Just currentInput ->
+          case applyRuntimeTransform transformName currentTransform currentInput of
+            Left errorReport ->
+              throwRuntimeError errorReport
+            Right currentOutput -> do
+              modifyRuntimeState (recordRuntimeTypedValues [currentOutput])
+              traceRuntimeM ("transform " ++ show transformName)
+              pure TransformApplied
 
 runSendWithPolicyOrThrow :: SendName -> RuntimeM ()
 runSendWithPolicyOrThrow currentSend = do
@@ -1461,12 +1512,17 @@ sendRetryAllowed currentSend = do
 markRuleSucceeded :: NativeFactRule -> RuntimeM ()
 markRuleSucceeded rule =
   modifyRuntimeState
-    ( markFact (nativeRuleFact rule)
-        . recordRuntimeValues
-          [ RuntimeValue currentType ("produced by " ++ show (nativeRuleFact rule))
-          | currentType <- nativeRuleMakes rule
-          , isPipeType currentType
-          ]
+    ( \runtime ->
+        markFact
+          (nativeRuleFact rule)
+          ( recordRuntimeValues
+              [ RuntimeValue currentType ("produced by " ++ show (nativeRuleFact rule))
+              | currentType <- nativeRuleMakes rule
+              , isPipeType currentType
+              , currentType `notElem` availablePipeTypes runtime
+              ]
+              runtime
+          )
     )
 
 runHanging :: Workflow.AppHanging -> RuntimeM ()

@@ -11,11 +11,19 @@ import Domain.RegistryCodegenSpec
   )
 import Effects.User
   ( userEffect )
-import Framework.Background
+import Framework.Handler
   ( HandlerBinding (..)
   , HandlerInput (..)
   , HandlerRegistry (..)
   , HandlerResult (..)
+  , RuntimeHandler (..)
+  , RuntimeValue (..)
+  , runtimeEffectEnvironment
+  )
+import Framework.TrustBase
+  ( DomainRegistration (domainRegistrationName)
+  , DomainSemanticCheck (..)
+  , DomainSemanticEvidence
   , NativeAppPlan
   , Runtime (..)
   , RuntimeDiagnosisBlocker (..)
@@ -26,21 +34,15 @@ import Framework.Background
   , RuntimeFactClaim (..)
   , RuntimeFactStatus (..)
   , RuntimeFailureDiagnosis (..)
-  , RuntimeHandler (..)
   , RuntimeResult (..)
-  , RuntimeValue (..)
   , buildApp
   , buildFailureDiagnosis
-  , emptyRuntime
-  , runtimeEffectEnvironment
-  , runBlueprintWithEffectEnvironmentRuntimeResult
-  )
-import Framework.Domain
-  ( DomainSemanticCheck (..)
-  , DomainSemanticEvidence
-  , DomainRegistration (domainRegistrationName)
+  , diffGeneratedLines
   , domainEvidenceFailed
   , domainEvidencePassed
+  , emptyRuntime
+  , generatedLinesMatch
+  , runBlueprintWithEffectEnvironmentRuntimeResult
   )
 import Framework.Effect
   ( EffectName (..)
@@ -51,14 +53,10 @@ import Framework.Effect
   , pattern ErrorInput
   , theory
   )
-import Framework.Workflow
+import Framework.Ast
   ( AppBlueprint (..)
   )
-import qualified Framework.Workflow as Workflow
-import Framework.RegistryCodegen
-  ( diffGeneratedLines
-  , generatedLinesMatch
-  )
+import qualified Framework.Ast as Workflow
 
 domainSemanticChecks :: [DomainSemanticCheck]
 domainSemanticChecks =

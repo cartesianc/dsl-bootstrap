@@ -17,7 +17,7 @@ module Domain.Runtime
   ) where
 
 import Domain.EffectVocabulary
-import Framework.Background
+import Framework.Handler
   ( HandlerBinding (..)
   , HandlerRegistry (..)
   , HandlerResult (..)

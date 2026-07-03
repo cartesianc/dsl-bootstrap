@@ -78,9 +78,12 @@ coreSurfaceModules =
 
 explicitCoreSurfaceModules :: [CoreSurfaceModule]
 explicitCoreSurfaceModules =
-  [ workflowFacade
+  [ astFacade
+  , workflowFacade
   , effectFacade
   , businessFacade
+  , handlerFacade
+  , trustBaseFacade
   , hyloFacade
   , backgroundAppBuild
   , backgroundBootstrapBoundary
@@ -238,13 +241,14 @@ coreSurfaceSlices =
       , coreSurfaceSliceRole = "frontend-facade"
       , coreSurfaceSlicePhase = "minimal-core-freeze"
       , coreSurfaceSliceModules =
-          [ "Framework.Workflow"
+          [ "Framework.Ast"
+          , "Framework.Workflow"
           , "Framework.Effect"
           , "Framework.Business"
           , "Framework.Hylo"
           ]
       , coreSurfaceSliceDependsOn = ["CoreSyntax", "CoreLanguageSpec", "CoreEffectTheory", "CoreHylo"]
-      , coreSurfaceSlicePurpose = "public frontend import surface for workflow, effect, and hylo declarations"
+      , coreSurfaceSlicePurpose = "public frontend import surface for AST, effect, business, workflow, and hylo declarations"
       }
   , CoreSurfaceSlice
       { coreSurfaceSliceName = "CoreFrontendBoundary"
@@ -262,14 +266,20 @@ coreSurfaceSlices =
       , coreSurfaceSlicePhase = "self-bootstrap"
       , coreSurfaceSliceModules =
           [ "Bootstrap.Runtime"
+          , "Bootstrap.Runtime.BootstrapHandlers"
           , "Bootstrap.Runtime.Boundary"
+          , "Bootstrap.Runtime.Build"
+          , "Bootstrap.Runtime.Contract"
+          , "Bootstrap.Runtime.Interpreter"
           , "Bootstrap.Runtime.SourceGraph"
           , "Bootstrap.Runtime.Types"
+          , "Framework.Handler"
           , "Framework.Runtime"
+          , "Framework.TrustBase"
           , "Framework.Background.RuntimeDiagnosis"
           ]
       , coreSurfaceSliceDependsOn = ["CoreRecursion", "CoreEffectTheory", "CoreAppBuild"]
-      , coreSurfaceSlicePurpose = "single runtime semantics exposed through bootstrap and typed backend adapters"
+      , coreSurfaceSlicePurpose = "single runtime semantics exposed through bootstrap, handler, trust-base, and typed backend adapters"
       }
   ]
 
@@ -303,7 +313,13 @@ supplementalCoreModuleSurfaces =
     , ("AST.Vocabulary", "AST data structure")
     , ("Core.Bootstrap", "boundary checks")
     , ("Core.ImportGraph", "boundary checks")
+    , ("Bootstrap.RegistryCodegen", "framework-core frontend codegen source")
     , ("Framework.Background", "background compatibility facade expressed as a target module")
+    , ("FrameworkCore.BaseApp", "framework-core readable frontend")
+    , ("FrameworkCore.CurrentApp", "framework-core readable frontend")
+    , ("FrameworkCore.CurrentAst", "framework-core readable frontend")
+    , ("FrameworkCore.CurrentEffects", "framework-core readable frontend")
+    , ("FrameworkCore.CurrentInterpreter", "framework-core readable frontend")
     , ("Interpreter", "legacy interpreter facade")
     , ("Interpreter.Contextware", "legacy interpreter facade")
     , ("Interpreter.EffectAlgebra", "legacy interpreter facade")
@@ -523,6 +539,13 @@ allFacts :: [WorkflowFact] -> FactExpr WorkflowFact
 allFacts =
   factAll . map (factItems . (: []))
 
+astFacade :: CoreSurfaceModule
+astFacade =
+  moduleSurface
+    "Framework.Ast"
+    "frontend AST facade for app blueprints, workflow structure, hanging hooks, facts, and names"
+    (surfaceModuleCapabilities workflowFacade)
+
 workflowFacade :: CoreSurfaceModule
 workflowFacade =
   moduleSurface
@@ -672,6 +695,99 @@ businessFacade =
           , "transform"
           , "transformBinding"
           , "uses"
+          ]
+    )
+
+handlerFacade :: CoreSurfaceModule
+handlerFacade =
+  moduleSurface
+    "Framework.Handler"
+    "handler implementation facade for typed values, handlers, transforms, and registries"
+    ( map typeCapability
+        [ "ErrorInputValue"
+        , "HandlerBinding"
+        , "HandlerInput"
+        , "HandlerRegistry"
+        , "HandlerResult"
+        , "NoInputValue"
+        , "Runtime"
+        , "RuntimeEffectEnvironment"
+        , "RuntimeHandler"
+        , "RuntimeTransform"
+        , "RuntimeTypedValue"
+        , "RuntimeValue"
+        , "SomeRuntimeValue"
+        , "TransformBinding"
+        , "TransformRegistry"
+        , "UnitValue"
+        , "ValueTag"
+        ]
+        ++ map valueCapability
+          [ "emptyHandlerRegistry"
+          , "emptyTransformRegistry"
+          , "handlerFor"
+          , "handlerInputFromTypedValues"
+          , "handlerInputFromValues"
+          , "runtimeEffectEnvironment"
+          , "runtimeEffectEnvironmentWithTransforms"
+          , "runtimeTransformInput"
+          , "runtimeTransformOutput"
+          , "runtimeTypedValueText"
+          , "runtimeTypedValueToRuntimeValue"
+          , "runtimeTypedValueType"
+          , "runtimeValueToSome"
+          , "sameValueTag"
+          , "someRuntimeValueText"
+          , "someRuntimeValueToRuntimeValue"
+          , "someRuntimeValueType"
+          , "transformFor"
+          , "typedValueFor"
+          , "typedValueFromSome"
+          , "valueTagTypeName"
+          ]
+    )
+
+trustBaseFacade :: CoreSurfaceModule
+trustBaseFacade =
+  moduleSurface
+    "Framework.TrustBase"
+    "framework self-iteration facade for bootstrap runtime, evidence, diagnosis, reports, codegen, fixed point, and artifact gates"
+    ( map typeCapability
+        [ "TrustBaseRuntimeEffectEnvironment"
+        , "NativeAppPlan"
+        , "NativeConstraint"
+        , "NativeFactRule"
+        , "NativeRuntime"
+        , "RuntimeArtifact"
+        , "SendContract"
+        , "Runtime"
+        , "RuntimeResult"
+        , "RuntimeFailureDiagnosis"
+        , "RuntimeDiagnosisNode"
+        , "RuntimeDiagnosisProbe"
+        , "DomainRegistration"
+        , "DomainSemanticCheck"
+        , "DomainSemanticEvidence"
+        , "FixedPointReport"
+        , "ArtifactManifest"
+        , "GeneratedSource"
+        ]
+        ++ map valueCapability
+          [ "bootstrapRuntimeEffectEnvironment"
+          , "buildApp"
+          , "buildNativeApp"
+          , "runNativeBlueprintWithEffectEnvironment"
+          , "runNativeBlueprintWithEffectEnvironmentResult"
+          , "runBlueprintWithEffectEnvironment"
+          , "runBlueprintWithEffectEnvironmentResult"
+          , "runBlueprintWithEffectEnvironmentRuntimeResult"
+          , "buildFailureDiagnosis"
+          , "domainEvidencePassed"
+          , "domainEvidenceFailed"
+          , "diffGeneratedLines"
+          , "generatedLinesMatch"
+          , "buildFixedPointReport"
+          , "runSelfArtifactGate"
           ]
     )
 
@@ -1117,12 +1233,19 @@ registryCodegenFacade =
     "pure registry and codegen rendering for frontend plugin/effect registries"
     ( map typeCapability
         [ "EffectRegistryBinding"
+        , "GeneratedSource"
         , "PluginRegistryBinding"
         ]
         ++ map valueCapability
           [ "diffGeneratedLines"
+          , "frameworkCoreFrontendSources"
           , "generatedLinesMatch"
           , "renderEffectsTheoryModule"
+          , "renderFrameworkCoreBaseAppModule"
+          , "renderFrameworkCoreCurrentAppModule"
+          , "renderFrameworkCoreCurrentAstModule"
+          , "renderFrameworkCoreCurrentEffectsModule"
+          , "renderFrameworkCoreCurrentInterpreterModule"
           , "renderPluginsModule"
           ]
     )

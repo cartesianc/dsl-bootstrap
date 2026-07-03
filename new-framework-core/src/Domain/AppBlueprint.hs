@@ -6,7 +6,7 @@ module Domain.AppBlueprint
 
 import Blueprint
 import Domain.Vocabulary
-import Framework.Workflow
+import Framework.Ast
   ( App
   , AppBlueprint (..)
   , AppHanging

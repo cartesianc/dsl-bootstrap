@@ -2,10 +2,10 @@ module Main
   ( main
   ) where
 
-import Domain.Registry
-  ( runFrameworkCoreDomain
+import FrameworkCore.CurrentApp
+  ( frameworkCoreApp
   )
 
 main :: IO ()
 main =
-  runFrameworkCoreDomain
+  frameworkCoreApp

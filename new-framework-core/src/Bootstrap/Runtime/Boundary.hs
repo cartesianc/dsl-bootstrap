@@ -158,10 +158,12 @@ checkNativeElaborationContract :: [String]
 checkNativeElaborationContract =
   missingCapabilities
     "elaboration contract"
-    [ "Framework.Workflow"
+    [ "Framework.Ast"
     , "Framework.Effect"
+    , "Framework.Business"
+    , "Framework.Handler"
     , "Framework.Hylo"
-    , "Framework.Runtime"
+    , "Framework.TrustBase"
     , "Core.App"
     ]
 
@@ -198,7 +200,11 @@ isExcludedFrontendPath :: FilePath -> Bool
 isExcludedFrontendPath path =
   any (`isSuffixOf` normalise path)
     [ normalise "new-framework-core/src/Bootstrap/Runtime.hs"
+    , normalise "new-framework-core/src/Bootstrap/Runtime/BootstrapHandlers.hs"
     , normalise "new-framework-core/src/Bootstrap/Runtime/Boundary.hs"
+    , normalise "new-framework-core/src/Bootstrap/Runtime/Build.hs"
+    , normalise "new-framework-core/src/Bootstrap/Runtime/Contract.hs"
+    , normalise "new-framework-core/src/Bootstrap/Runtime/Interpreter.hs"
     , normalise "new-framework-core/src/Bootstrap/Runtime/SourceGraph.hs"
     , normalise "new-framework-core/src/Bootstrap/Report.hs"
     , normalise "new-framework-core/src/Domain/EffectHandlers.hs"
@@ -229,10 +235,12 @@ isAllowedFrontendImport currentImport =
       ]
     || "Bootstrap.Effects." `isPrefixOf` currentImport
     || "Bootstrap.Runtime." `isPrefixOf` currentImport
+    || "FrameworkCore." `isPrefixOf` currentImport
 
 isAllowedFrontendImportFor :: FilePath -> String -> Bool
 isAllowedFrontendImportFor path currentImport =
   isAllowedFrontendImport currentImport
+    || (isSelfDomainExpressionPath path && currentImport == "Framework.Ast")
     || (isSelfDomainExpressionPath path && currentImport `elem` selfDomainFacadeImports)
 
 isForbiddenFrontendImport :: String -> Bool
@@ -248,6 +256,7 @@ isForbiddenFrontendImport currentImport =
     , "Framework.Effect"
     , "Framework.Background"
     , "Framework.Background."
+    , "Framework.Runtime"
     , "Effects.EffectTheory"
     , "Effects.Names"
     ]
@@ -261,8 +270,9 @@ isForbiddenFrontendImportFor path currentImport
 
 selfDomainFacadeImports :: [String]
 selfDomainFacadeImports =
-  [ "Framework.Workflow"
+  [ "Framework.Ast"
   , "Framework.Effect"
+  , "Framework.Business"
   , "Domain.Vocabulary"
   ]
 

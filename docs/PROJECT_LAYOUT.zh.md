@@ -30,6 +30,8 @@ new-framework-core/src/Framework
 new-framework-core/src/Domain
   framework-core 自己的 self-domain expression。它通过 facade style 表达 framework-core。
 
+new-framework-core/src/FrameworkCore
+  readable framework-core frontend: baseApp currentTrustBase currentInterpreter currentAst currentEffects.
 new-framework-core/src/Bootstrap/Effects
   framework-core 的 effect registration 和 fact declaration。
 
@@ -143,4 +145,38 @@ domain-app-report passed
 fixed-point-smoke diffs: 0
 workflow-semantics-witness passed
 self-artifact-witness passed
+```
+## 6. Public Facade 边界（当前规范）
+
+业务前台只碰声明式入口：
+
+```text
+Framework.Ast
+Framework.Effect
+Framework.Business
+```
+
+其中 `Framework.Business` 是 effect 前台语法，负责 capability / pipeline / policy / handler binding / transform binding 的声明；`Framework.Ast` 是 AppBlueprint / workflow AST 的前台名字。业务前台不导入 `Framework.Runtime`、`Framework.Background`、`Bootstrap.*`。
+
+handler implementation 只碰：
+
+```text
+Framework.Handler
+```
+
+算法、IO、typed value conversion、具体 handler/transform 实现放在 `Domain.Runtime` 或等价 handler 模块中。
+
+框架自我迭代、证据、diagnosis、fixed point、artifact gate 最多再碰：
+
+```text
+Framework.TrustBase
+```
+
+所以当前分层不是“把 runtime 全暴露到前台”，而是：
+
+```text
+business frontend -> Framework.Ast / Framework.Effect / Framework.Business
+handler implementation -> Framework.Handler
+self-iteration / evidence -> Framework.TrustBase
+runtime internals -> Framework.Runtime / Bootstrap.Runtime.*
 ```

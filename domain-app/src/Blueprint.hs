@@ -38,7 +38,7 @@ module Blueprint
   ) where
 
 import Domain.Vocabulary
-import Framework.Workflow
+import Framework.Ast
   ( ChoiceKey (..)
   , Interceptor (..)
   , LogEvent (..)
@@ -46,7 +46,7 @@ import Framework.Workflow
   , WorkflowFact (..)
   , WorkflowName (..)
   )
-import qualified Framework.Workflow as Architecture
+import qualified Framework.Ast as Architecture
 
 type WorkflowComponent = Workflow WorkflowFact Interceptor
 

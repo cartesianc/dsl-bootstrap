@@ -63,6 +63,11 @@ runtimePlanBuildExpressedFact :: EffectSection
 runtimePlanBuildExpressedFact =
   fact RuntimePlanBuildExpressedFact
     [ needs MinimalCoreReportBuiltFact
+    , needs RuntimePlanBuiltFact
+    , needs RuntimeFactRuleClosureValidatedFact
+    , needs RuntimeArtifactClosureValidatedFact
+    , needs RuntimeSendBoundaryCoveredFact
+    , needs RuntimePlanBuildEvidencePassedFact
     ]
 
 runtimeValidationExpressedFact :: EffectSection
@@ -71,38 +76,46 @@ runtimeValidationExpressedFact =
     [ needs MinimalCoreReportBuiltFact
     , needs ConstraintIRBuiltFact
     , needs SmtProofPassedFact
+    , needs RuntimeFactRuleClosureValidatedFact
+    , needs RuntimeArtifactClosureValidatedFact
+    , needs RuntimeValidationEvidencePassedFact
     ]
 
 runtimeExecutionSemanticsExpressedFact :: EffectSection
 runtimeExecutionSemanticsExpressedFact =
   fact RuntimeExecutionSemanticsExpressedFact
-    [ needs RuntimeEvidencePassedFact
+    [ needs RuntimeExecutionEvidencePassedFact
     ]
 
 runtimeConcurrencySemanticsExpressedFact :: EffectSection
 runtimeConcurrencySemanticsExpressedFact =
   fact RuntimeConcurrencySemanticsExpressedFact
-    [ needs RuntimeEvidencePassedFact
+    [ needs RuntimeConcurrencyEvidencePassedFact
     ]
 
 runtimeDiagnosisExpressedFact :: EffectSection
 runtimeDiagnosisExpressedFact =
   fact RuntimeDiagnosisExpressedFact
-    [ needs RuntimeEvidencePassedFact
+    [ needs RuntimeErrorDispatchValidatedFact
+    , needs RuntimeRetryPolicyValidatedFact
+    , needs RuntimeIdempotencyPolicyValidatedFact
+    , needs RuntimeDiagnosisEvidencePassedFact
     ]
 
 runtimeBackendAdapterExpressedFact :: EffectSection
 runtimeBackendAdapterExpressedFact =
   fact RuntimeBackendAdapterExpressedFact
     [ needs CoreSurfaceFormalizedFact
-    , needs RuntimeEvidencePassedFact
+    , needs RuntimeHandlerRegistryValidatedFact
+    , needs RuntimeTransformRegistryValidatedFact
+    , needs RuntimeExecutionEvidencePassedFact
     ]
 
 runtimeBackendParityExpressedFact :: EffectSection
 runtimeBackendParityExpressedFact =
   fact RuntimeBackendParityExpressedFact
     [ needs CoreSurfaceFormalizedFact
-    , needs RuntimeEvidencePassedFact
+    , needs RuntimeBackendParityEvidencePassedFact
     ]
 
 buildAppValidationExpressedFact :: EffectSection
@@ -132,6 +145,8 @@ runtimeFactClosureExpressedFact =
     [ needs RuntimePlanBuildExpressedFact
     , needs RuntimeValidationExpressedFact
     , needs RuntimeExecutionSemanticsExpressedFact
+    , needs RuntimeArtifactClosureValidatedFact
+    , needs RuntimeSendBoundaryCoveredFact
     , needs RuntimeEvidencePassedFact
     , needs SmtProofPassedFact
     ]

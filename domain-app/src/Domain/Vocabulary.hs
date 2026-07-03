@@ -37,7 +37,7 @@ module Domain.Vocabulary
   , pattern UserRemembered
   ) where
 
-import Framework.Workflow
+import Framework.Ast
   ( Interceptor (..)
   , LogEvent (..)
   , WorkflowFact (..)

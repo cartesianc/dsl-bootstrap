@@ -1,11 +1,28 @@
 module Framework.RegistryCodegen
   ( EffectRegistryBinding (..)
+  , GeneratedSource (..)
   , PluginRegistryBinding (..)
   , diffGeneratedLines
+  , frameworkCoreFrontendSources
   , generatedLinesMatch
   , renderEffectsTheoryModule
+  , renderFrameworkCoreBaseAppModule
+  , renderFrameworkCoreCurrentAppModule
+  , renderFrameworkCoreCurrentAstModule
+  , renderFrameworkCoreCurrentEffectsModule
+  , renderFrameworkCoreCurrentInterpreterModule
   , renderPluginsModule
   ) where
+
+import Bootstrap.RegistryCodegen
+  ( GeneratedSource (..)
+  , frameworkCoreFrontendSources
+  , renderFrameworkCoreBaseAppModule
+  , renderFrameworkCoreCurrentAppModule
+  , renderFrameworkCoreCurrentAstModule
+  , renderFrameworkCoreCurrentEffectsModule
+  , renderFrameworkCoreCurrentInterpreterModule
+  )
 
 data PluginRegistryBinding = PluginRegistryBinding
   { pluginRegistryBindingName :: String

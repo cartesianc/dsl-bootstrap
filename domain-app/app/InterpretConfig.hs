@@ -5,13 +5,13 @@ module InterpretConfig
 import Domain.Runtime
   ( domainRuntimeEffectEnvironment
   )
-import Framework.Workflow
+import Framework.Ast
   ( AppBlueprint
   )
 import Framework.Effect
   ( EffectTheory
   )
-import Framework.Background
+import Framework.TrustBase
   ( runBlueprintWithEffectEnvironment
   )
 
