@@ -2,6 +2,7 @@
 
 module Domain.SemanticEvidence
   ( domainSemanticChecks
+  , runtimeDiagnosisEvidencePayloads
   ) where
 
 import Domain.EffectVocabulary
@@ -27,6 +28,8 @@ import Framework.TrustBase
   , NativeAppPlan
   , Runtime (..)
   , RuntimeDiagnosisBlocker (..)
+  , RuntimeDiagnosisEvidencePayload (..)
+  , RuntimeDiagnosisEvidenceStatus (..)
   , RuntimeDiagnosisNode (..)
   , RuntimeDiagnosisProbe (..)
   , RuntimeDiagnosisProbeStatus (..)
@@ -42,7 +45,9 @@ import Framework.TrustBase
   , domainEvidencePassed
   , emptyRuntime
   , generatedLinesMatch
+  , renderRuntimeDiagnosisEvidencePayload
   , runBlueprintWithEffectEnvironmentRuntimeResult
+  , runtimeDiagnosisEvidencePayloadPassed
   )
 import Framework.Effect
   ( EffectName (..)
@@ -71,19 +76,19 @@ runtimeErrorHandlerDiagnosisCheck :: DomainSemanticCheck
 runtimeErrorHandlerDiagnosisCheck =
   DomainSemanticCheck
     "runtime-diagnosis-error-handler"
-    (\_ _ -> runErrorHandlerEvidence)
+    (\_ _ -> runtimeDiagnosisEvidenceFromPayload <$> runErrorHandlerEvidencePayload)
 
 runtimeRetryDiagnosisCheck :: DomainSemanticCheck
 runtimeRetryDiagnosisCheck =
   DomainSemanticCheck
     "runtime-diagnosis-retry-probe"
-    (\_ _ -> runRetryDiagnosisEvidence)
+    (\_ _ -> runtimeDiagnosisEvidenceFromPayload <$> runRetryDiagnosisEvidencePayload)
 
 runtimeNonIdempotentBlockerCheck :: DomainSemanticCheck
 runtimeNonIdempotentBlockerCheck =
   DomainSemanticCheck
     "runtime-diagnosis-non-idempotent-blocker"
-    (\_ _ -> runNonIdempotentBlockerEvidence)
+    (\_ _ -> runtimeDiagnosisEvidenceFromPayload <$> runNonIdempotentBlockerEvidencePayload)
 
 pluginRegistryCodegenCheck :: DomainSemanticCheck
 pluginRegistryCodegenCheck =
@@ -119,8 +124,27 @@ runGeneratedFileEvidence registration evidenceName path expectedLines = do
             mismatchDetails
     )
 
-runErrorHandlerEvidence :: IO DomainSemanticEvidence
-runErrorHandlerEvidence = do
+runtimeDiagnosisEvidencePayloads :: IO [RuntimeDiagnosisEvidencePayload]
+runtimeDiagnosisEvidencePayloads =
+  sequence
+    [ runErrorHandlerEvidencePayload
+    , runRetryDiagnosisEvidencePayload
+    , runNonIdempotentBlockerEvidencePayload
+    ]
+
+runtimeDiagnosisEvidenceFromPayload :: RuntimeDiagnosisEvidencePayload -> DomainSemanticEvidence
+runtimeDiagnosisEvidenceFromPayload payload =
+  if runtimeDiagnosisEvidencePayloadPassed payload
+    then domainEvidencePassed claim details
+    else domainEvidenceFailed claim details
+  where
+    claim =
+      runtimeDiagnosisEvidenceClaim payload
+    details =
+      renderRuntimeDiagnosisEvidencePayload payload
+
+runErrorHandlerEvidencePayload :: IO RuntimeDiagnosisEvidencePayload
+runErrorHandlerEvidencePayload = do
   result <-
     runBlueprintWithEffectEnvironmentRuntimeResult
       (runtimeEffectEnvironment failingAskRegistry)
@@ -133,17 +157,21 @@ runErrorHandlerEvidence = do
               && not (null (runtimeFailureDiagnoses runtime))
               && traceContains "error handlers UserNameAskedFact [HandleUserNameError]" runtime
               && traceContains "externalMake HandleUserNameError using RuntimeHandleUserNameError" runtime ->
-              domainEvidencePassed
+              runtimeDiagnosisPayloadPassed
                 "runtime-diagnosis-error-handler"
-                ["HandleUserNameError dispatched with ErrorInput"]
+                "RuntimeErrorDispatchArtifact"
+                "error handler dispatches recovery path with ErrorInput"
+                "HandleUserNameError dispatched with ErrorInput"
         other ->
-          domainEvidenceFailed
+          runtimeDiagnosisPayloadFailed
             "runtime-diagnosis-error-handler"
-            [showRuntimeResult other]
+            "RuntimeErrorDispatchArtifact"
+            "error handler dispatches recovery path with ErrorInput"
+            (showRuntimeResult other)
     )
 
-runRetryDiagnosisEvidence :: IO DomainSemanticEvidence
-runRetryDiagnosisEvidence = do
+runRetryDiagnosisEvidencePayload :: IO RuntimeDiagnosisEvidencePayload
+runRetryDiagnosisEvidencePayload = do
   result <-
     runBlueprintWithEffectEnvironmentRuntimeResult
       (runtimeEffectEnvironment retryFailingAskRegistry)
@@ -155,22 +183,30 @@ runRetryDiagnosisEvidence = do
           | currentSend == AskUserName
               && traceContains "retry externalMake AskUserName" runtime
               && any diagnosisHasFailedProbe (runtimeFailureDiagnoses runtime) ->
-              domainEvidencePassed
+              runtimeDiagnosisPayloadPassed
                 "runtime-diagnosis-retry-probe"
-                ["idempotent retry produced a failed diagnosis probe"]
+                "RuntimeRetryPolicyArtifact"
+                "idempotent retry records failed diagnosis probe"
+                "retry externalMake AskUserName and failed diagnosis probe observed"
         other ->
-          domainEvidenceFailed
+          runtimeDiagnosisPayloadFailed
             "runtime-diagnosis-retry-probe"
-            [showRuntimeResult other]
+            "RuntimeRetryPolicyArtifact"
+            "idempotent retry records failed diagnosis probe"
+            (showRuntimeResult other)
     )
 
-runNonIdempotentBlockerEvidence :: IO DomainSemanticEvidence
-runNonIdempotentBlockerEvidence = do
+runNonIdempotentBlockerEvidencePayload :: IO RuntimeDiagnosisEvidencePayload
+runNonIdempotentBlockerEvidencePayload = do
   planResult <- requirePlan (theory [userEffect])
   pure
     ( case planResult of
         Left message ->
-          domainEvidenceFailed "runtime-diagnosis-non-idempotent-blocker" [message]
+          runtimeDiagnosisPayloadFailed
+            "runtime-diagnosis-non-idempotent-blocker"
+            "RuntimeIdempotencyPolicyArtifact"
+            "non-idempotent send is reported as blocker for probe replay"
+            message
         Right plan ->
           let runtime =
                 emptyRuntime
@@ -189,14 +225,38 @@ runNonIdempotentBlockerEvidence = do
                 concatMap diagnosisNodeBlockers (diagnosisNodes diagnosis)
            in if DiagnosisNonIdempotentSend AskUserName `elem` blockers
                 then
-                  domainEvidencePassed
+                  runtimeDiagnosisPayloadPassed
                     "runtime-diagnosis-non-idempotent-blocker"
-                    ["non-idempotent AskUserName blocks probe replay"]
+                    "RuntimeIdempotencyPolicyArtifact"
+                    "non-idempotent send is reported as blocker for probe replay"
+                    "DiagnosisNonIdempotentSend AskUserName found"
                 else
-                  domainEvidenceFailed
+                  runtimeDiagnosisPayloadFailed
                     "runtime-diagnosis-non-idempotent-blocker"
-                    [show diagnosis]
+                    "RuntimeIdempotencyPolicyArtifact"
+                    "non-idempotent send is reported as blocker for probe replay"
+                    (show diagnosis)
     )
+
+runtimeDiagnosisPayloadPassed :: String -> String -> String -> String -> RuntimeDiagnosisEvidencePayload
+runtimeDiagnosisPayloadPassed claim artifact expected observed =
+  RuntimeDiagnosisEvidencePayload
+    { runtimeDiagnosisEvidenceClaim = claim
+    , runtimeDiagnosisEvidenceStatus = RuntimeDiagnosisEvidencePassed
+    , runtimeDiagnosisEvidenceExpected = expected
+    , runtimeDiagnosisEvidenceObserved = observed
+    , runtimeDiagnosisEvidenceArtifact = artifact
+    }
+
+runtimeDiagnosisPayloadFailed :: String -> String -> String -> String -> RuntimeDiagnosisEvidencePayload
+runtimeDiagnosisPayloadFailed claim artifact expected observed =
+  RuntimeDiagnosisEvidencePayload
+    { runtimeDiagnosisEvidenceClaim = claim
+    , runtimeDiagnosisEvidenceStatus = RuntimeDiagnosisEvidenceFailed
+    , runtimeDiagnosisEvidenceExpected = expected
+    , runtimeDiagnosisEvidenceObserved = observed
+    , runtimeDiagnosisEvidenceArtifact = artifact
+    }
 
 userNameBlueprint :: AppBlueprint
 userNameBlueprint =

@@ -417,7 +417,10 @@ registry-codegen-effects
 ```powershell
 stack exec domain-app-report
 stack exec domain-app-self-smoke
+stack exec runtime-diagnosis-witness
 ```
+
+`runtime-diagnosis-witness` 输出 `RuntimeDiagnosisEvidencePayload`，每条 diagnosis claim 都包含 `claim`、`status`、`expected`、`observed` 和 `artifact` 字段。
 
 ## Diagnosis 与 Proof
 

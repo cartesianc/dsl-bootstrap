@@ -102,7 +102,17 @@ runtime-diagnosis-retry-probe
 runtime-diagnosis-non-idempotent-blocker
 ```
 
-注意：`RunRuntimeConcurrencyEvidence`、`RunRuntimeDiagnosisEvidence`、`RunRuntimeBackendParityEvidence` 仍然有 aggregate evidence 的成分。当前第一轮已经把 diagnosis 的三个 policy 入口升成了一等 artifact handle，但 witness payload 还没有完全升级成机器可 diff 的结构化输入输出。
+每个 claim 现在输出 `RuntimeDiagnosisEvidencePayload`：
+
+```text
+claim
+status
+expected
+observed
+artifact
+```
+
+注意：`RunRuntimeConcurrencyEvidence`、`RunRuntimeDiagnosisEvidence`、`RunRuntimeBackendParityEvidence` 仍然有 aggregate evidence 的成分。当前 diagnosis 的三个 policy 入口已经有一等 artifact handle 和可 diff payload；backend parity 与 concurrency payload 仍待细拆。
 
 ## 3. Framework Core 前台与 Codegen
 
@@ -276,7 +286,6 @@ stack exec self-artifact-witness
 
 ```text
 workflow-semantics-witness 的每个 claim 变成结构化 artifact payload
-runtime-diagnosis-witness 的 3 个 claim 输出机器可 diff payload
 backend parity 从 aggregate evidence 细拆成更多一等 facts/artifacts
 fixed-point 从文本 diff 进一步升级为 evidence payload diff
 ```

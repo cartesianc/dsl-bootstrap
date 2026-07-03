@@ -8,16 +8,24 @@ import Framework.Domain
   , buildDomainReport
   , domainSemanticEvidencePassed
   )
+import Framework.TrustBase
+  ( RuntimeDiagnosisEvidencePayload (..)
+  , renderRuntimeDiagnosisEvidencePayload
+  , runtimeDiagnosisEvidencePayloadPassed
+  )
+import Domain.SemanticEvidence
+  ( runtimeDiagnosisEvidencePayloads )
 import SelfDomainApp
   ( domainAppDomain )
 
 main :: IO ()
 main = do
   report <- buildDomainReport domainAppDomain
+  payloads <- runtimeDiagnosisEvidencePayloads
   let missing =
         [ name
         | name <- expectedEvidence
-        , not (evidencePresent name report)
+        , not (evidencePresent name report && payloadPresent name payloads)
         ]
       failed =
         [ evidence
@@ -25,9 +33,17 @@ main = do
         , domainSemanticEvidenceName evidence `elem` expectedEvidence
         , not (domainSemanticEvidencePassed evidence)
         ]
-  case (missing, failed) of
-    ([], []) ->
-      putStrLn ("[witness] ok runtime diagnosis evidence " ++ show (length expectedEvidence) ++ " claims")
+      failedPayloads =
+        [ payload
+        | payload <- payloads
+        , runtimeDiagnosisEvidenceClaim payload `elem` expectedEvidence
+        , not (runtimeDiagnosisEvidencePayloadPassed payload)
+        ]
+  case (missing, failed, failedPayloads) of
+    ([], [], []) -> do
+      putStrLn "[witness] runtime diagnosis evidence payloads"
+      mapM_ putStrLn (concatMap renderPayloadBlock payloads)
+      putStrLn ("[witness] ok runtime diagnosis evidence " ++ show (length expectedEvidence) ++ " payload claims")
     _ ->
       ioError
         ( userError
@@ -36,8 +52,15 @@ main = do
                 ++ show missing
                 ++ "\nfailed: "
                 ++ show (map domainSemanticEvidenceName failed)
+                ++ "\nfailed payloads: "
+                ++ show (map runtimeDiagnosisEvidenceClaim failedPayloads)
             )
         )
+
+renderPayloadBlock :: RuntimeDiagnosisEvidencePayload -> [String]
+renderPayloadBlock payload =
+  map ("  " ++) (renderRuntimeDiagnosisEvidencePayload payload)
+    ++ [""]
 
 expectedEvidence :: [String]
 expectedEvidence =
@@ -51,3 +74,9 @@ evidencePresent name report =
   any
     (\evidence -> domainSemanticEvidenceName evidence == name)
     (domainReportSemanticEvidence report)
+
+payloadPresent :: String -> [RuntimeDiagnosisEvidencePayload] -> Bool
+payloadPresent name payloads =
+  any
+    (\payload -> runtimeDiagnosisEvidenceClaim payload == name)
+    payloads

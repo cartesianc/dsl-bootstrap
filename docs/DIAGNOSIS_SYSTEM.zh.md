@@ -60,6 +60,24 @@ idempotent RetryOnce failed probe
 non-idempotent replay blocker
 ```
 
+`runtime-diagnosis-witness` 为每个诊断 claim 输出 `RuntimeDiagnosisEvidencePayload`：
+
+```text
+claim
+status
+expected
+observed
+artifact
+```
+
+当前三条 payload claim：
+
+```text
+runtime-diagnosis-error-handler -> RuntimeErrorDispatchArtifact
+runtime-diagnosis-retry-probe -> RuntimeRetryPolicyArtifact
+runtime-diagnosis-non-idempotent-blocker -> RuntimeIdempotencyPolicyArtifact
+```
+
 ## 5. 污染范围
 
 如果 root fact 失败，所有依赖它且已经进入 claim/plan 的下游 fact 都可能被污染。
