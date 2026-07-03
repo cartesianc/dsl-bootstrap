@@ -12,6 +12,7 @@ import Framework.FixedPoint
   , renderFixedPointDiffEvidencePayload
   , renderFixedPointReport
   , renderFixedPointReportJson
+  , renderFixedPointReportSummaryJson
   , renderRuntimeBackendParityEvidencePayload
   , runtimeBackendParityEvidencePayloadPassed
   , runtimeBackendParityEvidencePayloads
@@ -30,6 +31,8 @@ main = do
   case args of
     ["--json"] ->
       putStrLn (renderFixedPointReportJson report)
+    ["--summary-json"] ->
+      putStrLn (renderFixedPointReportSummaryJson report)
     _ -> do
       putStrLn "[witness] fixed-point diff evidence payloads"
       mapM_ putStrLn (concatMap renderDiffPayloadBlock diffPayloads)

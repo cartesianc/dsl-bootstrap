@@ -17,6 +17,7 @@ module Framework.FixedPoint
   , renderRuntimeBackendParityEvidenceStatus
   , renderFixedPointReport
   , renderFixedPointReportJson
+  , renderFixedPointReportSummaryJson
   , runtimeBackendParityEvidencePayloadPassed
   , runtimeBackendParityEvidencePayloads
   , runtimeBackendParityEvidenceArtifactSummary
@@ -163,6 +164,19 @@ renderFixedPointReportJson report =
     , jsonField "runtimeBackendParity" (jsonArray (map runtimeBackendParityEvidencePayloadJson (runtimeBackendParityEvidencePayloads report)))
     ]
 
+renderFixedPointReportSummaryJson :: FixedPointReport -> String
+renderFixedPointReportSummaryJson report =
+  jsonObject
+    [ jsonField "schema" (jsonString "fixed-point-summary.v1")
+    , jsonField "status" (jsonString (renderFixedPointStatus (fixedPointStatus report)))
+    , jsonField "stage0" (stageEvidenceSummaryJson (fixedPointStage0 report))
+    , jsonField "stage1" (stageEvidenceSummaryJson (fixedPointStage1 report))
+    , jsonField "diffCount" (jsonNumber (length (fixedPointDiffs report)))
+    , jsonField "diffFields" (jsonStringArray (map evidenceDiffField (fixedPointDiffs report)))
+    , jsonField "fixedPointDiffEvidence" (fixedPointDiffEvidenceSummaryJson (fixedPointDiffEvidencePayloads report))
+    , jsonField "runtimeBackendParity" (runtimeBackendParityEvidenceSummaryJson (runtimeBackendParityEvidencePayloads report))
+    ]
+
 fixedPointDiffEvidencePayloads :: FixedPointReport -> [FixedPointDiffEvidencePayload]
 fixedPointDiffEvidencePayloads report =
   map
@@ -250,6 +264,26 @@ stageEvidenceJson evidence =
     , jsonField "failures" (jsonStringArray (stageEvidenceFailures evidence))
     ]
 
+stageEvidenceSummaryJson :: StageEvidence -> String
+stageEvidenceSummaryJson evidence =
+  jsonObject
+    [ jsonField "name" (jsonString (stageEvidenceName evidence))
+    , jsonField "status" (jsonString (stageEvidenceStatus evidence))
+    , jsonField "surfaceModules" (jsonNumber (stageEvidenceSurfaceModules evidence))
+    , jsonField "surfaceCapabilities" (jsonNumber (stageEvidenceSurfaceCapabilities evidence))
+    , jsonField "constraintTotal" (jsonNumber (stageEvidenceConstraintTotal evidence))
+    , jsonField "constraintFailed" (jsonNumber (stageEvidenceConstraintFailed evidence))
+    , jsonField "declaredFacts" (jsonNumber (length (stageEvidenceDeclaredFacts evidence)))
+    , jsonField "rootFacts" (jsonNumber (length (stageEvidenceRootFacts evidence)))
+    , jsonField "plannedRuntimeFacts" (jsonNumber (length (stageEvidencePlannedRuntimeFacts evidence)))
+    , jsonField "finalRuntimeFacts" (jsonNumber (length (stageEvidenceFinalRuntimeFacts evidence)))
+    , jsonField "missingFinalFacts" (jsonNumber (length (stageEvidenceMissingFinalFacts evidence)))
+    , jsonField "extraFinalFacts" (jsonNumber (length (stageEvidenceExtraFinalFacts evidence)))
+    , jsonField "handlerCoverage" (jsonNumber (length (stageEvidenceHandlerCoverage evidence)))
+    , jsonField "artifactTypes" (jsonNumber (length (stageEvidenceArtifactTypes evidence)))
+    , jsonField "failures" (jsonNumber (length (stageEvidenceFailures evidence)))
+    ]
+
 evidenceDiffJson :: EvidenceDiff -> String
 evidenceDiffJson diffReport =
   jsonObject
@@ -266,6 +300,40 @@ fixedPointDiffEvidencePayloadJson payload =
     , jsonField "expected" (jsonString (fixedPointDiffEvidenceExpected payload))
     , jsonField "observed" (jsonString (fixedPointDiffEvidenceObserved payload))
     , jsonField "artifact" (jsonString (fixedPointDiffEvidenceArtifact payload))
+    ]
+
+fixedPointDiffEvidenceSummaryJson :: [FixedPointDiffEvidencePayload] -> String
+fixedPointDiffEvidenceSummaryJson payloads =
+  jsonObject
+    [ jsonField "total" (jsonNumber (length payloads))
+    , jsonField "passed" (jsonNumber (length (filter fixedPointDiffEvidencePayloadPassed payloads)))
+    , jsonField "failed" (jsonNumber (length (filter (not . fixedPointDiffEvidencePayloadPassed) payloads)))
+    , jsonField "claims" (jsonArray (map fixedPointDiffEvidenceClaimSummaryJson payloads))
+    ]
+
+fixedPointDiffEvidenceClaimSummaryJson :: FixedPointDiffEvidencePayload -> String
+fixedPointDiffEvidenceClaimSummaryJson payload =
+  jsonObject
+    [ jsonField "claim" (jsonString (fixedPointDiffEvidenceClaim payload))
+    , jsonField "status" (jsonString (renderFixedPointDiffEvidenceStatus (fixedPointDiffEvidenceStatus payload)))
+    , jsonField "artifact" (jsonString (fixedPointDiffEvidenceArtifact payload))
+    ]
+
+runtimeBackendParityEvidenceSummaryJson :: [RuntimeBackendParityEvidencePayload] -> String
+runtimeBackendParityEvidenceSummaryJson payloads =
+  jsonObject
+    [ jsonField "total" (jsonNumber (length payloads))
+    , jsonField "passed" (jsonNumber (length (filter runtimeBackendParityEvidencePayloadPassed payloads)))
+    , jsonField "failed" (jsonNumber (length (filter (not . runtimeBackendParityEvidencePayloadPassed) payloads)))
+    , jsonField "claims" (jsonArray (map runtimeBackendParityEvidenceClaimSummaryJson payloads))
+    ]
+
+runtimeBackendParityEvidenceClaimSummaryJson :: RuntimeBackendParityEvidencePayload -> String
+runtimeBackendParityEvidenceClaimSummaryJson payload =
+  jsonObject
+    [ jsonField "claim" (jsonString (runtimeBackendParityEvidenceClaim payload))
+    , jsonField "status" (jsonString (renderRuntimeBackendParityEvidenceStatus (runtimeBackendParityEvidenceStatus payload)))
+    , jsonField "artifact" (jsonString (runtimeBackendParityEvidenceArtifact payload))
     ]
 
 data FixedPointDiffField = FixedPointDiffField

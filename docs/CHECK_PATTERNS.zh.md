@@ -49,7 +49,7 @@ check-release
   semantic gates
   bootstrap-report JSON
   runtime-evidence JSON
-  fixed-point JSON
+  fixed-point summary JSON
   domain-app acceptance
   registry/codegen witness
   business syntax witness
@@ -101,6 +101,7 @@ fixed-point-smoke
   fixed-point diff evidence payload
   runtime backend parity payload
   fixed-point-report.v1 JSON schema
+  fixed-point-summary.v1 compact JSON schema
 ```
 
 当前期望输出：
@@ -114,6 +115,7 @@ trust-base-manifest-witness: trust-base-manifest.v1
 fixed-point-smoke: fixed-point diff evidence 14 payload claims
 fixed-point-smoke: diffs: 0
 fixed-point-smoke --json: fixed-point-report.v1
+fixed-point-smoke --summary-json: fixed-point-summary.v1
 ```
 
 ## 2. Runtime 语义闭包

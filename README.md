@@ -567,6 +567,7 @@ stack exec runtime-evidence-witness
 stack exec runtime-evidence-witness -- --json
 stack exec fixed-point-smoke
 stack exec fixed-point-smoke -- --json
+stack exec fixed-point-smoke -- --summary-json
 stack exec trust-base-manifest-witness
 stack exec trust-base-manifest-witness -- --json
 ```
@@ -577,6 +578,7 @@ JSON 输出带 schema 字段：
 framework-core-report.v1
 domain-report.v1
 fixed-point-report.v1
+fixed-point-summary.v1
 trust-base-manifest.v1
 runtime-evidence.v1
 runtime-diagnosis-evidence.v1
