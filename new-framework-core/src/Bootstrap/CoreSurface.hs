@@ -596,6 +596,7 @@ workflowFacade =
           , "effectSystem"
           , "effectSystemBoundary"
           , "effectSystemFromBoundary"
+          , "effectSystemRuntimeFacts"
           , "run"
           , "chain"
           , "parallel"

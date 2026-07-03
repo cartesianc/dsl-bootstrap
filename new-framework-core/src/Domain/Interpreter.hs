@@ -97,11 +97,7 @@ renderWorkflow :: (Show fact) => Workflow fact hook -> [String]
 renderWorkflow workflow =
   case workflow of
     RunWorkflow system ->
-      [ "run "
-          ++ show (Bootstrap.Workflow.effectSystemName system)
-          ++ " succeeds "
-          ++ renderFactExpr (Bootstrap.Workflow.effectSystemSuccess system)
-      ]
+      renderEffectSystem system
     ChainWorkflow steps ->
       "chain" : indentLines 2 (concatMap renderWorkflow (chainItems steps))
     ParallelWorkflow branches ->
@@ -122,6 +118,34 @@ renderChoiceBranch (key, lines') =
 renderChoice :: (Show fact) => (Bootstrap.Workflow.ChoiceKey, Workflow fact hook) -> [String]
 renderChoice (key, branch) =
   renderChoiceBranch (choiceKeyText key, renderWorkflow branch)
+
+renderEffectSystem :: (Show fact) => Bootstrap.Workflow.EffectSystem fact -> [String]
+renderEffectSystem system
+  | null imports && null privateFacts =
+      [ "run "
+          ++ show (Bootstrap.Workflow.effectSystemName system)
+          ++ " succeeds "
+          ++ renderFactExpr (Bootstrap.Workflow.effectSystemSuccess system)
+      ]
+  | otherwise =
+      [ "run "
+          ++ show (Bootstrap.Workflow.effectSystemName system)
+          ++ " imports "
+          ++ show imports
+          ++ " private "
+          ++ show privateFacts
+          ++ " exports "
+          ++ show exports
+      ]
+  where
+    boundary =
+      Bootstrap.Workflow.effectSystemBoundary system
+    imports =
+      Bootstrap.Workflow.effectSystemBoundaryImports boundary
+    privateFacts =
+      Bootstrap.Workflow.effectSystemBoundaryPrivateFacts boundary
+    exports =
+      Bootstrap.Workflow.effectSystemBoundaryExports boundary
 
 choiceKeyText :: ChoiceKey -> String
 choiceKeyText (ChoiceKey text) =

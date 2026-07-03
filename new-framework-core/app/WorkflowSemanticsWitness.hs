@@ -158,6 +158,12 @@ workflowSemanticsClaims =
       "native and framework available facts render identically"
       "WorkflowNativeFrameworkAlignmentArtifact"
       nativeFrameworkAlignmentWitness
+  , WorkflowSemanticsClaim
+      "workflow-effect-system-boundary"
+      "EffectSystemBoundary imports, private facts, and exports all participate in runtime execution"
+      "import, private, and export facts are available while success facts remain exports"
+      "WorkflowEffectSystemBoundaryArtifact"
+      effectSystemBoundaryWitness
   ]
 
 runWorkflowSemanticsClaim :: WorkflowSemanticsClaim -> IO WorkflowSemanticsEvidencePayload
@@ -467,6 +473,28 @@ nativeFrameworkAlignmentWitness = do
     "native/framework facts align"
     (map show (R.availableFacts frameworkRuntime) == map show (Native.availableFacts nativeRuntime))
 
+effectSystemBoundaryWitness :: IO ()
+effectSystemBoundaryWitness = do
+  let boundary =
+        W.systemBoundary
+          boundaryFlow
+          [boundaryImportFact]
+          [boundaryPrivateFact]
+          [boundaryExportFact]
+      system =
+        W.effectSystemFromBoundary boundary
+  runtime <-
+    runFrameworkSuccess
+      "effect system boundary"
+      (frameworkEnvironment [])
+      (blueprint (W.run system))
+      (theory [factPure boundaryImportFact, factPure boundaryPrivateFact, factPure boundaryExportFact])
+  require "boundary import fact" (boundaryImportFact `elem` R.availableFacts runtime)
+  require "boundary private fact" (boundaryPrivateFact `elem` R.availableFacts runtime)
+  require "boundary export fact" (boundaryExportFact `elem` R.availableFacts runtime)
+  require "boundary success exports" (successFacts system == [boundaryExportFact])
+  require "boundary runtime facts" (runtimeFacts system == [boundaryImportFact, boundaryPrivateFact, boundaryExportFact])
+
 runFrameworkSuccess ::
   String ->
   R.RuntimeEffectEnvironment ->
@@ -561,6 +589,24 @@ fact currentFact =
 runFactAs :: W.EffectSystemName -> W.WorkflowFact -> W.App
 runFactAs name currentFact =
   W.run (W.effectSystem name (W.factItems [currentFact]))
+
+successFacts :: W.EffectSystem W.WorkflowFact -> [W.WorkflowFact]
+successFacts system =
+  factExprFacts (W.effectSystemSuccess system)
+
+runtimeFacts :: W.EffectSystem W.WorkflowFact -> [W.WorkflowFact]
+runtimeFacts system =
+  factExprFacts (W.effectSystemRuntimeFacts system)
+
+factExprFacts :: W.FactExpr W.WorkflowFact -> [W.WorkflowFact]
+factExprFacts expression =
+  case expression of
+    W.FactItems requirements ->
+      W.requirementItems requirements
+    W.FactAll expressions ->
+      concatMap factExprFacts expressions
+    W.FactAny expressions ->
+      concatMap factExprFacts expressions
 
 value :: E.TypeName -> String -> R.RuntimeValue
 value currentType text =
@@ -716,6 +762,10 @@ targetFlow :: W.EffectSystemName
 targetFlow =
   W.EffectSystemName "WorkflowSemanticsTargetFlow"
 
+boundaryFlow :: W.EffectSystemName
+boundaryFlow =
+  W.EffectSystemName "WorkflowSemanticsBoundaryFlow"
+
 selectedChoice :: W.ChoiceKey
 selectedChoice =
   W.ChoiceKey "selected"
@@ -727,3 +777,15 @@ unselectedChoice =
 middlewareName :: W.Interceptor
 middlewareName =
   W.Interceptor "WorkflowSemanticsMiddleware"
+
+boundaryImportFact :: W.WorkflowFact
+boundaryImportFact =
+  W.WorkflowFact "WorkflowSemanticsBoundaryImportFact"
+
+boundaryPrivateFact :: W.WorkflowFact
+boundaryPrivateFact =
+  W.WorkflowFact "WorkflowSemanticsBoundaryPrivateFact"
+
+boundaryExportFact :: W.WorkflowFact
+boundaryExportFact =
+  W.WorkflowFact "WorkflowSemanticsBoundaryExportFact"

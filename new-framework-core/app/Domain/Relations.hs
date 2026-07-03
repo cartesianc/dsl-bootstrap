@@ -23,6 +23,7 @@ import Bootstrap.Workflow
   , WorkflowFact
   , chainItems
   , choiceItems
+  , effectSystemRuntimeFacts
   , fallbackItems
   , hangingItems
   , parallelItems
@@ -452,7 +453,7 @@ collectWorkflowNodes path currentWorkflow =
           , astNodeName = show (effectSystemName system)
           , astNodePath = path ++ [show (effectSystemName system)]
           , astNodeWaitFacts = []
-          , astNodeClaimFacts = collectFactExpr (effectSystemSuccess system)
+          , astNodeClaimFacts = collectFactExpr (effectSystemRuntimeFacts system)
           }
       ]
     ChainWorkflow steps ->
@@ -568,7 +569,7 @@ collectWorkflowFacts :: App -> [WorkflowFact]
 collectWorkflowFacts currentWorkflow =
   case currentWorkflow of
     RunWorkflow system ->
-      collectFactExpr (effectSystemSuccess system)
+      collectFactExpr (effectSystemRuntimeFacts system)
     ChainWorkflow steps ->
       unique (concatMap collectWorkflowFacts (chainItems steps))
     ParallelWorkflow branches ->

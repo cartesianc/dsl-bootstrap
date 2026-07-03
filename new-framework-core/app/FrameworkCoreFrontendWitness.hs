@@ -28,7 +28,6 @@ import Framework.Ast
   ( App
   , AppBlueprint (..)
   , Callback (..)
-  , EffectSystem (..)
   , FactExpr (..)
   , HangingAction (..)
   , Loop (..)
@@ -38,6 +37,7 @@ import Framework.Ast
   , WorkflowFact
   , chainItems
   , choiceItems
+  , effectSystemRuntimeFacts
   , fallbackItems
   , hangingItems
   , parallelItems
@@ -133,7 +133,7 @@ appFacts :: App -> [WorkflowFact]
 appFacts app =
   case app of
     RunWorkflow system ->
-      factExprFacts (effectSystemSuccess system)
+      factExprFacts (effectSystemRuntimeFacts system)
     ChainWorkflow chain ->
       concatMap appFacts (chainItems chain)
     ParallelWorkflow currentParallel ->

@@ -190,7 +190,7 @@ businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPasse
   , businessEvidence
       "effect-system-boundary-metadata"
       effectSystemBoundaryMetadataPassed
-      "EffectSystemBoundary metadata expresses imports, private facts, and exports without changing runtime execution"
+      "EffectSystemBoundary metadata exposes imports, private facts, and exports for runtime semantics"
       (observedBool effectSystemBoundaryMetadataPassed)
       "EffectSystemBoundaryMetadataArtifact"
   ]

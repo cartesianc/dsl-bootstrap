@@ -30,8 +30,8 @@ module Bootstrap.Workflow
   , choice
   , choiceItems
   , effectSystem
-  , effectSystemBoundary
   , effectSystemFromBoundary
+  , effectSystemRuntimeFacts
   , factAll
   , factAny
   , factItems
@@ -171,6 +171,7 @@ newtype Requirement fact = Requirement
 data EffectSystem fact = EffectSystem
   { effectSystemName :: EffectSystemName
   , effectSystemSuccess :: FactExpr fact
+  , effectSystemBoundary :: EffectSystemBoundary fact
   }
 
 data EffectSystemBoundary fact = EffectSystemBoundary
@@ -262,27 +263,44 @@ factAny =
   FactAny
 
 effectSystem :: EffectSystemName -> FactExpr fact -> EffectSystem fact
-effectSystem =
+effectSystem name successFacts =
   EffectSystem
+    { effectSystemName = name
+    , effectSystemSuccess = successFacts
+    , effectSystemBoundary =
+        EffectSystemBoundary
+          { effectSystemBoundaryName = name
+          , effectSystemBoundaryImports = []
+          , effectSystemBoundaryPrivateFacts = []
+          , effectSystemBoundaryExports = factExprFacts successFacts
+          }
+    }
 
 systemBoundary :: EffectSystemName -> [fact] -> [fact] -> [fact] -> EffectSystemBoundary fact
 systemBoundary =
   EffectSystemBoundary
 
-effectSystemBoundary :: EffectSystem fact -> EffectSystemBoundary fact
-effectSystemBoundary system =
-  EffectSystemBoundary
-    { effectSystemBoundaryName = effectSystemName system
-    , effectSystemBoundaryImports = []
-    , effectSystemBoundaryPrivateFacts = []
-    , effectSystemBoundaryExports = factExprFacts (effectSystemSuccess system)
-    }
-
 effectSystemFromBoundary :: EffectSystemBoundary fact -> EffectSystem fact
 effectSystemFromBoundary boundary =
-  effectSystem
-    (effectSystemBoundaryName boundary)
-    (factItems (effectSystemBoundaryExports boundary))
+  EffectSystem
+    { effectSystemName = effectSystemBoundaryName boundary
+    , effectSystemSuccess = factItems (effectSystemBoundaryExports boundary)
+    , effectSystemBoundary = boundary
+    }
+
+effectSystemRuntimeFacts :: EffectSystem fact -> FactExpr fact
+effectSystemRuntimeFacts system =
+  case (effectSystemBoundaryImports boundary, effectSystemBoundaryPrivateFacts boundary) of
+    ([], []) ->
+      effectSystemSuccess system
+    (imports, privateFacts) ->
+      factAll
+        ( map factItems (filter (not . null) [imports, privateFacts])
+            ++ [effectSystemSuccess system]
+        )
+  where
+    boundary =
+      effectSystemBoundary system
 
 run :: EffectSystem fact -> Workflow fact hook
 run =

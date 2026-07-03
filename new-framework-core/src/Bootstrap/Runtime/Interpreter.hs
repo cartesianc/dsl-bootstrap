@@ -105,7 +105,7 @@ runNativeWorkflow environment plan runtime workflow =
         environment
         plan
         (traceRuntime ("run " ++ show (Workflow.effectSystemName system)) runtime)
-        (Workflow.effectSystemSuccess system)
+        (Workflow.effectSystemRuntimeFacts system)
     ChainWorkflow steps ->
       runSequential environment plan (traceRuntime "chain" runtime) (chainItems steps)
     ParallelWorkflow branches ->

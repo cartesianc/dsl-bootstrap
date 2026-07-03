@@ -461,7 +461,7 @@ runEffectSystem system = do
   enterComponent name
   traceRuntimeM ("run " ++ show name)
   runWorkflowCallbacks name
-  result <- catchRuntime (runFactExpr (Workflow.effectSystemSuccess system))
+  result <- catchRuntime (runFactExpr (Workflow.effectSystemRuntimeFacts system))
   exitComponent name
   case result of
     Right _ ->

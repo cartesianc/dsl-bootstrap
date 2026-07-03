@@ -32,7 +32,6 @@ import Bootstrap.Effect
 import Bootstrap.Runtime.Types
 import Bootstrap.Workflow
   ( AppBlueprint (..)
-  , EffectSystem (..)
   , FactExpr (..)
   , Workflow (..)
   , WorkflowFact
@@ -309,7 +308,7 @@ collectWorkflowFacts :: Workflow.Workflow WorkflowFact hook -> [WorkflowFact]
 collectWorkflowFacts workflow =
   case workflow of
     RunWorkflow system ->
-      collectFactExpr (effectSystemSuccess system)
+      collectFactExpr (Workflow.effectSystemRuntimeFacts system)
     ChainWorkflow steps ->
       unique (concatMap collectWorkflowFacts (chainItems steps))
     ParallelWorkflow branches ->
