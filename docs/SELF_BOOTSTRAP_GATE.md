@@ -39,9 +39,11 @@ self-artifact-witness
 
 framework 改动完成前必须通过编译和自证。
 
-旧 framework 替换前必须在目标提交运行 `self-artifact-witness` 并通过。
+旧 framework 替换前必须在目标提交完成大构建和轻量 gates；`self-artifact-witness` 只作为高危 artifact gate 运行一次并通过。
 
 本 gate 面向 framework 迭代、内核替换和 artifact 物化。业务稳定版使用打薄入口，日常开发只运行业务级 build、report 和轻量 witness。
+
+`self-artifact-witness` 不属于每次 framework 改动的普通 gate。它是高危/重型指令：一轮大构建完成后最多运行一次；第二次不允许继续跑；README/docs-only 变更不触发它。
 
 ## 每次 Framework 改动的 Gate
 
@@ -62,7 +64,6 @@ stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
 stack exec registry-codegen-witness
 stack exec business-syntax-witness
-stack exec self-artifact-witness
 ```
 
 通过结果：
@@ -77,7 +78,7 @@ constraint-proof-witness --smt=auto: passed
 workflow-semantics-witness: passed
 registry-codegen-witness: passed
 business-syntax-witness: passed
-self-artifact-witness: passed
+self-artifact-witness: passed (仅高危 artifact gate 轮次需要)
 ```
 
 边界检查：
@@ -93,22 +94,32 @@ rg -n "^import\s+Bootstrap\." domain-app/src domain-app/app
 
 替换旧 framework source 前必须物化 artifact。
 
+`self-artifact-witness` 是高危指令：
+
+```text
+一轮大构建完成后最多运行一次。
+同一轮第二次不允许继续跑。
+README/docs-only 变更不触发它。
+```
+
 gate 步骤：
 
 ```text
-1. 在目标提交运行 stack exec self-artifact-witness。
-2. witness 创建 .generated/stage1-framework。
-3. Stage 1 artifact 运行 stack build。
-4. Stage 1 artifact 运行 bootstrap-report。
-5. Stage 1 artifact 运行 fixed-point-smoke。
-6. Stage 1 artifact 运行 constraint-proof-witness -- --smt=auto。
-7. Stage 1 artifact 运行 workflow-semantics-witness。
-8. Stage 1 artifact 运行 domain-app-report。
-9. Stage 1 artifact 运行 registry-codegen-witness。
-10. Stage 1 artifact 运行 business-syntax-witness。
+1. 在目标提交完成大构建和轻量 gates。
+2. 确认当前轮还没有运行过 self-artifact-witness。
+3. 运行 stack exec self-artifact-witness。
+4. witness 创建 .generated/stage1-framework。
+5. Stage 1 artifact 运行 stack build。
+6. Stage 1 artifact 运行 bootstrap-report。
+7. Stage 1 artifact 运行 fixed-point-smoke。
+8. Stage 1 artifact 运行 constraint-proof-witness -- --smt=auto。
+9. Stage 1 artifact 运行 workflow-semantics-witness。
+10. Stage 1 artifact 运行 domain-app-report。
+11. Stage 1 artifact 运行 registry-codegen-witness。
+12. Stage 1 artifact 运行 business-syntax-witness。
 ```
 
-十步全部通过后，旧 framework 保留为参考和回滚点。
+十二步全部通过后，旧 framework 保留为参考和回滚点。
 
 ## 替换 Gate
 

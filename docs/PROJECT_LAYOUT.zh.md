@@ -1,5 +1,24 @@
 # Project Layout
 
+## 0. 仓库定位
+
+本仓库当前面向框架自我迭代，不是面向业务用户裁剪后的 SDK。Git 发布物是 trustbase-gated self-iteration snapshot：源码本身必须能描述当前 core、验证当前 core，并物化下一阶段 framework artifact。
+
+三种“框架自身”的写法会同时存在：
+
+```text
+new-framework-core/src/Domain
+  core-as-domain self expression。这里把 framework-core 当作 domain，用 facade style 表达当前 core 的 AST/effect/fact/evidence。
+
+new-framework-core/src/FrameworkCore
+  readable current core frontend。这里把当前 core 组织成 currentTrustBase / currentAst / currentEffects / currentInterpreter / currentApp。
+
+domain-app
+  domain-side acceptance app。它不只是普通示例，而是验证 facade、handler、semantic evidence、runtime diagnosis、registry codegen 在真实 domain 侧能闭合。
+```
+
+这三者并存不是分层混乱，而是自举系统的双视角/三视角验证：core 既要能解释自己，也要能像 domain 一样被使用，还要能通过 TrustBase 点火生成下一阶段。
+
 当前项目按“内核、facade、自表达 domain、外部 domain”分层。
 
 ## 1. 顶层包
@@ -144,7 +163,7 @@ stack build
 domain-app-report passed
 fixed-point-smoke diffs: 0
 workflow-semantics-witness passed
-self-artifact-witness passed
+self-artifact-witness passed (仅高危 artifact gate 轮次需要)
 ```
 ## 6. Public Facade 边界（当前规范）
 

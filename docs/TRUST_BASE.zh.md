@@ -1,5 +1,34 @@
 # Trust Base
 
+## 0. Git 发布语义
+
+本仓库的 Git 发布目标是 self-iteration framework snapshot，而不是面向业务用户裁剪后的 SDK。一次可发布状态必须证明：
+
+```text
+current source
+  -> framework-core self-domain expression
+  -> TrustBase / Stage 0 bootstrap validation
+  -> Stage 1 artifact materialization
+  -> fixed-point parity
+```
+
+`TrustBase` 是点火和验证下一版 core 的组件：它承接 bootstrap runtime、native runner、typed runtime evidence、diagnosis、constraint proof、registry codegen、fixed point 和 self artifact gate。
+
+关键 gate 的含义：
+
+```text
+fixed-point-smoke
+  证明 Stage 0 bootstrap backend 和 Stage 1 framework facade 的报告没有语义分裂。
+
+domain-app-report
+  证明 framework facade 在 domain-side acceptance app 中可用，handler coverage、proof、semantic evidence 都闭合。
+
+self-artifact-witness
+  证明当前 framework/code inputs 能物化隔离的 Stage 1 artifact，并在 artifact 内部重新跑核心 gates。说明性文档保留在 repo，不进入 Stage 1 framework artifact。
+```
+
+`self-artifact-witness` 是高危/重型 gate：同一轮大构建完成后最多运行一次；第二次不允许继续跑；README/docs-only 变更不触发它。
+
 本文定义当前自举系统的最小外部信任基。
 
 目标不是消灭 trust base，而是把它缩小、命名、报告化，并让它之外的语义责任进入 AST / effect / fact / evidence。
@@ -102,7 +131,6 @@ RuntimeEvidencePassedFact
 ```text
 bootstrap-report
 fixed-point-smoke
-self-artifact-witness
 workflow-semantics-witness
 runtime-diagnosis-witness
 domain-app-report
@@ -132,6 +160,11 @@ stack exec bootstrap-report
 stack exec fixed-point-smoke
 stack exec workflow-semantics-witness
 stack exec runtime-diagnosis-witness
+```
+
+高危 artifact gate 只在大构建和轻量 gates 完成后最多运行一次：
+
+```powershell
 stack exec self-artifact-witness
 ```
 ## 6. Facade 化后的 Trust Base 入口

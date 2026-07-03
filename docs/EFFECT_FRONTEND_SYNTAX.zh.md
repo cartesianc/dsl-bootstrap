@@ -171,5 +171,4 @@ GenerateReport pipeline 生成 UserName -> ReportInput 和 ReportInput -> Report
 allDomainCapabilities 通过 business-shape checker
 ```
 
-`self-artifact-witness` 的 artifact gate 已包含 `business-syntax-witness`。
-
+日常 effect 前台语法改动只需要跑 `business-syntax-witness`；高危 `self-artifact-witness` artifact gate 内部也会包含这项检查，但不会因为语法文档或 README/docs-only 变更单独触发。

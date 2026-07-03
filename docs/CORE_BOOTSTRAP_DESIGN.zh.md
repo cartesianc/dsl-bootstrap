@@ -154,6 +154,8 @@ kernel replacement flow
 
 这些能力保留在 framework devtools 或 bootstrap 包中，由框架作者维护。
 
+在当前 self-iteration 仓库里，这些能力保留在发布快照中；其中 `self-artifact-witness` 按高危/重型 artifact gate 管理，只在大构建和轻量 gates 完成后最多运行一次。
+
 ## 7. 当前成功标准
 
 core 成功：

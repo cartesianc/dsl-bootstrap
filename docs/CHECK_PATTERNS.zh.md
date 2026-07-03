@@ -182,9 +182,21 @@ domain report status
 
 这里验证的是业务作者面对的是 `Framework.*` facade 和 domain-local 模块，而不是直接碰 `Bootstrap.*`。
 
-## 6. 完整 Artifact Gate
+## 6. 高危 Artifact Gate
 
-发布前或修改 artifact manifest/self-bootstrap 相关代码时跑：
+`self-artifact-witness` 是高危/重型 gate，不属于日常检查，也不因为 README/docs-only 变更触发。
+
+允许运行条件：
+
+```text
+1. 一轮大构建和轻量 gates 已完成。
+2. 当前轮还没有运行过 self-artifact-witness。
+3. 正在准备 framework replacement / artifact manifest 变更 / 重要发布快照。
+```
+
+同一轮大构建只允许运行一次；第二次请求必须拒绝，改为复用第一次结果或重新开始一轮新的大构建。
+
+允许运行时使用：
 
 ```powershell
 stack exec self-artifact-witness
@@ -248,6 +260,11 @@ stack exec fixed-point-smoke
 
 ```powershell
 stack build
+```
+
+高危 artifact gate 只在大构建和轻量 gates 完成后最多运行一次：
+
+```powershell
 stack exec self-artifact-witness
 ```
 

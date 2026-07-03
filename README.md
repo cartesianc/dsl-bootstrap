@@ -1,5 +1,13 @@
 # dsl-bootstrap
 
+## 项目主旨
+
+`dsl-bootstrap` 当前不是面向业务用户裁剪后的 SDK 仓库，而是一个 self-bootstrapping framework workbench。
+
+Git 上发布的是 trustbase-gated self-iteration snapshot：当前源码必须能把 framework-core 当作一个 domain 来描述、验证，并通过 `TrustBase` / artifact gate 物化下一阶段 framework。`FrameworkCore.*`、`new-framework-core/src/Domain` 和 `domain-app` 三者并存是设计的一部分：它们分别提供当前 core 的 readable frontend、core-as-domain self expression，以及 domain-side acceptance app。
+
+因此，业务 facade 保持干净是为了验证框架真的能被 domain 使用；它不是本仓库隐藏自举能力、发布面向业务用户裁剪版的边界。
+
 `dsl-bootstrap` 是一个自举式 Haskell 业务框架。业务用声明式源码表达：
 
 - workflow AST
@@ -18,7 +26,7 @@ domain-app
   外部 domain/frontend 包，使用 Framework.* facade 编写业务
 ```
 
-提交到仓库里的源码就是 core source。`self-artifact-witness` 会从当前源码生成隔离的 Stage 1 artifact，并在替换或发布前完成验证。
+提交到仓库里的源码就是 core source。`self-artifact-witness` 会从当前 framework/code inputs 生成隔离的 Stage 1 artifact，并在替换或发布前完成验证。说明性文档留在 repo 中维护，不进入 Stage 1 framework artifact。
 
 ## 快速开始
 
@@ -58,37 +66,50 @@ stack exec fixed-point-smoke
 stack exec workflow-semantics-witness
 ```
 
-生成并验证 Stage 1 artifact：
+Stage 1 artifact 验证不属于快速开始。`self-artifact-witness` 是高危/重型 artifact gate，只有一轮大构建和轻量 gates 都完成后才允许运行一次；同一轮第二次不允许继续跑，README/docs-only 变更也不触发它。
 
-```powershell
-stack exec self-artifact-witness
+## 文档地图
+
+维护者从 README 进入说明性文档；个人 TODO 和未定设计草稿不放进主导航。
+
+```text
+Repository purpose and layout
+  docs/PROJECT_LAYOUT.zh.md
+  docs/PACKAGE_BOUNDARY.zh.md
+
+Self-bootstrap and trust base
+  docs/TRUST_BASE.zh.md
+  docs/SELF_BOOTSTRAP_GATE.md
+  docs/CORE_BOOTSTRAP_DESIGN.zh.md
+
+Runtime, workflow, and diagnosis semantics
+  docs/RUNTIME_ARCHITECTURE.zh.md
+  docs/WORKFLOW_SEMANTICS.md
+  docs/DIAGNOSIS_SYSTEM.zh.md
+
+Frontend syntax and AST
+  docs/EFFECT_FRONTEND_SYNTAX.zh.md
+  docs/AST_SPEC.zh.md
+
+Verification commands
+  docs/CHECK_PATTERNS.zh.md
+
+Domain-side acceptance app
+  domain-app/README.md
 ```
 
-## Current Architecture Notes
-
-Runtime architecture:
-
-[docs/RUNTIME_ARCHITECTURE.zh.md](docs/RUNTIME_ARCHITECTURE.zh.md)
-
-Trust base:
-
-[docs/TRUST_BASE.zh.md](docs/TRUST_BASE.zh.md)
-
-Common check patterns and automated boundaries:
-
-[docs/CHECK_PATTERNS.zh.md](docs/CHECK_PATTERNS.zh.md)
-
-Project layout and frontend rules:
-
-[docs/PROJECT_LAYOUT.zh.md](docs/PROJECT_LAYOUT.zh.md)
-
-Effect frontend syntax:
-
-[docs/EFFECT_FRONTEND_SYNTAX.zh.md](docs/EFFECT_FRONTEND_SYNTAX.zh.md)
-
-Domain app business flow:
-
-[domain-app/README.md](domain-app/README.md)
+- [Project layout and repository purpose](docs/PROJECT_LAYOUT.zh.md)
+- [Package boundary](docs/PACKAGE_BOUNDARY.zh.md)
+- [Trust base](docs/TRUST_BASE.zh.md)
+- [Self-bootstrap gate](docs/SELF_BOOTSTRAP_GATE.md)
+- [Core bootstrap design](docs/CORE_BOOTSTRAP_DESIGN.zh.md)
+- [Runtime architecture](docs/RUNTIME_ARCHITECTURE.zh.md)
+- [Workflow semantics](docs/WORKFLOW_SEMANTICS.md)
+- [Diagnosis system](docs/DIAGNOSIS_SYSTEM.zh.md)
+- [Effect frontend syntax](docs/EFFECT_FRONTEND_SYNTAX.zh.md)
+- [AST specification](docs/AST_SPEC.zh.md)
+- [Common check patterns and automated boundaries](docs/CHECK_PATTERNS.zh.md)
+- [Domain app business flow](domain-app/README.md)
 
 期望结果：
 
@@ -98,7 +119,7 @@ bootstrap-report: status passed
 fixed-point-smoke: diffs: 0
 workflow-semantics-witness: ok workflow semantics evidence
 business-syntax-witness: ok business syntax evidence 4 claims
-self-artifact-witness: passed
+self-artifact-witness: passed (仅高危 artifact gate 轮次需要)
 ```
 
 ## 架构
@@ -185,7 +206,7 @@ self-artifact witness
 kernel replacement flow
 ```
 
-发布稳定业务版时，自举工具应进入 devtools/bootstrap 包或内部命令。业务文档从“如何自举框架”转向“如何表达业务”。
+发布自我迭代版 framework snapshot 时，自举工具、domain-side acceptance、fixed-point gate 和 artifact gate 都保留在仓库内。未来如果要单独发布面向业务用户的裁剪版，再把自举工具移动到 devtools/bootstrap 包或内部命令。
 
 ## 编写业务
 
@@ -489,7 +510,9 @@ Stage 1: Framework.* facade/domain framework-core report
 fixed-point-smoke: diffs: 0
 ```
 
-artifact gate 会物化 `.generated/stage1-framework`，并在隔离包中运行：
+artifact gate 会物化 `.generated/stage1-framework`，只复制 framework/code artifact inputs，不复制 `docs`、`README.md`、`CHANGELOG.md`、`TODO.md` 等说明性文档，并在隔离包中运行：
+
+`self-artifact-witness` 是高危/重型 gate：只有大构建和轻量 gates 完成后才允许运行一次。同一轮第二次不允许继续跑；README/docs-only 变更不触发它。
 
 ```text
 stack build
@@ -540,7 +563,6 @@ stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
 stack exec registry-codegen-witness
 stack exec business-syntax-witness
-stack exec self-artifact-witness
 ```
 
 完整 gate：
@@ -560,5 +582,10 @@ stack exec workflow-semantics-witness
 stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness -- --smt=auto
 stack exec registry-codegen-witness
+```
+
+高危 artifact gate（大构建完成后最多一次）：
+
+```powershell
 stack exec self-artifact-witness
 ```
