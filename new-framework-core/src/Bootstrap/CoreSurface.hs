@@ -98,6 +98,7 @@ explicitCoreSurfaceModules =
   , backgroundRuntime
   , runtimeConcurrencyFacade
   , runtimeDiagnosisFacade
+  , runtimeEvidenceFacade
   , runtimeTypesFacade
   , backgroundRuntimeDiagnosis
   , registryCodegenFacade
@@ -779,6 +780,8 @@ trustBaseFacade =
         , "RuntimeDiagnosisEvidenceStatus"
         , "RuntimeConcurrencyEvidencePayload"
         , "RuntimeConcurrencyEvidenceStatus"
+        , "RuntimeEvidencePayload"
+        , "RuntimeEvidenceStatus"
         , "DomainRegistration"
         , "DomainSemanticCheck"
         , "DomainSemanticEvidence"
@@ -816,6 +819,13 @@ trustBaseFacade =
           , "runtimeConcurrencyEvidenceArtifactSummary"
           , "runtimeConcurrencyEvidencePayloadPassed"
           , "runtimeConcurrencyEvidencePayloads"
+          , "renderRuntimeEvidencePayload"
+          , "renderRuntimeEvidencePayloadsJson"
+          , "renderRuntimeEvidenceStatus"
+          , "runtimeEvidenceArtifactSummary"
+          , "runtimeEvidenceClaimNames"
+          , "runtimeEvidencePayloadPassed"
+          , "runtimeEvidencePayloads"
           , "diffGeneratedLines"
           , "generatedLinesMatch"
           , "buildFixedPointReport"
@@ -1378,6 +1388,26 @@ runtimeDiagnosisFacade =
           , "runtimeDiagnosisEvidencePayloadPassed"
           , "renderRuntimeFailureDiagnosis"
         ]
+    )
+
+runtimeEvidenceFacade :: CoreSurfaceModule
+runtimeEvidenceFacade =
+  moduleSurface
+    "Framework.Runtime.Evidence"
+    "top-level runtime evidence payload model over framework-core report facts and artifacts"
+    ( map typeCapability
+        [ "RuntimeEvidencePayload"
+        , "RuntimeEvidenceStatus"
+        ]
+        ++ map valueCapability
+          [ "renderRuntimeEvidencePayload"
+          , "renderRuntimeEvidencePayloadsJson"
+          , "renderRuntimeEvidenceStatus"
+          , "runtimeEvidenceArtifactSummary"
+          , "runtimeEvidenceClaimNames"
+          , "runtimeEvidencePayloadPassed"
+          , "runtimeEvidencePayloads"
+          ]
     )
 
 runtimeTypesFacade :: CoreSurfaceModule

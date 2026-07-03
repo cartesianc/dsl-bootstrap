@@ -62,6 +62,13 @@ stack exec business-syntax-witness
 stack exec fixed-point-smoke
 ```
 
+检查 runtime evidence payload：
+
+```powershell
+stack exec runtime-evidence-witness
+stack exec runtime-evidence-witness -- --json
+```
+
 检查 TrustBase manifest：
 
 ```powershell
@@ -130,6 +137,7 @@ Domain 侧验收应用
 domain-app-report: status passed
 bootstrap-report: status passed
 fixed-point-smoke: diffs: 0
+runtime-evidence-witness: ok runtime evidence 6 payload claims
 trust-base-manifest-witness: ok trust base manifest trust-base-manifest.v1
 workflow-semantics-witness: ok workflow semantics evidence 12 payload claims
 business-syntax-witness: ok business syntax evidence 11 claims
@@ -535,6 +543,8 @@ stack exec bootstrap-smoke
 stack exec bootstrap-runtime-smoke
 stack exec bootstrap-report
 stack exec bootstrap-report -- --json
+stack exec runtime-evidence-witness
+stack exec runtime-evidence-witness -- --json
 stack exec fixed-point-smoke
 stack exec fixed-point-smoke -- --json
 stack exec trust-base-manifest-witness
@@ -548,6 +558,7 @@ framework-core-report.v1
 domain-report.v1
 fixed-point-report.v1
 trust-base-manifest.v1
+runtime-evidence.v1
 runtime-diagnosis-evidence.v1
 workflow-semantics-evidence.v1
 runtime-concurrency-evidence.v1
@@ -566,6 +577,18 @@ Stage 1: Framework.* facade/domain framework-core report
 fixed-point-smoke: fixed-point diff evidence 14 payload claims
 fixed-point-smoke: runtime backend parity evidence 4 payload claims
 fixed-point-smoke: diffs: 0
+runtime-evidence-witness: ok runtime evidence 6 payload claims
+```
+
+runtime evidence payload claims：
+
+```text
+runtime-plan-build-evidence
+runtime-validation-evidence
+runtime-execution-evidence
+runtime-concurrency-evidence
+runtime-diagnosis-evidence
+runtime-backend-parity-evidence
 ```
 
 backend parity payload claims：
@@ -585,6 +608,7 @@ artifact gate 会物化 `.generated/stage1-framework`，只复制 framework/code
 stack build
 stack exec bootstrap-report
 stack exec fixed-point-smoke
+stack exec runtime-evidence-witness
 stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
 stack exec runtime-diagnosis-witness
@@ -628,6 +652,7 @@ witness：
 
 ```powershell
 stack exec framework-core-frontend-witness
+stack exec runtime-evidence-witness
 stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
@@ -648,6 +673,7 @@ stack exec bootstrap-smoke
 stack exec bootstrap-runtime-smoke
 stack exec bootstrap-report
 stack exec fixed-point-smoke
+stack exec runtime-evidence-witness
 stack exec workflow-semantics-witness
 stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness -- --smt=auto

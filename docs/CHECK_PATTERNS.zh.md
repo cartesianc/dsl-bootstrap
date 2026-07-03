@@ -29,6 +29,8 @@ artifact proof
 stack build
 stack exec bootstrap-report
 stack exec bootstrap-report -- --json
+stack exec runtime-evidence-witness
+stack exec runtime-evidence-witness -- --json
 stack exec trust-base-manifest-witness
 stack exec trust-base-manifest-witness -- --json
 stack exec fixed-point-smoke
@@ -48,7 +50,7 @@ bootstrap-report
   runtime artifact closure
   send boundary coverage
   bootstrap handler coverage
-  runtime semantic evidence aggregate
+  runtime semantic evidence payload
 
 fixed-point-smoke
   stage0-bootstrap 与 stage1-framework-facade diff 为 0
@@ -62,6 +64,8 @@ fixed-point-smoke
 ```text
 bootstrap-report: status passed
 bootstrap-report --json: framework-core-report.v1
+runtime-evidence-witness: ok runtime evidence 6 payload claims
+runtime-evidence-witness --json: runtime-evidence.v1
 trust-base-manifest-witness: trust-base-manifest.v1
 fixed-point-smoke: fixed-point diff evidence 14 payload claims
 fixed-point-smoke: diffs: 0
@@ -74,6 +78,8 @@ runtime 相关改动优先跑：
 
 ```powershell
 stack exec bootstrap-runtime-smoke
+stack exec runtime-evidence-witness
+stack exec runtime-evidence-witness -- --json
 stack exec runtime-diagnosis-witness
 stack exec runtime-diagnosis-witness -- --json
 stack exec workflow-semantics-witness
@@ -139,9 +145,21 @@ artifact
 JSON schema：
 
 ```text
+runtime-evidence.v1
 runtime-diagnosis-evidence.v1
 workflow-semantics-evidence.v1
 runtime-concurrency-evidence.v1
+```
+
+`RunRuntimeEvidence` 现在对应 6 条 `RuntimeEvidencePayload`：
+
+```text
+runtime-plan-build-evidence
+runtime-validation-evidence
+runtime-execution-evidence
+runtime-concurrency-evidence
+runtime-diagnosis-evidence
+runtime-backend-parity-evidence
 ```
 
 `RunRuntimeConcurrencyEvidence` 现在对应 4 条 `RuntimeConcurrencyEvidencePayload`：
@@ -196,6 +214,7 @@ EffectTheoryDslExpressedFact -> Framework.Effect -> new-framework-core exposed-m
 RuntimeConcurrencySemanticsExpressedFact -> Framework.Runtime.Concurrency -> new-framework-core exposed-modules
 RuntimeDiagnosisExpressedFact -> Framework.Runtime.Diagnosis -> new-framework-core exposed-modules
 RuntimeBackendParityExpressedFact -> Framework.FixedPoint -> new-framework-core exposed-modules
+RuntimeFactClosureExpressedFact -> Framework.Runtime.Evidence -> new-framework-core exposed-modules
 RegistryCodegenExpressedFact -> Framework.RegistryCodegen -> new-framework-core exposed-modules
 SelfArtifactManifestExpressedFact -> Framework.SelfArtifact -> new-framework-core exposed-modules
 ```

@@ -282,7 +282,18 @@ runBootstrapNative RunRegistryCodegenEvidence _ _ =
 runBootstrapNative RunSelfArtifactManifestEvidence _ _ =
   pure (succeedArtifact SelfArtifactManifestArtifact "self artifact manifest expression passed")
 runBootstrapNative RunRuntimeEvidence _ _ =
-  pure (succeedArtifact RuntimeEvidenceArtifact "runtime evidence aggregate passed")
+  pure
+    ( succeedArtifact
+        RuntimeEvidenceArtifact
+        ( "runtime evidence payload claims: "
+            ++ "runtime-plan-build-evidence, "
+            ++ "runtime-validation-evidence, "
+            ++ "runtime-execution-evidence, "
+            ++ "runtime-concurrency-evidence, "
+            ++ "runtime-diagnosis-evidence, "
+            ++ "runtime-backend-parity-evidence"
+        )
+    )
 runBootstrapNative PublishFrameworkCoreReport _ _ =
   pure (succeedArtifact FrameworkCoreReportArtifact "framework-core expression published natively")
 runBootstrapNative currentSend _ _ =

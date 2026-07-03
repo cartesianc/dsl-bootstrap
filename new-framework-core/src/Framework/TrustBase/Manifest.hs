@@ -56,6 +56,7 @@ defaultTrustBaseManifest =
         , "Framework.RegistryCodegen"
         , "Framework.Runtime.Concurrency"
         , "Framework.Runtime.Diagnosis"
+        , "Framework.Runtime.Evidence"
         , "Framework.SelfArtifact"
         , "Framework.Workflow.Semantics"
         ]
@@ -67,6 +68,7 @@ defaultTrustBaseManifest =
     , trustBaseManifestWitnessExecutables =
         [ "constraint-proof-witness"
         , "workflow-semantics-witness"
+        , "runtime-evidence-witness"
         , "runtime-diagnosis-witness"
         , "framework-core-frontend-witness"
         , "registry-codegen-witness"

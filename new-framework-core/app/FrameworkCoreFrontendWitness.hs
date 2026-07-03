@@ -21,6 +21,7 @@ import Domain.Vocabulary
   , pattern RuntimeBackendParityExpressedFact
   , pattern RuntimeConcurrencySemanticsExpressedFact
   , pattern RuntimeDiagnosisExpressedFact
+  , pattern RuntimeFactClosureExpressedFact
   , pattern SelfArtifactManifestExpressedFact
   )
 import Framework.Ast
@@ -95,6 +96,7 @@ claimModuleLinks =
   , ClaimModuleLink RuntimeConcurrencySemanticsExpressedFact "Framework.Runtime.Concurrency"
   , ClaimModuleLink RuntimeDiagnosisExpressedFact "Framework.Runtime.Diagnosis"
   , ClaimModuleLink RuntimeBackendParityExpressedFact "Framework.FixedPoint"
+  , ClaimModuleLink RuntimeFactClosureExpressedFact "Framework.Runtime.Evidence"
   , ClaimModuleLink RegistryCodegenExpressedFact "Framework.RegistryCodegen"
   , ClaimModuleLink SelfArtifactManifestExpressedFact "Framework.SelfArtifact"
   ]

@@ -146,6 +146,7 @@ EffectTheoryDslExpressedFact -> Framework.Effect
 RuntimeConcurrencySemanticsExpressedFact -> Framework.Runtime.Concurrency
 RuntimeDiagnosisExpressedFact -> Framework.Runtime.Diagnosis
 RuntimeBackendParityExpressedFact -> Framework.FixedPoint
+RuntimeFactClosureExpressedFact -> Framework.Runtime.Evidence
 RegistryCodegenExpressedFact -> Framework.RegistryCodegen
 SelfArtifactManifestExpressedFact -> Framework.SelfArtifact
 ```
@@ -160,6 +161,9 @@ Framework.Runtime.Types
 
 Framework.Runtime.Diagnosis
   diagnosis builder, probe completion, payload rendering, and failure diagnosis rendering
+
+Framework.Runtime.Evidence
+  top-level runtime evidence payloads over framework-core report facts and artifacts
 ```
 
 `Bootstrap.Runtime` 现在保留为兼容 facade 和 bootstrap backend 入口。已拆出的子模块：
@@ -225,6 +229,7 @@ Bootstrap.Runtime.Policy
 stack build
 stack exec bootstrap-report
 stack exec fixed-point-smoke
+stack exec runtime-evidence-witness
 stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
 stack exec domain-app-report

@@ -82,6 +82,7 @@ library
                      , Framework.Runtime
                      , Framework.Runtime.Concurrency
                      , Framework.Runtime.Diagnosis
+                     , Framework.Runtime.Evidence
                      , Framework.Runtime.Types
                      , Framework.SelfArtifact
                      , Framework.TrustBase
@@ -256,6 +257,22 @@ executable self-artifact-witness
 executable workflow-semantics-witness
   hs-source-dirs:      app
   main-is:             WorkflowSemanticsWitness.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable runtime-evidence-witness
+  hs-source-dirs:      app
+  main-is:             RuntimeEvidenceWitness.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , new-framework-core

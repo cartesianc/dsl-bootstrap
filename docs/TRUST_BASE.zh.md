@@ -120,7 +120,18 @@ RuntimeBackendParityEvidencePassedFact
 RuntimeEvidencePassedFact
 ```
 
-`RuntimeEvidencePassedFact` 是兼容聚合事实。细粒度事实用于定位哪一片 runtime 语义没有闭合。
+`RuntimeEvidencePassedFact` 是兼容 rollup fact，由 6 条 `RuntimeEvidencePayload` 支撑：
+
+```text
+runtime-plan-build-evidence
+runtime-validation-evidence
+runtime-execution-evidence
+runtime-concurrency-evidence
+runtime-diagnosis-evidence
+runtime-backend-parity-evidence
+```
+
+细粒度事实用于定位哪一片 runtime 语义没有闭合。
 
 ## 4. 性能边界
 
@@ -132,6 +143,7 @@ RuntimeEvidencePassedFact
 bootstrap-report
 fixed-point-smoke
 workflow-semantics-witness
+runtime-evidence-witness
 runtime-diagnosis-witness
 domain-app-report
 ```
@@ -180,6 +192,7 @@ artifact runner manifest policy split
 stack build
 stack exec bootstrap-report
 stack exec fixed-point-smoke
+stack exec runtime-evidence-witness
 stack exec workflow-semantics-witness
 stack exec runtime-diagnosis-witness
 stack exec trust-base-manifest-witness

@@ -36,6 +36,7 @@ module Framework.TrustBase
   , module Framework.RegistryCodegen
   , module Framework.Runtime.Concurrency
   , module Framework.Runtime.Diagnosis
+  , module Framework.Runtime.Evidence
   , module Framework.SelfArtifact
   , module Framework.TrustBase.Manifest
   , module Framework.Workflow.Semantics
@@ -82,6 +83,7 @@ import Framework.Runtime
   , runtimeSnapshot
   )
 import Framework.Runtime.Diagnosis
+import Framework.Runtime.Evidence
 import Framework.SelfArtifact
 import Framework.TrustBase.Manifest
 import Framework.Workflow.Semantics

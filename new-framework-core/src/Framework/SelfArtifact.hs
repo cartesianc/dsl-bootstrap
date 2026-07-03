@@ -82,6 +82,7 @@ defaultSelfArtifactManifest =
         [ ArtifactCommand "stack build" "stack" ["build"]
         , ArtifactCommand "bootstrap report" "stack" ["exec", "bootstrap-report"]
         , ArtifactCommand "fixed point" "stack" ["exec", "fixed-point-smoke"]
+        , ArtifactCommand "runtime evidence witness" "stack" ["exec", "runtime-evidence-witness"]
         , ArtifactCommand "constraint proof witness" "stack" ["exec", "constraint-proof-witness", "--", "--smt=auto"]
         , ArtifactCommand "workflow semantics witness" "stack" ["exec", "workflow-semantics-witness"]
         , ArtifactCommand "runtime diagnosis witness" "stack" ["exec", "runtime-diagnosis-witness"]
