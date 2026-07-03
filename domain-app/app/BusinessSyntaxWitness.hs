@@ -34,9 +34,17 @@ import "new-framework-core" Framework.Business
   ( BusinessShapeIssue
   , capabilitiesEffect
   , capabilityEffectSections
+  , capabilityEffectSystem
+  , capabilityEffectSystemBoundary
+  , capability
   , checkBusinessShape
+  , idempotentPolicy
   , pipelineTransformCandidates
+  , policy
   , renderBusinessShapeIssue
+  , retryOnce
+  , produces
+  , uses
   )
 import qualified "new-framework-core" Framework.Effect as Effect
 import "new-framework-core" Framework.Effect
@@ -193,6 +201,12 @@ businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPasse
       "EffectSystemBoundary metadata exposes imports, private facts, and exports for runtime semantics"
       (observedBool effectSystemBoundaryMetadataPassed)
       "EffectSystemBoundaryMetadataArtifact"
+  , businessEvidence
+      "business-syntax-capability-system-boundary"
+      capabilitySystemBoundaryPassed
+      "capability lowers to EffectSystemBoundary with send, transform, policy, and pipeline contracts"
+      (observedBool capabilitySystemBoundaryPassed)
+      "BusinessCapabilitySystemBoundaryArtifact"
   ]
 
 businessEvidence :: String -> Bool -> String -> String -> String -> BusinessSyntaxEvidencePayload
@@ -314,6 +328,57 @@ effectSystemBoundaryMetadataPassed =
             Workflow.requirementItems requirement == [pipelineAdapterFact]
           _ ->
             False
+
+capabilitySystemBoundaryPassed :: Bool
+capabilitySystemBoundaryPassed =
+  generateReportBoundaryMatches
+    && generateReportSystemMatches
+    && policyBoundaryMatches
+  where
+    generateBoundary =
+      capabilityEffectSystemBoundary "GenerateReportSystem" generateReportCapability
+    generateSystem =
+      capabilityEffectSystem "GenerateReportSystem" generateReportCapability
+    generateReportBoundaryMatches =
+      Workflow.effectSystemBoundaryName generateBoundary == Workflow.EffectSystemName "GenerateReportSystem"
+        && Workflow.effectSystemBoundaryImports generateBoundary
+          == [ AddCalculatedFact
+             , FactorialCalculatedFact
+             , SquaresCalculatedFact
+             , UserNameAskedFact
+             ]
+        && null (Workflow.effectSystemBoundaryPrivateFacts generateBoundary)
+        && Workflow.effectSystemBoundaryExports generateBoundary == [ReportGeneratedFact]
+        && map show (Workflow.effectSystemBoundarySends generateBoundary) == [show GenerateReport]
+        && map show (Workflow.effectSystemBoundaryTransforms generateBoundary) == [show UserNameToReportInput]
+        && boundaryPipelineArtifacts generateBoundary == [show UserName, show ReportInput, show ReportOutput]
+    generateReportSystemMatches =
+      Workflow.effectSystemName generateSystem == Workflow.EffectSystemName "GenerateReportSystem"
+        && Workflow.effectSystemBoundaryExplicit generateSystem
+        && Workflow.effectSystemBoundaryExports (Workflow.effectSystemBoundary generateSystem) == [ReportGeneratedFact]
+    policyBoundaryMatches =
+      map show (Workflow.effectSystemBoundarySends policyBoundary) == [show GenerateReport]
+        && map show (Workflow.effectSystemBoundaryPolicies policyBoundary)
+          == [ "idempotent " ++ show GenerateReport
+             , "retry-once " ++ show GenerateReport
+             ]
+    policyBoundary =
+      capabilityEffectSystemBoundary
+        "PolicyProbeSystem"
+        ( capability
+            "PolicyProbe"
+            [ uses GenerateReport ReportInput ReportOutput
+            , policy (idempotentPolicy GenerateReport)
+            , policy (retryOnce GenerateReport)
+            , produces ReportGeneratedFact
+            ]
+        )
+
+boundaryPipelineArtifacts :: Workflow.EffectSystemBoundary Workflow.WorkflowFact -> [String]
+boundaryPipelineArtifacts boundary =
+  concatMap
+    (map show . Workflow.effectSystemBoundaryPipelineArtifacts)
+    (Workflow.effectSystemBoundaryPipelines boundary)
 
 domainBusinessAuthoringBoundaryPassed :: IO Bool
 domainBusinessAuthoringBoundaryPassed = do

@@ -717,6 +717,8 @@ businessFacade =
           , "capabilitiesEffect"
           , "capability"
           , "capabilityEffectSections"
+          , "capabilityEffectSystem"
+          , "capabilityEffectSystemBoundary"
           , "checkBusinessShape"
           , "handler"
           , "handlerBinding"

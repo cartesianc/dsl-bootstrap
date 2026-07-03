@@ -22,6 +22,8 @@ module Bootstrap.Business
   , capabilitiesEffect
   , capability
   , capabilityEffectSections
+  , capabilityEffectSystem
+  , capabilityEffectSystemBoundary
   , checkFactArtifactInternalShape
   , checkBusinessShape
   , handler
@@ -43,6 +45,7 @@ module Bootstrap.Business
   ) where
 
 import qualified Bootstrap.Effect as Effect
+import qualified Bootstrap.Workflow as Workflow
 import Bootstrap.Effect
   ( EffectName
   , EffectSection (..)
@@ -251,6 +254,55 @@ capabilityEffectSections current =
     ++ useBoundarySections current
     ++ errorBoundarySections current
     ++ policySections current
+
+capabilityEffectSystem :: String -> Capability -> Workflow.EffectSystem WorkflowFact
+capabilityEffectSystem name =
+  Workflow.effectSystemFromBoundary . capabilityEffectSystemBoundary name
+
+capabilityEffectSystemBoundary :: String -> Capability -> Workflow.EffectSystemBoundary WorkflowFact
+capabilityEffectSystemBoundary name current =
+  Workflow.systemBoundaryWithPipelines
+    (Workflow.EffectSystemName name)
+    (capabilityRequires current)
+    []
+    (capabilityProduces current)
+    (map sendBoundary (capabilityBoundarySends current))
+    (map transformBoundary (activeTransformBindings current))
+    (map policyBoundary (capabilityPolicy current))
+    (map pipelineBoundary (capabilityPipelines current))
+
+capabilityBoundarySends :: Capability -> [SendName]
+capabilityBoundarySends current =
+  unique
+    ( map capabilityUseSend (capabilityUses current)
+        ++ map capabilityUseSend (capabilityErrors current)
+    )
+
+sendBoundary :: SendName -> Workflow.EffectSystemBoundarySend
+sendBoundary =
+  Workflow.boundarySend . show
+
+transformBoundary :: TransformBindingSpec -> Workflow.EffectSystemBoundaryTransform
+transformBoundary =
+  Workflow.boundaryTransform . show . transformBindingSpecName
+
+policyBoundary :: CapabilityPolicy -> Workflow.EffectSystemBoundaryPolicy
+policyBoundary currentPolicy =
+  case currentPolicy of
+    CapabilityRetryOnce send ->
+      Workflow.boundaryRetryOnce (show send)
+    CapabilityIdempotent send ->
+      Workflow.boundaryIdempotent (show send)
+
+pipelineBoundary :: Pipeline -> Workflow.EffectSystemBoundaryPipeline
+pipelineBoundary currentPipeline =
+  Workflow.boundaryPipeline
+    (pipelineName currentPipeline)
+    (map artifactBoundary (pipelineTypes currentPipeline))
+
+artifactBoundary :: TypeName -> Workflow.EffectSystemBoundaryArtifact
+artifactBoundary =
+  Workflow.boundaryArtifact . show
 
 producerSections :: Capability -> [EffectSection]
 producerSections current =
