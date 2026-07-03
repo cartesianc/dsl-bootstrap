@@ -261,7 +261,7 @@ capabilityEffectSystem name =
 
 capabilityEffectSystemBoundary :: String -> Capability -> Workflow.EffectSystemBoundary WorkflowFact
 capabilityEffectSystemBoundary name current =
-  Workflow.systemBoundaryWithPipelines
+  Workflow.systemBoundaryWithHandlers
     (Workflow.EffectSystemName name)
     (capabilityRequires current)
     []
@@ -270,6 +270,7 @@ capabilityEffectSystemBoundary name current =
     (map transformBoundary (activeTransformBindings current))
     (map policyBoundary (capabilityPolicy current))
     (map pipelineBoundary (capabilityPipelines current))
+    (capabilityBoundaryHandlers current)
 
 capabilityBoundarySends :: Capability -> [SendName]
 capabilityBoundarySends current =
@@ -303,6 +304,36 @@ pipelineBoundary currentPipeline =
 artifactBoundary :: TypeName -> Workflow.EffectSystemBoundaryArtifact
 artifactBoundary =
   Workflow.boundaryArtifact . show
+
+capabilityBoundaryHandlers :: Capability -> [Workflow.EffectSystemBoundaryHandler]
+capabilityBoundaryHandlers current =
+  unique
+    [ Workflow.boundaryHandler
+        (show (capabilityUseSend currentUse))
+        (show (handlerBindingSpecName binding))
+    | binding <- capabilityHandlers current
+    , currentUse <- capabilityUses current ++ capabilityErrors current
+    , handlerBindingMatchesUse binding currentUse
+    ]
+
+handlerBindingMatchesUse :: HandlerBindingSpec -> CapabilityUse -> Bool
+handlerBindingMatchesUse binding currentUse =
+  handlerBindingSpecConsumes binding == handlerUseConsumes currentUse
+    && handlerBindingSpecEmits binding == handlerUseEmits currentUse
+
+handlerUseConsumes :: CapabilityUse -> [TypeName]
+handlerUseConsumes currentUse
+  | capabilityUseInput currentUse == NoInput =
+      []
+  | otherwise =
+      [capabilityUseInput currentUse]
+
+handlerUseEmits :: CapabilityUse -> [TypeName]
+handlerUseEmits currentUse
+  | capabilityUseOutput currentUse == Unit =
+      []
+  | otherwise =
+      [capabilityUseOutput currentUse]
 
 producerSections :: Capability -> [EffectSection]
 producerSections current =

@@ -441,6 +441,8 @@ systemRuleContractConstraints rules contracts system
       map show (Workflow.effectSystemBoundarySends boundary)
     allowedTransforms =
       map show (Workflow.effectSystemBoundaryTransforms boundary)
+    declaredHandlerSends =
+      boundaryHandlerSends (Workflow.effectSystemBoundaryHandlers boundary)
     declaredIdempotentSends =
       boundaryIdempotentSends (Workflow.effectSystemBoundaryPolicies boundary)
     declaredRetrySends =
@@ -453,13 +455,13 @@ systemRuleContractConstraints rules contracts system
     constraintsForRule rule =
       [ NativeConstraint
           ("effect system send contract " ++ show systemName ++ " " ++ show (nativeRuleFact rule))
-          (all (`elem` allowedSends) usedSends)
+          (all (`elem` allowedSends) usedBoundarySends)
           ( "effect system rule uses undeclared send: "
               ++ show systemName
               ++ " "
               ++ show (nativeRuleFact rule)
               ++ " uses "
-              ++ show (filter (`notElem` allowedSends) usedSends)
+              ++ show (filter (`notElem` allowedSends) usedBoundarySends)
           )
       , NativeConstraint
           ("effect system transform contract " ++ show systemName ++ " " ++ show (nativeRuleFact rule))
@@ -470,6 +472,16 @@ systemRuleContractConstraints rules contracts system
               ++ show (nativeRuleFact rule)
               ++ " uses "
               ++ show (filter (`notElem` allowedTransforms) usedTransforms)
+          )
+      , NativeConstraint
+          ("effect system handler contract " ++ show systemName ++ " " ++ show (nativeRuleFact rule))
+          (all (`elem` declaredHandlerSends) usedBoundarySends)
+          ( "effect system rule uses send without handler contract: "
+              ++ show systemName
+              ++ " "
+              ++ show (nativeRuleFact rule)
+              ++ " uses "
+              ++ show (filter (`notElem` declaredHandlerSends) usedBoundarySends)
           )
       , NativeConstraint
           ("effect system idempotency policy contract " ++ show systemName ++ " " ++ show (nativeRuleFact rule))
@@ -493,6 +505,8 @@ systemRuleContractConstraints rules contracts system
           )
       ]
       where
+        usedBoundarySends =
+          unique (map show (nativeRuleUses rule ++ nativeRuleErrors rule))
         usedSends =
           unique (map show (nativeRuleUses rule))
         usedTransforms =
@@ -516,7 +530,8 @@ systemRuleContractConstraints rules contracts system
 systemPolicyDeclarationConstraints :: [SendContract] -> Workflow.EffectSystem WorkflowFact -> [NativeConstraint]
 systemPolicyDeclarationConstraints contracts system =
   concat
-    [ map policySendDeclaredConstraint policySends
+    [ systemHandlerDeclarationConstraints system
+    , map policySendDeclaredConstraint policySends
     , map idempotencyPolicyBackedConstraint declaredIdempotentSends
     , map retryPolicyBackedConstraint declaredRetrySends
     ]
@@ -556,6 +571,54 @@ systemPolicyDeclarationConstraints contracts system =
             (sendContractByName contracts currentSend)
         )
         ("effect system retry policy is not backed by effect theory: " ++ show systemName ++ " " ++ currentSend)
+
+systemHandlerDeclarationConstraints :: Workflow.EffectSystem WorkflowFact -> [NativeConstraint]
+systemHandlerDeclarationConstraints system =
+  concat
+    [ map handlerSendDeclaredConstraint handlerSends
+    , map singleHandlerConstraint handlerSends
+    ]
+  where
+    boundary =
+      Workflow.effectSystemBoundary system
+    systemName =
+      Workflow.effectSystemName system
+    allowedSends =
+      map show (Workflow.effectSystemBoundarySends boundary)
+    handlers =
+      Workflow.effectSystemBoundaryHandlers boundary
+    handlerSends =
+      unique (boundaryHandlerSends handlers)
+    handlerSendDeclaredConstraint currentSend =
+      NativeConstraint
+        ("effect system handler send declared " ++ show systemName ++ " " ++ currentSend)
+        (currentSend `elem` allowedSends)
+        ("effect system handler references undeclared send: " ++ show systemName ++ " " ++ currentSend)
+    singleHandlerConstraint currentSend =
+      NativeConstraint
+        ("effect system single handler " ++ show systemName ++ " " ++ currentSend)
+        (length (handlersForBoundarySend currentSend handlers) == 1)
+        ( "effect system handler send must have one handler: "
+            ++ show systemName
+            ++ " "
+            ++ currentSend
+            ++ " "
+            ++ show (map Workflow.effectSystemBoundaryHandlerName (handlersForBoundarySend currentSend handlers))
+        )
+
+boundaryHandlerSends :: [Workflow.EffectSystemBoundaryHandler] -> [String]
+boundaryHandlerSends handlers =
+  unique
+    [ show (Workflow.effectSystemBoundaryHandlerSend handler)
+    | handler <- handlers
+    ]
+
+handlersForBoundarySend :: String -> [Workflow.EffectSystemBoundaryHandler] -> [Workflow.EffectSystemBoundaryHandler]
+handlersForBoundarySend currentSend handlers =
+  [ handler
+  | handler <- handlers
+  , show (Workflow.effectSystemBoundaryHandlerSend handler) == currentSend
+  ]
 
 boundaryIdempotentSends :: [Workflow.EffectSystemBoundaryPolicy] -> [String]
 boundaryIdempotentSends policies =

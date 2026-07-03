@@ -185,7 +185,7 @@ stack exec business-syntax-witness -- --json
 GenerateReport capability lowering 生成 needs/take/make/uses/externalMake/transform
 GenerateReport pipeline 生成 UserName -> ReportInput 和 ReportInput -> ReportOutput candidate
 Effects.* 等于对应 Domain.Business capability group lowering
-capability 可以 lower 成带 send/transform/policy/pipeline contract 的 EffectSystemBoundary
+capability 可以 lower 成带 send/handler/transform/policy/pipeline contract 的 EffectSystemBoundary
 Domain.Business 导入 Framework.Business 且不导入 Framework.Effect
 Domain.EffectVocabulary 导入 Framework.Business 且不导入 Framework.Effect
 allDomainCapabilities 通过 business-shape checker

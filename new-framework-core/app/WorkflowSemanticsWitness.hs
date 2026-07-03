@@ -172,8 +172,8 @@ workflowSemanticsClaims =
       effectSystemScopeWitness
   , WorkflowSemanticsClaim
       "workflow-effect-system-contracts"
-      "EffectSystemBoundary send/transform/policy contracts constrain explicit private and export rules"
-      "valid contracts pass while undeclared send, transform, missing policy, and policy mismatch fail plan validation"
+      "EffectSystemBoundary send/handler/transform/policy contracts constrain explicit private and export rules"
+      "valid contracts pass while undeclared send, missing handler, transform, missing policy, and policy mismatch fail plan validation"
       "WorkflowEffectSystemContractsArtifact"
       effectSystemContractWitness
   , WorkflowSemanticsClaim
@@ -532,6 +532,7 @@ effectSystemContractWitness :: IO ()
 effectSystemContractWitness = do
   requirePlanPasses "valid effect system contracts" validContractBlueprint contractTheory
   requirePlanFails "undeclared send contract" undeclaredSendBlueprint contractTheoryWithoutPolicies
+  requirePlanFails "missing handler contract" missingHandlerBlueprint contractTheoryWithoutPolicies
   requirePlanFails "undeclared transform contract" undeclaredTransformBlueprint contractTheoryWithoutPolicies
   requirePlanFails "missing send policy contract" missingPolicyBlueprint contractTheory
   requirePlanFails "send policy mismatch" validContractBlueprint contractTheoryWithoutPolicies
@@ -838,13 +839,22 @@ missingPolicyBlueprint =
     [W.boundaryTransform (show boundaryContractTransform)]
     []
 
+missingHandlerBlueprint :: W.AppBlueprint
+missingHandlerBlueprint =
+  contractBlueprintWithPipelines
+    [W.boundarySend (show boundaryContractSend)]
+    [W.boundaryTransform (show boundaryContractTransform)]
+    []
+    []
+    []
+
 contractBlueprint ::
   [W.EffectSystemBoundarySend] ->
   [W.EffectSystemBoundaryTransform] ->
   [W.EffectSystemBoundaryPolicy] ->
   W.AppBlueprint
 contractBlueprint sends transforms policies =
-  contractBlueprintWithPipelines sends transforms policies []
+  contractBlueprintWithPipelines sends transforms policies [] (contractHandlersFor sends)
 
 validPipelineBlueprint :: W.AppBlueprint
 validPipelineBlueprint =
@@ -860,6 +870,7 @@ validPipelineBlueprint =
         , boundaryContractSendOutputType
         ]
     ]
+    contractHandlers
 
 missingPipelineArtifactBlueprint :: W.AppBlueprint
 missingPipelineArtifactBlueprint =
@@ -874,6 +885,7 @@ missingPipelineArtifactBlueprint =
         , boundaryContractOutputType
         ]
     ]
+    contractHandlers
 
 missingPipelineEdgeBlueprint :: W.AppBlueprint
 missingPipelineEdgeBlueprint =
@@ -889,18 +901,20 @@ missingPipelineEdgeBlueprint =
         , boundaryContractOutputType
         ]
     ]
+    contractHandlers
 
 contractBlueprintWithPipelines ::
   [W.EffectSystemBoundarySend] ->
   [W.EffectSystemBoundaryTransform] ->
   [W.EffectSystemBoundaryPolicy] ->
   [W.EffectSystemBoundaryPipeline] ->
+  [W.EffectSystemBoundaryHandler] ->
   W.AppBlueprint
-contractBlueprintWithPipelines sends transforms policies pipelines =
+contractBlueprintWithPipelines sends transforms policies pipelines handlers =
   blueprint
     ( W.run
         ( W.effectSystemFromBoundary
-            ( W.systemBoundaryWithPipelines
+            ( W.systemBoundaryWithHandlers
                 boundaryContractFlow
                 []
                 [boundaryContractInputFact]
@@ -909,9 +923,21 @@ contractBlueprintWithPipelines sends transforms policies pipelines =
                 transforms
                 policies
                 pipelines
+                handlers
             )
         )
     )
+
+contractHandlersFor :: [W.EffectSystemBoundarySend] -> [W.EffectSystemBoundaryHandler]
+contractHandlersFor sends
+  | W.boundarySend (show boundaryContractSend) `elem` sends =
+      contractHandlers
+  | otherwise =
+      []
+
+contractHandlers :: [W.EffectSystemBoundaryHandler]
+contractHandlers =
+  [W.boundaryHandler (show boundaryContractSend) (show boundaryContractHandler)]
 
 boundaryContractPipeline :: [E.TypeName] -> W.EffectSystemBoundaryPipeline
 boundaryContractPipeline artifacts =
@@ -1086,6 +1112,10 @@ boundaryContractExportFact =
 boundaryContractSend :: E.SendName
 boundaryContractSend =
   E.SendName "WorkflowSemanticsBoundaryContractSend"
+
+boundaryContractHandler :: E.HandlerName
+boundaryContractHandler =
+  E.HandlerName "WorkflowSemanticsBoundaryContractHandler"
 
 boundaryContractTransform :: E.TransformName
 boundaryContractTransform =

@@ -204,7 +204,7 @@ businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPasse
   , businessEvidence
       "business-syntax-capability-system-boundary"
       capabilitySystemBoundaryPassed
-      "capability lowers to EffectSystemBoundary with send, transform, policy, and pipeline contracts"
+      "capability lowers to EffectSystemBoundary with send, handler, transform, policy, and pipeline contracts"
       (observedBool capabilitySystemBoundaryPassed)
       "BusinessCapabilitySystemBoundaryArtifact"
   ]
@@ -350,6 +350,8 @@ capabilitySystemBoundaryPassed =
         && null (Workflow.effectSystemBoundaryPrivateFacts generateBoundary)
         && Workflow.effectSystemBoundaryExports generateBoundary == [ReportGeneratedFact]
         && map show (Workflow.effectSystemBoundarySends generateBoundary) == [show GenerateReport]
+        && map (show . Workflow.effectSystemBoundaryHandlerSend) (Workflow.effectSystemBoundaryHandlers generateBoundary) == [show GenerateReport]
+        && map Workflow.effectSystemBoundaryHandlerName (Workflow.effectSystemBoundaryHandlers generateBoundary) == [show RuntimeGenerateReport]
         && map show (Workflow.effectSystemBoundaryTransforms generateBoundary) == [show UserNameToReportInput]
         && boundaryPipelineArtifacts generateBoundary == [show UserName, show ReportInput, show ReportOutput]
     generateReportSystemMatches =
