@@ -188,11 +188,11 @@ businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPasse
       (observedBool runtimePipelinePassed)
       "BusinessRuntimePipelineAdapterArtifact"
   , businessEvidence
-      "effect-system-boundary-currently-global"
-      effectSystemBoundaryCurrentlyGlobal
-      "EffectSystem still exposes name + success facts only; imports/exports/private facts are not semantic fields yet"
-      (observedBool effectSystemBoundaryCurrentlyGlobal)
-      "EffectSystemCurrentBoundaryArtifact"
+      "effect-system-boundary-metadata"
+      effectSystemBoundaryMetadataPassed
+      "EffectSystemBoundary metadata expresses imports, private facts, and exports without changing runtime execution"
+      (observedBool effectSystemBoundaryMetadataPassed)
+      "EffectSystemBoundaryMetadataArtifact"
   ]
 
 businessEvidence :: String -> Bool -> String -> String -> String -> BusinessSyntaxEvidencePayload
@@ -277,11 +277,43 @@ pipelineLoweringPassed =
     candidates =
       pipelineTransformCandidates generateReportCapability
 
-effectSystemBoundaryCurrentlyGlobal :: Bool
-effectSystemBoundaryCurrentlyGlobal =
-  case Workflow.effectSystem (Workflow.EffectSystemName "BoundaryProbe") (Workflow.factItems [pipelineAdapterFact]) of
-    Workflow.EffectSystem _ _ ->
-      True
+effectSystemBoundaryMetadataPassed :: Bool
+effectSystemBoundaryMetadataPassed =
+  explicitBoundaryMatches
+    && derivedBoundaryMatches
+    && derivedRuntimeSystemMatches
+  where
+    explicitBoundary =
+      Workflow.systemBoundary
+        (Workflow.EffectSystemName "BoundaryProbe")
+        [pipelineSourceFact]
+        [WorkflowFact "PipelinePrivateFact"]
+        [pipelineAdapterFact]
+    derivedSystem =
+      Workflow.effectSystem
+        (Workflow.EffectSystemName "BoundaryProbe")
+        (Workflow.factItems [pipelineAdapterFact])
+    derivedBoundary =
+      Workflow.effectSystemBoundary derivedSystem
+    derivedRuntimeSystem =
+      Workflow.effectSystemFromBoundary explicitBoundary
+    explicitBoundaryMatches =
+      Workflow.effectSystemBoundaryName explicitBoundary == Workflow.EffectSystemName "BoundaryProbe"
+        && Workflow.effectSystemBoundaryImports explicitBoundary == [pipelineSourceFact]
+        && Workflow.effectSystemBoundaryPrivateFacts explicitBoundary == [WorkflowFact "PipelinePrivateFact"]
+        && Workflow.effectSystemBoundaryExports explicitBoundary == [pipelineAdapterFact]
+    derivedBoundaryMatches =
+      Workflow.effectSystemBoundaryName derivedBoundary == Workflow.EffectSystemName "BoundaryProbe"
+        && null (Workflow.effectSystemBoundaryImports derivedBoundary)
+        && null (Workflow.effectSystemBoundaryPrivateFacts derivedBoundary)
+        && Workflow.effectSystemBoundaryExports derivedBoundary == [pipelineAdapterFact]
+    derivedRuntimeSystemMatches =
+      Workflow.effectSystemName derivedRuntimeSystem == Workflow.EffectSystemName "BoundaryProbe"
+        && case Workflow.effectSystemSuccess derivedRuntimeSystem of
+          Workflow.FactItems requirement ->
+            Workflow.requirementItems requirement == [pipelineAdapterFact]
+          _ ->
+            False
 
 domainBusinessAuthoringBoundaryPassed :: IO Bool
 domainBusinessAuthoringBoundaryPassed = do

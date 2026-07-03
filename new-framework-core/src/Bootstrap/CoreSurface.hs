@@ -556,6 +556,7 @@ workflowFacade =
         , "Interceptor"
         , "EffectSystemName"
         , "EffectSystem"
+        , "EffectSystemBoundary"
         , "Chain"
         , "Parallel"
         , "Middleware"
@@ -593,6 +594,8 @@ workflowFacade =
           , "factAll"
           , "factAny"
           , "effectSystem"
+          , "effectSystemBoundary"
+          , "effectSystemFromBoundary"
           , "run"
           , "chain"
           , "parallel"
@@ -604,6 +607,7 @@ workflowFacade =
           , "wait"
           , "hanging"
           , "suspense"
+          , "systemBoundary"
           , "loop"
           ]
     )

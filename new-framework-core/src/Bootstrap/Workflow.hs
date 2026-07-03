@@ -7,6 +7,7 @@ module Bootstrap.Workflow
   , Choice (..)
   , ChoiceKey (..)
   , EffectSystem (..)
+  , EffectSystemBoundary (..)
   , EffectSystemName (..)
   , FactExpr (..)
   , Fallback (..)
@@ -29,6 +30,8 @@ module Bootstrap.Workflow
   , choice
   , choiceItems
   , effectSystem
+  , effectSystemBoundary
+  , effectSystemFromBoundary
   , factAll
   , factAny
   , factItems
@@ -53,6 +56,7 @@ module Bootstrap.Workflow
   , requirementItems
   , run
   , suspense
+  , systemBoundary
   , wait
   ) where
 
@@ -169,6 +173,13 @@ data EffectSystem fact = EffectSystem
   , effectSystemSuccess :: FactExpr fact
   }
 
+data EffectSystemBoundary fact = EffectSystemBoundary
+  { effectSystemBoundaryName :: EffectSystemName
+  , effectSystemBoundaryImports :: [fact]
+  , effectSystemBoundaryPrivateFacts :: [fact]
+  , effectSystemBoundaryExports :: [fact]
+  }
+
 data Workflow fact hook
   = RunWorkflow (EffectSystem fact)
   | ChainWorkflow (Chain (Workflow fact hook))
@@ -254,6 +265,25 @@ effectSystem :: EffectSystemName -> FactExpr fact -> EffectSystem fact
 effectSystem =
   EffectSystem
 
+systemBoundary :: EffectSystemName -> [fact] -> [fact] -> [fact] -> EffectSystemBoundary fact
+systemBoundary =
+  EffectSystemBoundary
+
+effectSystemBoundary :: EffectSystem fact -> EffectSystemBoundary fact
+effectSystemBoundary system =
+  EffectSystemBoundary
+    { effectSystemBoundaryName = effectSystemName system
+    , effectSystemBoundaryImports = []
+    , effectSystemBoundaryPrivateFacts = []
+    , effectSystemBoundaryExports = factExprFacts (effectSystemSuccess system)
+    }
+
+effectSystemFromBoundary :: EffectSystemBoundary fact -> EffectSystem fact
+effectSystemFromBoundary boundary =
+  effectSystem
+    (effectSystemBoundaryName boundary)
+    (factItems (effectSystemBoundaryExports boundary))
+
 run :: EffectSystem fact -> Workflow fact hook
 run =
   RunWorkflow
@@ -301,3 +331,13 @@ loop body =
 middleware :: hook -> workflow -> HangingAction fact hook workflow
 middleware currentMiddleware body =
   HangingMiddleware (Middleware currentMiddleware) body
+
+factExprFacts :: FactExpr fact -> [fact]
+factExprFacts expr =
+  case expr of
+    FactItems requirement ->
+      requirementItems requirement
+    FactAll items ->
+      concatMap factExprFacts items
+    FactAny items ->
+      concatMap factExprFacts items
