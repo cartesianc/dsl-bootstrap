@@ -652,9 +652,14 @@ markRuleSucceeded rule =
 
 markFact :: WorkflowFact -> NativeRuntime -> NativeRuntime
 markFact currentFact runtime =
-  traceRuntime ("fact [" ++ show currentFact ++ "]") runtime
-    { availableFacts = unique (availableFacts runtime ++ [currentFact])
-    }
+  traceRuntime ("fact [" ++ show currentFact ++ "]") (recordAvailableFact currentFact runtime)
+
+recordAvailableFact :: WorkflowFact -> NativeRuntime -> NativeRuntime
+recordAvailableFact currentFact runtime
+  | currentFact `elem` availableFacts runtime =
+      runtime
+  | otherwise =
+      runtime {availableFacts = availableFacts runtime ++ [currentFact]}
 
 recordArtifacts :: [RuntimeArtifact] -> NativeRuntime -> NativeRuntime
 recordArtifacts artifacts runtime =
