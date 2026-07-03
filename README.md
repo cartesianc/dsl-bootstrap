@@ -450,6 +450,7 @@ runtime-closure-executed
 runtime-diagnosis-error-handler
 runtime-diagnosis-retry-probe
 runtime-diagnosis-non-idempotent-blocker
+runtime-diagnosis-system-root-cause
 registry-codegen-plugins
 registry-codegen-effects
 ```
@@ -484,6 +485,7 @@ ErrorInput error handler 分发
 idempotent RetryOnce replay
 diagnosis probes
 非幂等 replay 阻断
+EffectSystem root cause 归因
 ```
 
 constraint/proof 支持：

@@ -261,7 +261,8 @@ runBootstrapNative RunRuntimeDiagnosisEvidence _ _ =
         ( "runtime diagnosis evidence payload claims: "
             ++ "runtime-diagnosis-error-handler, "
             ++ "runtime-diagnosis-retry-probe, "
-            ++ "runtime-diagnosis-non-idempotent-blocker"
+            ++ "runtime-diagnosis-non-idempotent-blocker, "
+            ++ "runtime-diagnosis-system-root-cause"
         )
     )
 runBootstrapNative RunRuntimeBackendParityEvidence _ _ =

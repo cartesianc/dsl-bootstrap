@@ -12,6 +12,8 @@ module Framework.Runtime.Types
   , RuntimeDiagnosisNodeKind (..)
   , RuntimeDiagnosisProbe (..)
   , RuntimeDiagnosisProbeStatus (..)
+  , RuntimeDiagnosisRootCause (..)
+  , RuntimeDiagnosisStep (..)
   , RuntimeFactClaim (..)
   , RuntimeFactFailure (..)
   , RuntimeFactStatus (..)
@@ -107,7 +109,10 @@ data RuntimeFactFailure
   deriving (Eq, Show)
 
 data RuntimeFailureDiagnosis = RuntimeFailureDiagnosis
-  { diagnosisRootFact :: WorkflowFact
+  { diagnosisRootSystem :: Maybe EffectSystemName
+  , diagnosisRootFact :: WorkflowFact
+  , diagnosisPipelineStep :: Maybe RuntimeDiagnosisStep
+  , diagnosisRootCause :: RuntimeDiagnosisRootCause
   , diagnosisRootSend :: Maybe SendName
   , diagnosisRootError :: String
   , diagnosisNodes :: [RuntimeDiagnosisNode]
@@ -115,6 +120,34 @@ data RuntimeFailureDiagnosis = RuntimeFailureDiagnosis
   , diagnosisSuspects :: [WorkflowFact]
   , diagnosisPollutedFacts :: [WorkflowFact]
   }
+  deriving (Eq, Show)
+
+data RuntimeDiagnosisStep
+  = DiagnosisFactStep WorkflowFact
+  | DiagnosisSendStep SendName
+  | DiagnosisTransformStep String
+  deriving (Eq, Show)
+
+data RuntimeDiagnosisRootCause
+  = DiagnosisMissingFactRuleCause WorkflowFact
+  | DiagnosisMissingSendBoundaryCause SendName
+  | DiagnosisMissingHandlerCause SendName
+  | DiagnosisMissingHandlerInputCause SendName TypeName
+  | DiagnosisHandlerOutputMismatchCause SendName TypeName [TypeName]
+  | DiagnosisHandlerFailedCause SendName String
+  | DiagnosisMissingTransformCause String
+  | DiagnosisMissingTransformInputCause String TypeName
+  | DiagnosisTransformMismatchCause String
+  | DiagnosisDependencyFailedCause WorkflowFact
+  | DiagnosisWaitBlockedCause String
+  | DiagnosisChoiceMissingBranchCause String
+  | DiagnosisParallelBranchFailedCause Int
+  | DiagnosisParallelMergeConflictCause String
+  | DiagnosisFallbackExhaustedCause
+  | DiagnosisRaceExhaustedCause
+  | DiagnosisLoopExceededCause Int
+  | DiagnosisIoExceptionCause String
+  | DiagnosisUnknownRootCause String
   deriving (Eq, Show)
 
 data RuntimeDiagnosisNode = RuntimeDiagnosisNode

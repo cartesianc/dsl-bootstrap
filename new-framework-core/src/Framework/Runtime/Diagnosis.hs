@@ -8,8 +8,11 @@ module Framework.Runtime.Diagnosis
   , RuntimeDiagnosisNodeKind (..)
   , RuntimeDiagnosisProbe (..)
   , RuntimeDiagnosisProbeStatus (..)
+  , RuntimeDiagnosisRootCause (..)
+  , RuntimeDiagnosisStep (..)
   , RuntimeDiagnosisBlocker (..)
   , buildFailureDiagnosis
+  , buildFailureDiagnosisWithSystem
   , completeDiagnosisProbe
   , diagnosisProbePairs
   , renderRuntimeDiagnosisEvidencePayload
@@ -35,7 +38,9 @@ import Bootstrap.Runtime
   , SendContract (..)
   )
 import Bootstrap.Workflow
-  ( WorkflowFact )
+  ( EffectSystemName
+  , WorkflowFact
+  )
 import Framework.Runtime.Types
   ( Runtime (..)
   , RuntimeDiagnosisBlocker (..)
@@ -43,6 +48,8 @@ import Framework.Runtime.Types
   , RuntimeDiagnosisNodeKind (..)
   , RuntimeDiagnosisProbe (..)
   , RuntimeDiagnosisProbeStatus (..)
+  , RuntimeDiagnosisRootCause (..)
+  , RuntimeDiagnosisStep (..)
   , RuntimeFactClaim (..)
   , RuntimeFactStatus
   , RuntimeFailureDiagnosis (..)
@@ -56,8 +63,32 @@ buildFailureDiagnosis ::
   String ->
   RuntimeFailureDiagnosis
 buildFailureDiagnosis plan runtime rootFact rootSend rootError =
+  buildFailureDiagnosisWithSystem
+    plan
+    runtime
+    Nothing
+    rootFact
+    Nothing
+    (DiagnosisUnknownRootCause rootError)
+    rootSend
+    rootError
+
+buildFailureDiagnosisWithSystem ::
+  NativeAppPlan ->
+  Runtime ->
+  Maybe EffectSystemName ->
+  WorkflowFact ->
+  Maybe RuntimeDiagnosisStep ->
+  RuntimeDiagnosisRootCause ->
+  Maybe SendName ->
+  String ->
   RuntimeFailureDiagnosis
-    { diagnosisRootFact = rootFact
+buildFailureDiagnosisWithSystem plan runtime rootSystem rootFact rootStep rootCause rootSend rootError =
+  RuntimeFailureDiagnosis
+    { diagnosisRootSystem = rootSystem
+    , diagnosisRootFact = rootFact
+    , diagnosisPipelineStep = rootStep
+    , diagnosisRootCause = rootCause
     , diagnosisRootSend = rootSend
     , diagnosisRootError = rootError
     , diagnosisNodes = nodes
@@ -273,7 +304,13 @@ recordRuntimeDiagnosis diagnosis runtime =
 renderRuntimeFailureDiagnosis :: RuntimeFailureDiagnosis -> String
 renderRuntimeFailureDiagnosis diagnosis =
   unwords
-    [ "diagnosis root"
+    [ "diagnosis system"
+    , renderRootSystem (diagnosisRootSystem diagnosis)
+    , "step"
+    , renderDiagnosisStep (diagnosisPipelineStep diagnosis)
+    , "cause"
+    , renderDiagnosisRootCause (diagnosisRootCause diagnosis)
+    , "root"
     , show (diagnosisRootFact diagnosis)
     , renderRootSend (diagnosisRootSend diagnosis)
     , "error"
@@ -287,6 +324,66 @@ renderRuntimeFailureDiagnosis diagnosis =
     , "polluted"
     , show (diagnosisPollutedFacts diagnosis)
     ]
+
+renderRootSystem :: Maybe EffectSystemName -> String
+renderRootSystem Nothing =
+  "unknown"
+renderRootSystem (Just name) =
+  show name
+
+renderDiagnosisStep :: Maybe RuntimeDiagnosisStep -> String
+renderDiagnosisStep Nothing =
+  "unknown"
+renderDiagnosisStep (Just step) =
+  case step of
+    DiagnosisFactStep fact ->
+      "fact " ++ show fact
+    DiagnosisSendStep currentSend ->
+      "send " ++ show currentSend
+    DiagnosisTransformStep transformName ->
+      "transform " ++ transformName
+
+renderDiagnosisRootCause :: RuntimeDiagnosisRootCause -> String
+renderDiagnosisRootCause cause =
+  case cause of
+    DiagnosisMissingFactRuleCause fact ->
+      "missing fact rule " ++ show fact
+    DiagnosisMissingSendBoundaryCause currentSend ->
+      "missing send boundary " ++ show currentSend
+    DiagnosisMissingHandlerCause currentSend ->
+      "missing handler " ++ show currentSend
+    DiagnosisMissingHandlerInputCause currentSend currentType ->
+      "missing handler input " ++ show currentSend ++ " " ++ show currentType
+    DiagnosisHandlerOutputMismatchCause currentSend expected actual ->
+      "handler output mismatch " ++ show currentSend ++ " expected " ++ show expected ++ " actual " ++ show actual
+    DiagnosisHandlerFailedCause currentSend message ->
+      "handler failed " ++ show currentSend ++ " " ++ show message
+    DiagnosisMissingTransformCause transformName ->
+      "missing transform " ++ transformName
+    DiagnosisMissingTransformInputCause transformName currentType ->
+      "missing transform input " ++ transformName ++ " " ++ show currentType
+    DiagnosisTransformMismatchCause transformName ->
+      "transform mismatch " ++ transformName
+    DiagnosisDependencyFailedCause fact ->
+      "dependency failed " ++ show fact
+    DiagnosisWaitBlockedCause message ->
+      "wait blocked " ++ show message
+    DiagnosisChoiceMissingBranchCause message ->
+      "choice missing branch " ++ show message
+    DiagnosisParallelBranchFailedCause index ->
+      "parallel branch failed " ++ show index
+    DiagnosisParallelMergeConflictCause message ->
+      "parallel merge conflict " ++ show message
+    DiagnosisFallbackExhaustedCause ->
+      "fallback exhausted"
+    DiagnosisRaceExhaustedCause ->
+      "race exhausted"
+    DiagnosisLoopExceededCause count ->
+      "loop exceeded " ++ show count
+    DiagnosisIoExceptionCause message ->
+      "io exception " ++ show message
+    DiagnosisUnknownRootCause message ->
+      "unknown " ++ show message
 
 renderRootSend :: Maybe SendName -> String
 renderRootSend Nothing =
@@ -324,6 +421,7 @@ runtimeDiagnosisEvidenceClaimNames =
   [ "runtime-diagnosis-error-handler"
   , "runtime-diagnosis-retry-probe"
   , "runtime-diagnosis-non-idempotent-blocker"
+  , "runtime-diagnosis-system-root-cause"
   ]
 
 runtimeDiagnosisEvidenceArtifactSummary :: String

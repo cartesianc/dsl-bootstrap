@@ -33,6 +33,8 @@ import Framework.TrustBase
   , RuntimeDiagnosisNode (..)
   , RuntimeDiagnosisProbe (..)
   , RuntimeDiagnosisProbeStatus (..)
+  , RuntimeDiagnosisRootCause (..)
+  , RuntimeDiagnosisStep (..)
   , RuntimeError (..)
   , RuntimeFactClaim (..)
   , RuntimeFactStatus (..)
@@ -68,6 +70,7 @@ domainSemanticChecks =
   [ runtimeErrorHandlerDiagnosisCheck
   , runtimeRetryDiagnosisCheck
   , runtimeNonIdempotentBlockerCheck
+  , runtimeSystemRootCauseDiagnosisCheck
   , pluginRegistryCodegenCheck
   , effectTheoryCodegenCheck
   ]
@@ -89,6 +92,12 @@ runtimeNonIdempotentBlockerCheck =
   DomainSemanticCheck
     "runtime-diagnosis-non-idempotent-blocker"
     (\_ _ -> runtimeDiagnosisEvidenceFromPayload <$> runNonIdempotentBlockerEvidencePayload)
+
+runtimeSystemRootCauseDiagnosisCheck :: DomainSemanticCheck
+runtimeSystemRootCauseDiagnosisCheck =
+  DomainSemanticCheck
+    "runtime-diagnosis-system-root-cause"
+    (\_ _ -> runtimeDiagnosisEvidenceFromPayload <$> runSystemRootCauseEvidencePayload)
 
 pluginRegistryCodegenCheck :: DomainSemanticCheck
 pluginRegistryCodegenCheck =
@@ -130,6 +139,7 @@ runtimeDiagnosisEvidencePayloads =
     [ runErrorHandlerEvidencePayload
     , runRetryDiagnosisEvidencePayload
     , runNonIdempotentBlockerEvidencePayload
+    , runSystemRootCauseEvidencePayload
     ]
 
 runtimeDiagnosisEvidenceFromPayload :: RuntimeDiagnosisEvidencePayload -> DomainSemanticEvidence
@@ -238,6 +248,31 @@ runNonIdempotentBlockerEvidencePayload = do
                     (show diagnosis)
     )
 
+runSystemRootCauseEvidencePayload :: IO RuntimeDiagnosisEvidencePayload
+runSystemRootCauseEvidencePayload = do
+  result <-
+    runBlueprintWithEffectEnvironmentRuntimeResult
+      (runtimeEffectEnvironment missingAskRegistry)
+      (theory [userEffect])
+      userNameBlueprint
+  pure
+    ( case result of
+        RuntimeFailed (RuntimeMissingHandler currentSend) runtime
+          | currentSend == AskUserName
+              && any userNameSystemRootCauseDiagnosis (runtimeFailureDiagnoses runtime) ->
+              runtimeDiagnosisPayloadPassed
+                "runtime-diagnosis-system-root-cause"
+                "RuntimeDiagnosisEvidenceArtifact"
+                "runtime diagnosis reports EffectSystem, pipeline step, and root cause"
+                "UserNameAskedSystem / send AskUserName / missing handler"
+        other ->
+          runtimeDiagnosisPayloadFailed
+            "runtime-diagnosis-system-root-cause"
+            "RuntimeDiagnosisEvidenceArtifact"
+            "runtime diagnosis reports EffectSystem, pipeline step, and root cause"
+            (showRuntimeResult other)
+    )
+
 runtimeDiagnosisPayloadPassed :: String -> String -> String -> String -> RuntimeDiagnosisEvidencePayload
 runtimeDiagnosisPayloadPassed claim artifact expected observed =
   RuntimeDiagnosisEvidencePayload
@@ -264,11 +299,15 @@ userNameBlueprint =
     { blueprintApp =
         Workflow.run
           ( Workflow.effectSystem
-              (Workflow.EffectSystemName "UserNameAskedSystem")
+              userNameSystem
               (Workflow.factItems [userNameAskedFact])
           )
     , blueprintHanging = Workflow.hanging []
     }
+
+userNameSystem :: Workflow.EffectSystemName
+userNameSystem =
+  Workflow.EffectSystemName "UserNameAskedSystem"
 
 userNameAskedFact :: Workflow.WorkflowFact
 userNameAskedFact =
@@ -299,6 +338,12 @@ retryFailingAskRegistry =
     , HandlerBinding HandleUserNameError RuntimeHandleUserNameError errorHandler
     ]
 
+missingAskRegistry :: HandlerRegistry
+missingAskRegistry =
+  HandlerRegistry
+    [ HandlerBinding HandleUserNameError RuntimeHandleUserNameError errorHandler
+    ]
+
 failingHandler :: String -> RuntimeHandler
 failingHandler message =
   RuntimeHandler (\_ _ _ -> pure (HandlerFailed message))
@@ -323,6 +368,12 @@ requirePlan effects =
 diagnosisHasFailedProbe :: RuntimeFailureDiagnosis -> Bool
 diagnosisHasFailedProbe diagnosis =
   any isFailedProbe (diagnosisProbes diagnosis)
+
+userNameSystemRootCauseDiagnosis :: RuntimeFailureDiagnosis -> Bool
+userNameSystemRootCauseDiagnosis diagnosis =
+  diagnosisRootSystem diagnosis == Just userNameSystem
+    && diagnosisPipelineStep diagnosis == Just (DiagnosisSendStep AskUserName)
+    && diagnosisRootCause diagnosis == DiagnosisMissingHandlerCause AskUserName
 
 isFailedProbe :: RuntimeDiagnosisProbe -> Bool
 isFailedProbe probe =

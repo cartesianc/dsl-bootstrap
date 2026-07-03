@@ -58,6 +58,7 @@ retry
 error handler dispatch with ErrorInput
 idempotent RetryOnce failed probe
 non-idempotent replay blocker
+EffectSystem root cause attribution
 ```
 
 `runtime-diagnosis-witness` 为每个诊断 claim 输出 `RuntimeDiagnosisEvidencePayload`：
@@ -76,12 +77,13 @@ JSON 输出 schema：
 runtime-diagnosis-evidence.v1
 ```
 
-当前三条 payload claim：
+当前 payload claim：
 
 ```text
 runtime-diagnosis-error-handler -> RuntimeErrorDispatchArtifact
 runtime-diagnosis-retry-probe -> RuntimeRetryPolicyArtifact
 runtime-diagnosis-non-idempotent-blocker -> RuntimeIdempotencyPolicyArtifact
+runtime-diagnosis-system-root-cause -> RuntimeDiagnosisEvidenceArtifact
 ```
 
 ## 5. 污染范围
@@ -125,6 +127,9 @@ Bootstrap.Runtime
 
 ```text
 which fact failed
+which EffectSystem owns the failure
+which pipeline step failed
+which root cause class applies
 which producer or handler is missing
 which artifact type has no maker
 which send boundary has no implementation

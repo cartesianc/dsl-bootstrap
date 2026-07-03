@@ -83,7 +83,7 @@ stack exec trust-base-manifest-witness -- --json
 stack exec trust-base-manifest-witness -- --evidence-json
 ```
 
-这三条覆盖：
+这些命令覆盖：
 
 ```text
 stack build
@@ -164,12 +164,13 @@ RuntimeRetryPolicyValidatedFact
 RuntimeIdempotencyPolicyValidatedFact
 ```
 
-这些事实现在已经是 effect graph 里的一级 fact/artifact/send。`runtime-diagnosis-witness` 负责跑对应 3 个代表性 claim：
+这些事实现在已经是 effect graph 里的一级 fact/artifact/send。`runtime-diagnosis-witness` 负责跑对应的代表性 claim：
 
 ```text
 runtime-diagnosis-error-handler
 runtime-diagnosis-retry-probe
 runtime-diagnosis-non-idempotent-blocker
+runtime-diagnosis-system-root-cause
 ```
 
 每个 claim 现在输出 `RuntimeDiagnosisEvidencePayload`：
@@ -221,12 +222,13 @@ runtime-concurrency-race-cancellation
 runtime-concurrency-race-exhausted
 ```
 
-`RunRuntimeDiagnosisEvidence` 现在对应 3 条 `RuntimeDiagnosisEvidencePayload`：
+`RunRuntimeDiagnosisEvidence` 现在对应 4 条 `RuntimeDiagnosisEvidencePayload`：
 
 ```text
 runtime-diagnosis-error-handler
 runtime-diagnosis-retry-probe
 runtime-diagnosis-non-idempotent-blocker
+runtime-diagnosis-system-root-cause
 ```
 
 `RunRuntimeBackendParityEvidence` 现在对应 4 条 `RuntimeBackendParityEvidencePayload`：
@@ -238,7 +240,7 @@ runtime-backend-parity-artifact
 runtime-backend-parity-report
 ```
 
-workflow semantics 已经由 `workflow-semantics-witness` 输出 12 条 payload。
+workflow semantics 已经由 `workflow-semantics-witness` 输出 13 条 payload。
 
 ## 3. Framework Core 前台与 Codegen
 
