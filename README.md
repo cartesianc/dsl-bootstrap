@@ -1,14 +1,12 @@
 # dsl-bootstrap
 
-## 项目主旨
+## 项目说明
 
-`dsl-bootstrap` 当前定位为 self-bootstrapping framework workbench。面向业务用户裁剪后的 SDK 不从本仓库发布。
+`dsl-bootstrap` 是一个自举式 Haskell 业务框架实验仓库。它展示一套业务 DSL 如何用声明式源码表达 workflow、effect、runtime handler 和 semantic evidence，并把这些声明连接到 report、proof、diagnosis、codegen 和 artifact gate。
 
-Git 上发布的是 trustbase-gated self-iteration snapshot：当前源码必须能把 framework-core 当作一个 domain 来描述、验证，并通过 `TrustBase` / artifact gate 物化下一阶段 framework。`FrameworkCore.*`、`new-framework-core/src/Domain` 和 `domain-app` 三者并存是设计的一部分：它们分别提供当前 core 的 readable frontend、core-as-domain self expression，以及 domain-side acceptance app。
+这个仓库面向框架开发者、代码审查者，以及想理解自举机制的使用者。当前发布形态保留 framework core、自表达 domain、domain-side acceptance app 和 `TrustBase` gates，方便审查框架如何保持 facade 边界、如何自证、如何物化下一阶段 artifact。面向普通业务集成的裁剪版 SDK 会在单独发布边界里收敛。
 
-业务 facade 保持干净，用来验证框架确实能被 domain 使用。自举能力属于本仓库的 framework self-iteration surface；业务用户裁剪版边界另行发布。
-
-`dsl-bootstrap` 是一个自举式 Haskell 业务框架。业务用声明式源码表达：
+业务侧代码保持声明式：
 
 - workflow AST
 - effect theory
@@ -16,17 +14,17 @@ Git 上发布的是 trustbase-gated self-iteration snapshot：当前源码必须
 - semantic evidence
 - framework 自证
 
-仓库当前有两个活动包：
+仓库当前有两个主要包：
 
 ```text
 new-framework-core
-  kernel、public facade、runtime、proof API、self-domain source、bootstrap reports
+  framework/compiler core，包含 public facade、runtime、proof API、self-domain source 和 bootstrap reports
 
 domain-app
-  外部 domain/frontend 包，使用 Framework.* facade 编写业务
+  domain-side acceptance app，使用 Framework.* facade 编写业务声明、handler 和 semantic evidence
 ```
 
-提交到仓库里的源码就是 core source。`self-artifact-witness` 会从当前 framework/code inputs 生成隔离的 Stage 1 artifact，并在替换或发布前完成验证。说明性文档留在 repo 中维护，不进入 Stage 1 framework artifact。
+说明性文档只服务阅读和维护，不进入 Stage 1 framework artifact。`self-artifact-witness` 只复制 framework/code inputs，用于生成隔离 artifact 并验证下一阶段框架。
 
 ## 快速开始
 
