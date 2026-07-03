@@ -172,6 +172,7 @@ data EffectSystem fact = EffectSystem
   { effectSystemName :: EffectSystemName
   , effectSystemSuccess :: FactExpr fact
   , effectSystemBoundary :: EffectSystemBoundary fact
+  , effectSystemBoundaryExplicit :: Bool
   }
 
 data EffectSystemBoundary fact = EffectSystemBoundary
@@ -274,6 +275,7 @@ effectSystem name successFacts =
           , effectSystemBoundaryPrivateFacts = []
           , effectSystemBoundaryExports = factExprFacts successFacts
           }
+    , effectSystemBoundaryExplicit = False
     }
 
 systemBoundary :: EffectSystemName -> [fact] -> [fact] -> [fact] -> EffectSystemBoundary fact
@@ -286,6 +288,7 @@ effectSystemFromBoundary boundary =
     { effectSystemName = effectSystemBoundaryName boundary
     , effectSystemSuccess = factItems (effectSystemBoundaryExports boundary)
     , effectSystemBoundary = boundary
+    , effectSystemBoundaryExplicit = True
     }
 
 effectSystemRuntimeFacts :: EffectSystem fact -> FactExpr fact

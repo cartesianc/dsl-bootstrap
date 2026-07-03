@@ -166,8 +166,8 @@ workflowSemanticsClaims =
       effectSystemBoundaryWitness
   , WorkflowSemanticsClaim
       "workflow-effect-system-scope"
-      "EffectSystem imports must target exported facts and private facts cannot be imported"
-      "valid scope passes while missing exporter and private import fail plan validation"
+      "EffectSystem imports target exported facts, private facts stay local, and explicit rule closure stays inside the boundary"
+      "valid scope passes while missing exporter, private import, and out-of-bound rule dependency fail plan validation"
       "WorkflowEffectSystemScopeArtifact"
       effectSystemScopeWitness
   ]
@@ -514,6 +514,7 @@ effectSystemScopeWitness = do
   requirePlanPasses "valid effect system scope" validScopeBlueprint boundaryTheory
   requirePlanFails "missing import exporter" missingExporterBlueprint boundaryTheory
   requirePlanFails "private import" privateImportBlueprint boundaryTheory
+  requirePlanFails "out-of-bound rule dependency" outOfScopeDependencyBlueprint outOfScopeDependencyTheory
 
 runFrameworkSuccess ::
   String ->
@@ -696,9 +697,18 @@ boundaryTheory :: E.EffectTheory
 boundaryTheory =
   theory
     [ factPure boundaryImportFact
-    , factPure boundaryPrivateFact
-    , factPure boundaryExportFact
+    , E.fact boundaryPrivateFact [E.needs boundaryImportFact]
+    , E.fact boundaryExportFact [E.needs boundaryPrivateFact]
     , factPure boundaryMissingImportFact
+    ]
+
+outOfScopeDependencyTheory :: E.EffectTheory
+outOfScopeDependencyTheory =
+  theory
+    [ factPure boundaryImportFact
+    , factPure boundaryPrivateFact
+    , E.fact boundaryExportFact [E.needs boundaryOutOfScopeFact]
+    , factPure boundaryOutOfScopeFact
     ]
 
 validScopeBlueprint :: W.AppBlueprint
@@ -739,6 +749,10 @@ privateImportBlueprint =
             )
         ]
     )
+
+outOfScopeDependencyBlueprint :: W.AppBlueprint
+outOfScopeDependencyBlueprint =
+  validScopeBlueprint
 
 workflowSemanticsEffect :: E.EffectName
 workflowSemanticsEffect =
@@ -887,3 +901,7 @@ boundaryExportFact =
 boundaryMissingImportFact :: W.WorkflowFact
 boundaryMissingImportFact =
   W.WorkflowFact "WorkflowSemanticsBoundaryMissingImportFact"
+
+boundaryOutOfScopeFact :: W.WorkflowFact
+boundaryOutOfScopeFact =
+  W.WorkflowFact "WorkflowSemanticsBoundaryOutOfScopeFact"

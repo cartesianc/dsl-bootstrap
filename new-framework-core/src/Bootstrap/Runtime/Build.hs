@@ -250,7 +250,7 @@ nativeConstraints rootFacts rules contracts systems =
     , map (ruleSendsDeclaredConstraint contracts) rules
     , duplicatePipeMakerConstraints rules
     , map (ruleTakesHaveMakerConstraint rules) rules
-    , effectSystemScopeConstraints systems
+    , effectSystemScopeConstraints rules systems
     ]
 
 factDeclaredConstraint :: [NativeFactRule] -> WorkflowFact -> NativeConstraint
@@ -301,12 +301,13 @@ ruleTakesHaveMakerConstraint rules rule =
     hasSingleMaker currentType =
       length (sourceFactsForTypeFromRules rules currentType) == 1
 
-effectSystemScopeConstraints :: [Workflow.EffectSystem WorkflowFact] -> [NativeConstraint]
-effectSystemScopeConstraints systems =
+effectSystemScopeConstraints :: [NativeFactRule] -> [Workflow.EffectSystem WorkflowFact] -> [NativeConstraint]
+effectSystemScopeConstraints rules systems =
   concat
     [ map systemBoundaryNameConstraint systems
     , concatMap (systemImportExportConstraints systems) systems
     , concatMap (systemPrivateScopeConstraints systems) systems
+    , concatMap (systemRuleClosureConstraints rules) systems
     ]
 
 systemBoundaryNameConstraint :: Workflow.EffectSystem WorkflowFact -> NativeConstraint
@@ -362,6 +363,65 @@ systemPrivateScopeConstraints systems system =
           (privateFactOwnerCount systems currentFact == 1)
           ("effect system private fact has multiple owners: " ++ show currentFact)
       ]
+
+systemRuleClosureConstraints :: [NativeFactRule] -> Workflow.EffectSystem WorkflowFact -> [NativeConstraint]
+systemRuleClosureConstraints rules system
+  | not (Workflow.effectSystemBoundaryExplicit system) =
+      []
+  | otherwise =
+      [ NativeConstraint
+          ("effect system rule closure " ++ show systemName ++ " " ++ show currentFact)
+          (all (`elem` allowedFacts) dependencyFacts)
+          ( "effect system rule dependency escapes boundary: "
+              ++ show systemName
+              ++ " "
+              ++ show currentFact
+              ++ " depends on "
+              ++ show (filter (`notElem` allowedFacts) dependencyFacts)
+          )
+      | currentFact <- unique (Workflow.effectSystemBoundaryPrivateFacts boundary ++ Workflow.effectSystemBoundaryExports boundary)
+      , Just rule <- [ruleByFact rules currentFact]
+      , let dependencyFacts = ruleDependencyFacts rules rule
+      ]
+  where
+    boundary =
+      Workflow.effectSystemBoundary system
+    systemName =
+      Workflow.effectSystemName system
+    allowedFacts =
+      unique
+        ( Workflow.effectSystemBoundaryImports boundary
+            ++ Workflow.effectSystemBoundaryPrivateFacts boundary
+            ++ Workflow.effectSystemBoundaryExports boundary
+        )
+
+ruleByFact :: [NativeFactRule] -> WorkflowFact -> Maybe NativeFactRule
+ruleByFact rules currentFact =
+  firstJust
+    [ Just rule
+    | rule <- rules
+    , nativeRuleFact rule == currentFact
+    ]
+
+ruleDependencyFacts :: [NativeFactRule] -> NativeFactRule -> [WorkflowFact]
+ruleDependencyFacts rules rule =
+  unique
+    ( nativeRuleNeeds rule
+        ++ sourceFactsForTakenTypes
+        ++ sourceFactsForTransformInputs
+    )
+  where
+    sourceFactsForTakenTypes =
+      concatMap
+        (sourceFactsForTypeFromRules rules)
+        (filter isPipeType (nativeRuleTakes rule))
+    sourceFactsForTransformInputs =
+      concatMap
+        (sourceFactsForTypeFromRules rules)
+        [ input
+        | (input, _, _) <- nativeRuleTransforms rule
+        , isPipeType input
+        ]
 
 exportedFacts :: [Workflow.EffectSystem WorkflowFact] -> [WorkflowFact]
 exportedFacts systems =

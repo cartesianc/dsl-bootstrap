@@ -49,8 +49,20 @@ suspense snapshot
 callback 失败记录
 Bootstrap.Runtime / Framework.Runtime fact 对齐
 EffectSystemBoundary imports / private facts / exports 执行语义
-EffectSystem scope validation
+EffectSystem scope validation 和显式 boundary rule closure
 ```
+
+## EffectSystem boundary
+
+`effectSystemFromBoundary (systemBoundary ...)` 表示显式 system boundary。显式 boundary 会进入 build validation：
+
+```text
+imports 必须指向某个 system exports 的 fact
+private facts 不能被其他 system import/export
+private/export fact 的 rule closure 只能依赖本 system 的 imports/private facts/exports
+```
+
+rule closure 目前覆盖 `needs`、`take` 对应的 maker fact，以及 `transform` 输入对应的 maker fact。旧 `effectSystem` 入口保持兼容层语义，用 `success` facts 形成 exports，不启用显式 rule closure 约束。
 
 每个 witness claim 输出 `WorkflowSemanticsEvidencePayload`：
 
