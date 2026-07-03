@@ -25,6 +25,7 @@ import Framework.TrustBase
   , renderTrustBaseManifestJson
   , trustBaseManifestEvidencePayloadPassed
   , trustBaseManifestRequiredCoreSurfaceModules
+  , trustBaseManifestRequiredJsonSchemas
   )
 import System.Environment
   ( getArgs )
@@ -116,6 +117,12 @@ trustBaseManifestEvidencePayloads manifest = do
         "required TrustBase modules are present in CoreSurface and manifest"
         (observedCoreSurfaceCoverage manifestModules)
         "TrustBaseCoreSurfaceCoverageArtifact"
+    , manifestEvidence
+        "trust-base-json-schemas-synced"
+        (trustBaseManifestJsonSchemas manifest == trustBaseManifestRequiredJsonSchemas)
+        "TrustBase manifest lists every published machine-readable schema"
+        (observedDrift "json schemas" (trustBaseManifestJsonSchemas manifest) trustBaseManifestRequiredJsonSchemas)
+        "TrustBaseJsonSchemaCatalogArtifact"
     ]
 
 manifestEvidence :: String -> Bool -> String -> String -> String -> TrustBaseManifestEvidencePayload

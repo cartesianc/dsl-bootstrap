@@ -179,6 +179,7 @@ witness executables
 artifact gate executable
 artifact sources
 artifact commands
+json schemas
 ```
 
 轻量 witness：
@@ -188,6 +189,8 @@ stack exec trust-base-manifest-witness
 stack exec trust-base-manifest-witness -- --json
 stack exec trust-base-manifest-witness -- --evidence-json
 ```
+
+Manifest 里的 `json schemas` 记录当前发布快照承诺的 machine-readable schema catalog；`--evidence-json` 会检查它和 TrustBase schema catalog 同步。
 
 `--json` 输出 `trust-base-manifest.v1` 清单本体；`--evidence-json` 输出 `trust-base-manifest-evidence.v1`，包含 module、executable、artifact 和 CoreSurface coverage 的 payload。
 

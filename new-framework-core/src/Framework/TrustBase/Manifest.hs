@@ -12,6 +12,7 @@ module Framework.TrustBase.Manifest
   , trustBaseManifestEvidenceClaimNames
   , trustBaseManifestEvidencePayloadPassed
   , trustBaseManifestRequiredCoreSurfaceModules
+  , trustBaseManifestRequiredJsonSchemas
   ) where
 
 import Framework.SelfArtifact
@@ -32,6 +33,7 @@ data TrustBaseManifest = TrustBaseManifest
   , trustBaseManifestArtifactGateExecutable :: String
   , trustBaseManifestArtifactSources :: [String]
   , trustBaseManifestArtifactCommands :: [String]
+  , trustBaseManifestJsonSchemas :: [String]
   }
   deriving (Eq, Show)
 
@@ -90,6 +92,8 @@ defaultTrustBaseManifest =
         map renderArtifactSourceText (artifactManifestSources defaultSelfArtifactManifest)
     , trustBaseManifestArtifactCommands =
         map renderArtifactCommand (artifactManifestCommands defaultSelfArtifactManifest)
+    , trustBaseManifestJsonSchemas =
+        trustBaseManifestRequiredJsonSchemas
     }
 
 data TrustBaseManifestEvidencePayload = TrustBaseManifestEvidencePayload
@@ -120,6 +124,7 @@ trustBaseManifestEvidenceClaimNames =
   , "trust-base-artifact-sources-synced"
   , "trust-base-artifact-commands-synced"
   , "trust-base-core-surface-covered"
+  , "trust-base-json-schemas-synced"
   ]
 
 trustBaseManifestEvidenceArtifactSummary :: String
@@ -149,6 +154,21 @@ trustBaseManifestRequiredCoreSurfaceModules =
   , "Framework.Workflow.Semantics"
   ]
 
+trustBaseManifestRequiredJsonSchemas :: [String]
+trustBaseManifestRequiredJsonSchemas =
+  [ "framework-core-report.v1 <- bootstrap-report -- --json"
+  , "domain-report.v1 <- domain-app-report -- --json"
+  , "fixed-point-report.v1 <- fixed-point-smoke -- --json"
+  , "fixed-point-summary.v1 <- fixed-point-smoke -- --summary-json"
+  , "trust-base-manifest.v1 <- trust-base-manifest-witness -- --json"
+  , "trust-base-manifest-evidence.v1 <- trust-base-manifest-witness -- --evidence-json"
+  , "business-syntax-evidence.v1 <- business-syntax-witness -- --json"
+  , "runtime-evidence.v1 <- runtime-evidence-witness -- --json"
+  , "runtime-diagnosis-evidence.v1 <- runtime-diagnosis-witness -- --json"
+  , "workflow-semantics-evidence.v1 <- workflow-semantics-witness -- --json"
+  , "runtime-concurrency-evidence.v1 <- workflow-semantics-witness -- --runtime-concurrency-json"
+  ]
+
 renderTrustBaseManifest :: TrustBaseManifest -> [String]
 renderTrustBaseManifest manifest =
   [ "trust base manifest"
@@ -170,6 +190,8 @@ renderTrustBaseManifest manifest =
     ++ indentLines 2 (trustBaseManifestArtifactSources manifest)
     ++ ["artifact commands:"]
     ++ indentLines 2 (trustBaseManifestArtifactCommands manifest)
+    ++ ["json schemas:"]
+    ++ indentLines 2 (trustBaseManifestJsonSchemas manifest)
 
 renderTrustBaseManifestEvidencePayload :: TrustBaseManifestEvidencePayload -> [String]
 renderTrustBaseManifestEvidencePayload payload =
@@ -222,6 +244,7 @@ renderTrustBaseManifestJson manifest =
     , jsonField "artifactGateExecutable" (jsonString (trustBaseManifestArtifactGateExecutable manifest))
     , jsonField "artifactSources" (jsonStringArray (trustBaseManifestArtifactSources manifest))
     , jsonField "artifactCommands" (jsonStringArray (trustBaseManifestArtifactCommands manifest))
+    , jsonField "jsonSchemas" (jsonStringArray (trustBaseManifestJsonSchemas manifest))
     ]
 
 renderArtifactSourceText :: ArtifactSource -> String

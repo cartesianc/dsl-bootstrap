@@ -308,6 +308,7 @@ kernel modules -> cabal exposed-modules
 facade modules -> cabal exposed-modules
 report/witness/artifact gate executables -> cabal executable names
 artifact sources/commands -> defaultSelfArtifactManifest
+json schemas -> TrustBase schema catalog
 ```
 
 其中关键导入边界是：

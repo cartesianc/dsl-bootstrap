@@ -858,6 +858,7 @@ trustBaseFacade =
           , "trustBaseManifestEvidenceClaimNames"
           , "trustBaseManifestEvidencePayloadPassed"
           , "trustBaseManifestRequiredCoreSurfaceModules"
+          , "trustBaseManifestRequiredJsonSchemas"
           , "renderWorkflowSemanticsEvidencePayload"
           , "renderWorkflowSemanticsEvidencePayloadsJson"
           , "workflowSemanticsEvidencePayloadPassed"
@@ -885,6 +886,7 @@ trustBaseManifestFacade =
           , "trustBaseManifestEvidenceClaimNames"
           , "trustBaseManifestEvidencePayloadPassed"
           , "trustBaseManifestRequiredCoreSurfaceModules"
+          , "trustBaseManifestRequiredJsonSchemas"
           ]
     )
 
