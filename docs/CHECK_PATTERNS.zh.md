@@ -112,7 +112,7 @@ observed
 artifact
 ```
 
-注意：`RunRuntimeConcurrencyEvidence`、`RunRuntimeDiagnosisEvidence`、`RunRuntimeBackendParityEvidence` 仍然有 aggregate evidence 的成分。当前 diagnosis 的三个 policy 入口已经有一等 artifact handle 和可 diff payload；backend parity 与 concurrency payload 仍待细拆。
+注意：`RunRuntimeConcurrencyEvidence`、`RunRuntimeDiagnosisEvidence`、`RunRuntimeBackendParityEvidence` 仍然有 aggregate evidence 的成分。当前 diagnosis 的三个 policy 入口已经有一等 artifact handle 和可 diff payload；backend parity 已经由 `fixed-point-smoke` 输出 plan / fact closure / artifact / report 四条 payload；concurrency payload 仍待细拆。
 
 ## 3. Framework Core 前台与 Codegen
 
@@ -299,7 +299,6 @@ stack exec self-artifact-witness
 
 ```text
 workflow-semantics-witness 的每个 claim 变成结构化 artifact payload
-backend parity 从 aggregate evidence 细拆成更多一等 facts/artifacts
 fixed-point 从文本 diff 进一步升级为 evidence payload diff
 ```
 

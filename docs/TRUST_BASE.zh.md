@@ -146,8 +146,7 @@ domain-app-report
 
 ```text
 workflow semantics witness payload
-runtime diagnosis evidence payload
-backend parity evidence payload
+machine-readable report JSON
 machine-readable fixed-point diff
 artifact runner manifest validation
 ```

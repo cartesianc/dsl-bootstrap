@@ -108,6 +108,12 @@ RuntimeBackendParityExpressedFact
   needs CoreSurfaceFormalizedFact
   needs RuntimeBackendParityEvidencePassedFact
 
+fixed-point-smoke backend parity payloads
+  runtime-backend-parity-plan
+  runtime-backend-parity-fact-closure
+  runtime-backend-parity-artifact
+  runtime-backend-parity-report
+
 RuntimeFactClosureExpressedFact
   needs RuntimeArtifactClosureValidatedFact
   needs RuntimeSendBoundaryCoveredFact

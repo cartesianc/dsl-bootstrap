@@ -2,10 +2,16 @@ module Framework.FixedPoint
   ( EvidenceDiff (..)
   , FixedPointReport (..)
   , FixedPointStatus (..)
+  , RuntimeBackendParityEvidencePayload (..)
+  , RuntimeBackendParityEvidenceStatus (..)
   , StageEvidence (..)
   , buildFixedPointReport
   , fixedPointPassed
+  , renderRuntimeBackendParityEvidencePayload
+  , renderRuntimeBackendParityEvidenceStatus
   , renderFixedPointReport
+  , runtimeBackendParityEvidencePayloadPassed
+  , runtimeBackendParityEvidencePayloads
   ) where
 
 import Data.List
@@ -66,6 +72,20 @@ data FixedPointStatus
   | FixedPointFailed
   deriving (Eq, Show)
 
+data RuntimeBackendParityEvidencePayload = RuntimeBackendParityEvidencePayload
+  { runtimeBackendParityEvidenceClaim :: String
+  , runtimeBackendParityEvidenceStatus :: RuntimeBackendParityEvidenceStatus
+  , runtimeBackendParityEvidenceExpected :: String
+  , runtimeBackendParityEvidenceObserved :: String
+  , runtimeBackendParityEvidenceArtifact :: String
+  }
+  deriving (Eq, Show)
+
+data RuntimeBackendParityEvidenceStatus
+  = RuntimeBackendParityEvidencePassed
+  | RuntimeBackendParityEvidenceFailed
+  deriving (Eq, Show)
+
 buildFixedPointReport :: IO FixedPointReport
 buildFixedPointReport = do
   stage0Report <- buildFrameworkCoreReport
@@ -88,6 +108,7 @@ buildFixedPointReport = do
 fixedPointPassed :: FixedPointReport -> Bool
 fixedPointPassed report =
   fixedPointStatus report == FixedPointPassed
+    && all runtimeBackendParityEvidencePayloadPassed (runtimeBackendParityEvidencePayloads report)
 
 renderFixedPointReport :: FixedPointReport -> [String]
 renderFixedPointReport report =
@@ -98,6 +119,111 @@ renderFixedPointReport report =
   , "diffs: " ++ show (length (fixedPointDiffs report))
   ]
     ++ renderDiffs (fixedPointDiffs report)
+
+runtimeBackendParityEvidencePayloads :: FixedPointReport -> [RuntimeBackendParityEvidencePayload]
+runtimeBackendParityEvidencePayloads report =
+  [ parityPayload
+      "runtime-backend-parity-plan"
+      "RuntimeBackendParityPlanArtifact"
+      "stage0/stage1 plan metadata and constraints match"
+      planParityFields
+      report
+  , parityPayload
+      "runtime-backend-parity-fact-closure"
+      "RuntimeBackendParityFactClosureArtifact"
+      "stage0/stage1 fact closure matches"
+      factClosureParityFields
+      report
+  , parityPayload
+      "runtime-backend-parity-artifact"
+      "RuntimeBackendParityArtifactClosureArtifact"
+      "stage0/stage1 runtime artifact types match"
+      artifactParityFields
+      report
+  , parityPayload
+      "runtime-backend-parity-report"
+      "RuntimeBackendParityReportArtifact"
+      "stage0/stage1 report status, coverage, and failures match"
+      reportParityFields
+      report
+  ]
+
+runtimeBackendParityEvidencePayloadPassed :: RuntimeBackendParityEvidencePayload -> Bool
+runtimeBackendParityEvidencePayloadPassed payload =
+  runtimeBackendParityEvidenceStatus payload == RuntimeBackendParityEvidencePassed
+
+renderRuntimeBackendParityEvidencePayload :: RuntimeBackendParityEvidencePayload -> [String]
+renderRuntimeBackendParityEvidencePayload payload =
+  [ "claim: " ++ runtimeBackendParityEvidenceClaim payload
+  , "status: " ++ renderRuntimeBackendParityEvidenceStatus (runtimeBackendParityEvidenceStatus payload)
+  , "expected: " ++ runtimeBackendParityEvidenceExpected payload
+  , "observed: " ++ runtimeBackendParityEvidenceObserved payload
+  , "artifact: " ++ runtimeBackendParityEvidenceArtifact payload
+  ]
+
+renderRuntimeBackendParityEvidenceStatus :: RuntimeBackendParityEvidenceStatus -> String
+renderRuntimeBackendParityEvidenceStatus RuntimeBackendParityEvidencePassed =
+  "passed"
+renderRuntimeBackendParityEvidenceStatus RuntimeBackendParityEvidenceFailed =
+  "failed"
+
+parityPayload :: String -> String -> String -> [String] -> FixedPointReport -> RuntimeBackendParityEvidencePayload
+parityPayload claim artifact expected fields report =
+  RuntimeBackendParityEvidencePayload
+    { runtimeBackendParityEvidenceClaim = claim
+    , runtimeBackendParityEvidenceStatus = status
+    , runtimeBackendParityEvidenceExpected = expected
+    , runtimeBackendParityEvidenceObserved = observed
+    , runtimeBackendParityEvidenceArtifact = artifact
+    }
+  where
+    diffs =
+      diffsForFields fields (fixedPointDiffs report)
+    status =
+      if null diffs
+        then RuntimeBackendParityEvidencePassed
+        else RuntimeBackendParityEvidenceFailed
+    observed =
+      if null diffs
+        then "matched fields: " ++ show fields
+        else "diff fields: " ++ show (map evidenceDiffField diffs)
+
+diffsForFields :: [String] -> [EvidenceDiff] -> [EvidenceDiff]
+diffsForFields fields diffs =
+  [ diffReport
+  | diffReport <- diffs
+  , evidenceDiffField diffReport `elem` fields
+  ]
+
+planParityFields :: [String]
+planParityFields =
+  [ "surface modules"
+  , "surface capabilities"
+  , "constraint total"
+  , "constraint failed"
+  ]
+
+factClosureParityFields :: [String]
+factClosureParityFields =
+  [ "declared facts"
+  , "root facts"
+  , "planned runtime facts"
+  , "final runtime facts"
+  , "missing final facts"
+  , "extra final facts"
+  ]
+
+artifactParityFields :: [String]
+artifactParityFields =
+  [ "artifact types"
+  ]
+
+reportParityFields :: [String]
+reportParityFields =
+  [ "status"
+  , "handler coverage"
+  , "failures"
+  ]
 
 evidenceFromFrameworkCoreReport :: String -> FrameworkCoreReport -> StageEvidence
 evidenceFromFrameworkCoreReport name report =
@@ -225,4 +351,3 @@ renderDiff diffReport =
 sortedShows :: Show item => [item] -> [String]
 sortedShows =
   sort . map show
-

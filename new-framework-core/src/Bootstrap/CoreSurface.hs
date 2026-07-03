@@ -758,6 +758,8 @@ trustBaseFacade =
         , "DomainSemanticCheck"
         , "DomainSemanticEvidence"
         , "FixedPointReport"
+        , "RuntimeBackendParityEvidencePayload"
+        , "RuntimeBackendParityEvidenceStatus"
         , "ArtifactManifest"
         , "GeneratedSource"
         ]
@@ -776,6 +778,8 @@ trustBaseFacade =
           , "diffGeneratedLines"
           , "generatedLinesMatch"
           , "buildFixedPointReport"
+          , "renderRuntimeBackendParityEvidencePayload"
+          , "runtimeBackendParityEvidencePayloads"
           , "runSelfArtifactGate"
           ]
     )

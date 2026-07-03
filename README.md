@@ -534,6 +534,7 @@ Stage 1: Framework.* facade/domain framework-core report
 通过结果：
 
 ```text
+fixed-point-smoke: runtime backend parity evidence 4 payload claims
 fixed-point-smoke: diffs: 0
 ```
 
