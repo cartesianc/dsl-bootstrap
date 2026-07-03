@@ -123,6 +123,19 @@ stack exec framework-core-frontend-witness
 stack exec registry-codegen-witness
 ```
 
+`framework-core-frontend-witness` 同时检查：
+
+```text
+generated frontend sources
+AST claim -> CoreSurface module -> cabal exposed-module
+```
+
+当前自动校验的 link：
+
+```text
+RuntimeDiagnosisExpressedFact -> Framework.Runtime.Diagnosis -> new-framework-core exposed-modules
+```
+
 自动覆盖的边界：
 
 ```text

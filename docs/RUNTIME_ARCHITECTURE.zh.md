@@ -116,6 +116,8 @@ RuntimeFactClosureExpressedFact
 
 runtime 的自表达由 AST facts、effect dependencies、core surface catalog 和 witness evidence 共同闭合。源码文件清单只作为实现输入。
 
+`framework-core-frontend-witness` 检查 `RuntimeDiagnosisExpressedFact`、`Framework.Runtime.Diagnosis` CoreSurface module、以及 cabal `exposed-modules` 三者同步。
+
 ## 4. Runtime 模块边界
 
 `Bootstrap.Runtime` 现在保留为兼容 facade 和 bootstrap backend 入口。已拆出的子模块：

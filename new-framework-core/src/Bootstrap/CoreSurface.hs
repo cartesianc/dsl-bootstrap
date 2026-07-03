@@ -1199,6 +1199,8 @@ backgroundRuntimeDiagnosis =
     "background compatibility facade for runtime diagnosis"
     ( map typeCapability
         [ "RuntimeFailureDiagnosis"
+        , "RuntimeDiagnosisEvidencePayload"
+        , "RuntimeDiagnosisEvidenceStatus"
         , "RuntimeDiagnosisNode"
         , "RuntimeDiagnosisNodeKind"
         , "RuntimeDiagnosisProbe"
@@ -1206,12 +1208,15 @@ backgroundRuntimeDiagnosis =
         , "RuntimeDiagnosisBlocker"
         ]
         ++ map valueCapability
-          [ "buildFailureDiagnosis"
-          , "completeDiagnosisProbe"
-          , "diagnosisProbePairs"
-          , "recordRuntimeDiagnosis"
-          , "renderRuntimeFailureDiagnosis"
-          ]
+        [ "buildFailureDiagnosis"
+        , "completeDiagnosisProbe"
+        , "diagnosisProbePairs"
+        , "recordRuntimeDiagnosis"
+        , "renderRuntimeDiagnosisEvidencePayload"
+        , "renderRuntimeDiagnosisEvidenceStatus"
+        , "runtimeDiagnosisEvidencePayloadPassed"
+        , "renderRuntimeFailureDiagnosis"
+        ]
     )
 
 runtimeDiagnosisFacade :: CoreSurfaceModule

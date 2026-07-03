@@ -585,6 +585,7 @@ stack exec fixed-point-smoke
 witness：
 
 ```powershell
+stack exec framework-core-frontend-witness
 stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
