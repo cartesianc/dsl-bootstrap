@@ -43,7 +43,7 @@ handler succeeds or fails
 
 ## 4. Probe 策略
 
-Probe 不是普通 retry。Probe 用于定位错误，因此只允许对 replay-safe 的边界执行。
+Probe 用于定位错误；普通 retry 由 retry policy 表达。Probe 只允许对 replay-safe 的边界执行。
 
 当前 effect DSL 已有：
 

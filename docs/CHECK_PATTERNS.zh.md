@@ -130,7 +130,7 @@ frameworkCoreApp =
   baseApp currentTrustBase currentInterpreter currentAst currentEffects
 ```
 
-不是只靠 README 约定，而是进入了生成一致性 witness。
+语义入口已进入生成一致性 witness；README 只做说明。
 
 ## 4. Trust Base 与 Bootstrap 边界
 
@@ -180,7 +180,7 @@ domain self artifact smoke
 domain report status
 ```
 
-这里验证的是业务作者面对的是 `Framework.*` facade 和 domain-local 模块，而不是直接碰 `Bootstrap.*`。
+这里验证业务作者只面对 `Framework.*` facade 和 domain-local 模块，不直接碰 `Bootstrap.*`。
 
 ## 6. 高危 Artifact Gate
 
@@ -225,7 +225,7 @@ stack exec registry-codegen-witness
 stack exec business-syntax-witness
 ```
 
-它通常比其它检查慢很多，因为它不是单个测试，而是在复制出来的 Stage1 工程里重新跑一整套 gates。日常小改不需要总跑它。
+它通常比其他检查慢很多；它会在复制出来的 Stage1 工程里重新跑一整套 gates。日常小改不需要总跑它。
 
 ## 7. 推荐检查组合
 

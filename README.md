@@ -2,11 +2,11 @@
 
 ## 项目主旨
 
-`dsl-bootstrap` 当前不是面向业务用户裁剪后的 SDK 仓库，而是一个 self-bootstrapping framework workbench。
+`dsl-bootstrap` 当前定位为 self-bootstrapping framework workbench。面向业务用户裁剪后的 SDK 不从本仓库发布。
 
 Git 上发布的是 trustbase-gated self-iteration snapshot：当前源码必须能把 framework-core 当作一个 domain 来描述、验证，并通过 `TrustBase` / artifact gate 物化下一阶段 framework。`FrameworkCore.*`、`new-framework-core/src/Domain` 和 `domain-app` 三者并存是设计的一部分：它们分别提供当前 core 的 readable frontend、core-as-domain self expression，以及 domain-side acceptance app。
 
-因此，业务 facade 保持干净是为了验证框架真的能被 domain 使用；它不是本仓库隐藏自举能力、发布面向业务用户裁剪版的边界。
+业务 facade 保持干净，用来验证框架确实能被 domain 使用。自举能力属于本仓库的 framework self-iteration surface；业务用户裁剪版边界另行发布。
 
 `dsl-bootstrap` 是一个自举式 Haskell 业务框架。业务用声明式源码表达：
 

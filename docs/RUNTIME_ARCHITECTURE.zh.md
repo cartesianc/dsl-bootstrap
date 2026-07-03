@@ -1,6 +1,6 @@
 # Runtime Architecture
 
-本文记录当前 runtime 在框架里的表达方式。这里的重点不是引入第二套运行时，而是把同一套 workflow/effect 语义分成两个 backend adapter 来验证。
+本文记录当前 runtime 在框架里的表达方式。核心目标：用两个 backend adapter 验证同一套 workflow/effect 语义，避免形成第二套运行时。
 
 ## 1. 一个语义，两个 backend
 
@@ -25,7 +25,7 @@ Typed runtime backend
   用途: public facade/domain 使用 RuntimeM、typed value、handler/transform registry 运行同一套 plan。
 ```
 
-它们不是两套互相竞争的 runtime。`Bootstrap.Runtime` 是自举和证据 backend，`Framework.Runtime` 是 typed facade backend。两者都从同一个 `AppBlueprint` 和 `EffectTheory` 构建 `NativeAppPlan`，并由 fixed-point witness 比较 Stage 0/Stage 1 证据。
+两者属于同一 runtime 语义的两个 backend adapter。`Bootstrap.Runtime` 承担自举和证据 backend，`Framework.Runtime` 承担 typed facade backend。两者都从同一个 `AppBlueprint` 和 `EffectTheory` 构建 `NativeAppPlan`，并由 fixed-point witness 比较 Stage 0/Stage 1 证据。
 
 `Framework.Domain.DomainRuntimeBackend` 的主构造器命名为：
 
@@ -38,7 +38,7 @@ DomainTypedRuntimeBackend
 
 ## 2. Runtime 在 AST 上的表达
 
-framework-core 的 runtime 分支已经不是单个大事实。当前 AST 分支是：
+framework-core 的 runtime 分支已经拆成多个事实。当前 AST 分支是：
 
 ```text
 RuntimeBranchExpressionFlow
@@ -114,7 +114,7 @@ RuntimeFactClosureExpressedFact
   needs RuntimeEvidencePassedFact
 ```
 
-这说明 runtime 的自表达不是源码文件清单本身，而是由 AST facts、effect dependencies、core surface catalog 和 witness evidence 共同闭合。
+runtime 的自表达由 AST facts、effect dependencies、core surface catalog 和 witness evidence 共同闭合。源码文件清单只作为实现输入。
 
 ## 4. Runtime 模块边界
 

@@ -2,7 +2,7 @@
 
 ## 0. 仓库定位
 
-本仓库当前面向框架自我迭代，不是面向业务用户裁剪后的 SDK。Git 发布物是 trustbase-gated self-iteration snapshot：源码本身必须能描述当前 core、验证当前 core，并物化下一阶段 framework artifact。
+本仓库当前面向框架自我迭代。面向业务用户裁剪后的 SDK 不从这里发布。Git 发布物是 trustbase-gated self-iteration snapshot：源码本身必须能描述当前 core、验证当前 core，并物化下一阶段 framework artifact。
 
 三种“框架自身”的写法会同时存在：
 
@@ -14,10 +14,10 @@ new-framework-core/src/FrameworkCore
   readable current core frontend。这里把当前 core 组织成 currentTrustBase / currentAst / currentEffects / currentInterpreter / currentApp。
 
 domain-app
-  domain-side acceptance app。它不只是普通示例，而是验证 facade、handler、semantic evidence、runtime diagnosis、registry codegen 在真实 domain 侧能闭合。
+  domain-side acceptance app。它验证 facade、handler、semantic evidence、runtime diagnosis、registry codegen 在真实 domain 侧能闭合，定位高于普通示例。
 ```
 
-这三者并存不是分层混乱，而是自举系统的双视角/三视角验证：core 既要能解释自己，也要能像 domain 一样被使用，还要能通过 TrustBase 点火生成下一阶段。
+这三者并存用于自举系统的多视角验证：core 要能解释自己，也要能像 domain 一样被使用，还要能通过 TrustBase 点火生成下一阶段。
 
 当前项目按“内核、facade、自表达 domain、外部 domain”分层。
 
@@ -191,7 +191,7 @@ Framework.Handler
 Framework.TrustBase
 ```
 
-所以当前分层不是“把 runtime 全暴露到前台”，而是：
+当前分层没有把 runtime 全暴露到前台；边界如下：
 
 ```text
 business frontend -> Framework.Ast / Framework.Effect / Framework.Business

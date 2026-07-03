@@ -2,7 +2,7 @@
 
 ## 0. Git 发布语义
 
-本仓库的 Git 发布目标是 self-iteration framework snapshot，而不是面向业务用户裁剪后的 SDK。一次可发布状态必须证明：
+本仓库的 Git 发布目标：self-iteration framework snapshot。面向业务用户裁剪后的 SDK 不从本仓库发布。一次可发布状态必须证明：
 
 ```text
 current source
@@ -31,7 +31,7 @@ self-artifact-witness
 
 本文定义当前自举系统的最小外部信任基。
 
-目标不是消灭 trust base，而是把它缩小、命名、报告化，并让它之外的语义责任进入 AST / effect / fact / evidence。
+目标：缩小、命名、报告化 trust base，并让外围语义责任进入 AST / effect / fact / evidence。
 
 ## 1. 分层
 
@@ -99,7 +99,7 @@ evidence artifact
 witness/report gate
 ```
 
-例如 runtime 不是只用一个粗事实表达。当前拆为：
+runtime 语义当前拆为多个 facts：
 
 ```text
 RuntimePlanBuiltFact
@@ -140,7 +140,7 @@ domain-app-report
 
 ## 5. 后续收缩方向
 
-优先收缩 kernel，而不是扩大 runtime。
+优先收缩 kernel，避免扩大 runtime。
 
 后续可以继续把以下能力移出 trust base：
 
