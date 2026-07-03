@@ -30,6 +30,7 @@ suspense   记录目标状态和轻量 RuntimeSnapshot
 ```powershell
 stack exec workflow-semantics-witness
 stack exec workflow-semantics-witness -- --json
+stack exec workflow-semantics-witness -- --runtime-concurrency-json
 ```
 
 witness 覆盖：
@@ -63,4 +64,14 @@ JSON 输出 schema：
 
 ```text
 workflow-semantics-evidence.v1
+runtime-concurrency-evidence.v1
+```
+
+runtime concurrency payload 从以下 workflow claims 派生：
+
+```text
+workflow-parallel-concurrency
+workflow-parallel-conflict
+workflow-race-cancellation
+workflow-race-exhausted
 ```

@@ -34,6 +34,7 @@ module Framework.TrustBase
   , module Framework.Background.ConstraintProof
   , module Framework.FixedPoint
   , module Framework.RegistryCodegen
+  , module Framework.Runtime.Concurrency
   , module Framework.Runtime.Diagnosis
   , module Framework.SelfArtifact
   , module Framework.TrustBase.Manifest
@@ -63,6 +64,7 @@ import Framework.Domain
   )
 import Framework.FixedPoint
 import Framework.RegistryCodegen
+import Framework.Runtime.Concurrency
 import Framework.Runtime
   ( Runtime (..)
   , RuntimeError (..)

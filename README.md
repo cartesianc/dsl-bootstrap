@@ -74,6 +74,7 @@ stack exec trust-base-manifest-witness -- --json
 ```powershell
 stack exec workflow-semantics-witness
 stack exec workflow-semantics-witness -- --json
+stack exec workflow-semantics-witness -- --runtime-concurrency-json
 ```
 
 Stage 1 artifact 验证不属于快速开始。`self-artifact-witness` 是高危/重型 artifact gate，只有一轮大构建和轻量 gates 都完成后才允许运行一次；同一轮第二次不允许继续跑，README/docs-only 变更也不触发它。
@@ -546,6 +547,7 @@ domain-report.v1
 fixed-point-report.v1
 trust-base-manifest.v1
 workflow-semantics-evidence.v1
+runtime-concurrency-evidence.v1
 ```
 
 fixed-point 比较：

@@ -80,6 +80,7 @@ library
                      , Framework.Handler
                      , Framework.RegistryCodegen
                      , Framework.Runtime
+                     , Framework.Runtime.Concurrency
                      , Framework.Runtime.Diagnosis
                      , Framework.Runtime.Types
                      , Framework.SelfArtifact

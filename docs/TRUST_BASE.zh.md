@@ -171,7 +171,6 @@ stack exec trust-base-manifest-witness -- --json
 
 ```text
 machine-readable fixed-point diff
-concurrency effect-level payload split
 JSON schema versioning after v1
 artifact runner manifest policy split
 ```

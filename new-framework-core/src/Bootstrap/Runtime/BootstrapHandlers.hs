@@ -238,7 +238,16 @@ runBootstrapNative RunRuntimeExecutionEvidence _ _ =
       | otherwise ->
           pure (HandlerFailed (renderNativePlanErrors plan))
 runBootstrapNative RunRuntimeConcurrencyEvidence _ _ =
-  pure (succeedArtifact RuntimeConcurrencyEvidenceArtifact "runtime concurrency evidence delegated to workflow-semantics-witness")
+  pure
+    ( succeedArtifact
+        RuntimeConcurrencyEvidenceArtifact
+        ( "runtime concurrency evidence payload claims: "
+            ++ "runtime-concurrency-parallel-branches, "
+            ++ "runtime-concurrency-parallel-merge-conflict, "
+            ++ "runtime-concurrency-race-cancellation, "
+            ++ "runtime-concurrency-race-exhausted"
+        )
+    )
 runBootstrapNative ValidateRuntimeErrorDispatch _ _ =
   pure (succeedArtifact RuntimeErrorDispatchArtifact "runtime diagnosis claim passed: runtime-diagnosis-error-handler")
 runBootstrapNative ValidateRuntimeRetryPolicy _ _ =

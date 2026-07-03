@@ -23,6 +23,13 @@ import System.Timeout
 import qualified Bootstrap.Runtime as Native
 import qualified Framework.Effect as E
 import qualified Framework.Runtime as R
+import Framework.Runtime.Concurrency
+  ( RuntimeConcurrencyEvidencePayload
+  , renderRuntimeConcurrencyEvidencePayload
+  , renderRuntimeConcurrencyEvidencePayloadsJson
+  , runtimeConcurrencyEvidencePayloadPassed
+  , runtimeConcurrencyEvidencePayloads
+  )
 import qualified Framework.Workflow as W
 import Framework.Workflow.Semantics
   ( WorkflowSemanticsEvidencePayload (..)
@@ -36,18 +43,29 @@ main :: IO ()
 main = do
   args <- getArgs
   payloads <- mapM runWorkflowSemanticsClaim workflowSemanticsClaims
+  let concurrencyPayloads =
+        runtimeConcurrencyEvidencePayloads payloads
+      concurrencyFailures =
+        filter (not . runtimeConcurrencyEvidencePayloadPassed) concurrencyPayloads
   let failures =
         filter (not . workflowSemanticsEvidencePayloadPassed) payloads
   case args of
     ["--json"] ->
       putStrLn (renderWorkflowSemanticsEvidencePayloadsJson payloads)
+    ["--runtime-concurrency-json"] ->
+      putStrLn (renderRuntimeConcurrencyEvidencePayloadsJson concurrencyPayloads)
     _ -> do
       putStrLn "[witness] workflow semantics evidence payloads"
       mapM_ putStrLn (concatMap renderPayloadBlock payloads)
       if null failures
         then putStrLn ("[witness] ok workflow semantics evidence " ++ show (length payloads) ++ " payload claims")
         else putStrLn ("[witness] failed workflow semantics evidence " ++ show (length failures) ++ " payload claims")
-  case failures of
+      putStrLn "[witness] runtime concurrency evidence payloads"
+      mapM_ putStrLn (concatMap renderConcurrencyPayloadBlock concurrencyPayloads)
+      if null concurrencyFailures
+        then putStrLn ("[witness] ok runtime concurrency evidence " ++ show (length concurrencyPayloads) ++ " payload claims")
+        else putStrLn ("[witness] failed runtime concurrency evidence " ++ show (length concurrencyFailures) ++ " payload claims")
+  case failures ++ workflowFailuresFromConcurrency concurrencyFailures of
     [] ->
       pure ()
     failedPayloads ->
@@ -170,6 +188,23 @@ runWorkflowSemanticsClaim currentClaim = do
 renderPayloadBlock :: WorkflowSemanticsEvidencePayload -> [String]
 renderPayloadBlock payload =
   map ("  " ++) (renderWorkflowSemanticsEvidencePayload payload)
+
+renderConcurrencyPayloadBlock :: RuntimeConcurrencyEvidencePayload -> [String]
+renderConcurrencyPayloadBlock payload =
+  map ("  " ++) (renderRuntimeConcurrencyEvidencePayload payload)
+
+workflowFailuresFromConcurrency :: [RuntimeConcurrencyEvidencePayload] -> [WorkflowSemanticsEvidencePayload]
+workflowFailuresFromConcurrency [] =
+  []
+workflowFailuresFromConcurrency (_ : _) =
+  [ WorkflowSemanticsEvidencePayload
+      { workflowSemanticsEvidenceClaim = "runtime-concurrency-evidence"
+      , workflowSemanticsEvidenceStatus = WorkflowSemanticsEvidenceFailed
+      , workflowSemanticsEvidenceExpected = "runtime concurrency payloads derived from workflow semantics pass"
+      , workflowSemanticsEvidenceObserved = "one or more runtime concurrency payloads failed"
+      , workflowSemanticsEvidenceArtifact = "RuntimeConcurrencyEvidenceArtifact"
+      }
+  ]
 
 parallelConcurrencyWitness :: IO ()
 parallelConcurrencyWitness = do

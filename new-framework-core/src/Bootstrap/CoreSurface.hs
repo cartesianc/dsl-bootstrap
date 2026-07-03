@@ -95,6 +95,7 @@ explicitCoreSurfaceModules =
   , backgroundWorkflowEff
   , backgroundWorkflowRender
   , backgroundRuntime
+  , runtimeConcurrencyFacade
   , runtimeDiagnosisFacade
   , runtimeTypesFacade
   , backgroundRuntimeDiagnosis
@@ -773,6 +774,8 @@ trustBaseFacade =
         , "RuntimeFailureDiagnosis"
         , "RuntimeDiagnosisNode"
         , "RuntimeDiagnosisProbe"
+        , "RuntimeConcurrencyEvidencePayload"
+        , "RuntimeConcurrencyEvidenceStatus"
         , "DomainRegistration"
         , "DomainSemanticCheck"
         , "DomainSemanticEvidence"
@@ -797,6 +800,12 @@ trustBaseFacade =
           , "buildFailureDiagnosis"
           , "domainEvidencePassed"
           , "domainEvidenceFailed"
+          , "renderRuntimeConcurrencyEvidencePayload"
+          , "renderRuntimeConcurrencyEvidencePayloadsJson"
+          , "renderRuntimeConcurrencyEvidenceStatus"
+          , "runtimeConcurrencyEvidenceArtifactSummary"
+          , "runtimeConcurrencyEvidencePayloadPassed"
+          , "runtimeConcurrencyEvidencePayloads"
           , "diffGeneratedLines"
           , "generatedLinesMatch"
           , "buildFixedPointReport"
@@ -1266,6 +1275,25 @@ backgroundRuntimeDiagnosis =
         , "runtimeDiagnosisEvidencePayloadPassed"
         , "renderRuntimeFailureDiagnosis"
         ]
+    )
+
+runtimeConcurrencyFacade :: CoreSurfaceModule
+runtimeConcurrencyFacade =
+  moduleSurface
+    "Framework.Runtime.Concurrency"
+    "runtime concurrency evidence payload model derived from workflow semantics claims"
+    ( map typeCapability
+        [ "RuntimeConcurrencyEvidencePayload"
+        , "RuntimeConcurrencyEvidenceStatus"
+        ]
+        ++ map valueCapability
+          [ "renderRuntimeConcurrencyEvidencePayload"
+          , "renderRuntimeConcurrencyEvidencePayloadsJson"
+          , "renderRuntimeConcurrencyEvidenceStatus"
+          , "runtimeConcurrencyEvidenceArtifactSummary"
+          , "runtimeConcurrencyEvidencePayloadPassed"
+          , "runtimeConcurrencyEvidencePayloads"
+          ]
     )
 
 runtimeDiagnosisFacade :: CoreSurfaceModule

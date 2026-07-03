@@ -54,6 +54,7 @@ defaultTrustBaseManifest =
         , "Framework.Background.ConstraintProof"
         , "Framework.FixedPoint"
         , "Framework.RegistryCodegen"
+        , "Framework.Runtime.Concurrency"
         , "Framework.Runtime.Diagnosis"
         , "Framework.SelfArtifact"
         , "Framework.Workflow.Semantics"
