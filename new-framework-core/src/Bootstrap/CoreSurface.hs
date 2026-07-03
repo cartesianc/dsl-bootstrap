@@ -95,6 +95,7 @@ explicitCoreSurfaceModules =
   , backgroundWorkflowEff
   , backgroundWorkflowRender
   , backgroundRuntime
+  , runtimeDiagnosisFacade
   , backgroundRuntimeDiagnosis
   , registryCodegenFacade
   , selfArtifactFacade
@@ -275,6 +276,7 @@ coreSurfaceSlices =
           , "Bootstrap.Runtime.Types"
           , "Framework.Handler"
           , "Framework.Runtime"
+          , "Framework.Runtime.Diagnosis"
           , "Framework.TrustBase"
           , "Framework.Background.RuntimeDiagnosis"
           ]
@@ -1208,7 +1210,29 @@ backgroundRuntimeDiagnosis :: CoreSurfaceModule
 backgroundRuntimeDiagnosis =
   moduleSurface
     "Framework.Background.RuntimeDiagnosis"
-    "runtime failure diagnosis, probes, and diagnostic rendering"
+    "background compatibility facade for runtime diagnosis"
+    ( map typeCapability
+        [ "RuntimeFailureDiagnosis"
+        , "RuntimeDiagnosisNode"
+        , "RuntimeDiagnosisNodeKind"
+        , "RuntimeDiagnosisProbe"
+        , "RuntimeDiagnosisProbeStatus"
+        , "RuntimeDiagnosisBlocker"
+        ]
+        ++ map valueCapability
+          [ "buildFailureDiagnosis"
+          , "completeDiagnosisProbe"
+          , "diagnosisProbePairs"
+          , "recordRuntimeDiagnosis"
+          , "renderRuntimeFailureDiagnosis"
+          ]
+    )
+
+runtimeDiagnosisFacade :: CoreSurfaceModule
+runtimeDiagnosisFacade =
+  moduleSurface
+    "Framework.Runtime.Diagnosis"
+    "runtime diagnosis model, probes, blockers, and rendering"
     ( map typeCapability
         [ "RuntimeFailureDiagnosis"
         , "RuntimeDiagnosisNode"

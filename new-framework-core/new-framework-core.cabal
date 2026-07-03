@@ -80,6 +80,7 @@ library
                      , Framework.Handler
                      , Framework.RegistryCodegen
                      , Framework.Runtime
+                     , Framework.Runtime.Diagnosis
                      , Framework.SelfArtifact
                      , Framework.TrustBase
                      , Framework.Workflow

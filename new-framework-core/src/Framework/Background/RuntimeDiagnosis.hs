@@ -1,27 +1,5 @@
 module Framework.Background.RuntimeDiagnosis
-  ( RuntimeFailureDiagnosis (..)
-  , RuntimeDiagnosisNode (..)
-  , RuntimeDiagnosisNodeKind (..)
-  , RuntimeDiagnosisProbe (..)
-  , RuntimeDiagnosisProbeStatus (..)
-  , RuntimeDiagnosisBlocker (..)
-  , buildFailureDiagnosis
-  , completeDiagnosisProbe
-  , diagnosisProbePairs
-  , recordRuntimeDiagnosis
-  , renderRuntimeFailureDiagnosis
+  ( module Framework.Runtime.Diagnosis
   ) where
 
-import Framework.Runtime
-  ( RuntimeDiagnosisBlocker (..)
-  , RuntimeDiagnosisNode (..)
-  , RuntimeDiagnosisNodeKind (..)
-  , RuntimeDiagnosisProbe (..)
-  , RuntimeDiagnosisProbeStatus (..)
-  , RuntimeFailureDiagnosis (..)
-  , buildFailureDiagnosis
-  , completeDiagnosisProbe
-  , diagnosisProbePairs
-  , recordRuntimeDiagnosis
-  , renderRuntimeFailureDiagnosis
-  )
+import Framework.Runtime.Diagnosis

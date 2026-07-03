@@ -7,16 +7,10 @@ module Framework.TrustBase
   , RuntimeArtifact (..)
   , SendContract (..)
   , Runtime (..)
-  , RuntimeDiagnosisBlocker (..)
-  , RuntimeDiagnosisNode (..)
-  , RuntimeDiagnosisNodeKind (..)
-  , RuntimeDiagnosisProbe (..)
-  , RuntimeDiagnosisProbeStatus (..)
   , RuntimeError (..)
   , RuntimeFactClaim (..)
   , RuntimeFactFailure (..)
   , RuntimeFactStatus (..)
-  , RuntimeFailureDiagnosis (..)
   , RuntimeResult (..)
   , RuntimeSnapshot (..)
   , DomainRegistration (domainRegistrationName)
@@ -24,17 +18,12 @@ module Framework.TrustBase
   , DomainSemanticEvidence
   , bootstrapRuntimeEffectEnvironment
   , buildApp
-  , buildFailureDiagnosis
   , buildNativeApp
-  , completeDiagnosisProbe
-  , diagnosisProbePairs
   , domainEvidenceFailed
   , domainEvidencePassed
   , emptyRuntime
-  , recordRuntimeDiagnosis
   , renderNativeAppError
   , renderRuntimeError
-  , renderRuntimeFailureDiagnosis
   , renderRuntimeSnapshot
   , runBlueprintWithEffectEnvironment
   , runBlueprintWithEffectEnvironmentResult
@@ -45,6 +34,7 @@ module Framework.TrustBase
   , module Framework.Background.ConstraintProof
   , module Framework.FixedPoint
   , module Framework.RegistryCodegen
+  , module Framework.Runtime.Diagnosis
   , module Framework.SelfArtifact
   ) where
 
@@ -73,31 +63,21 @@ import Framework.FixedPoint
 import Framework.RegistryCodegen
 import Framework.Runtime
   ( Runtime (..)
-  , RuntimeDiagnosisBlocker (..)
-  , RuntimeDiagnosisNode (..)
-  , RuntimeDiagnosisNodeKind (..)
-  , RuntimeDiagnosisProbe (..)
-  , RuntimeDiagnosisProbeStatus (..)
   , RuntimeError (..)
   , RuntimeFactClaim (..)
   , RuntimeFactFailure (..)
   , RuntimeFactStatus (..)
-  , RuntimeFailureDiagnosis (..)
   , RuntimeResult (..)
   , RuntimeSnapshot (..)
-  , buildFailureDiagnosis
-  , completeDiagnosisProbe
-  , diagnosisProbePairs
   , emptyRuntime
-  , recordRuntimeDiagnosis
   , renderRuntimeError
-  , renderRuntimeFailureDiagnosis
   , renderRuntimeSnapshot
   , runBlueprintWithEffectEnvironment
   , runBlueprintWithEffectEnvironmentResult
   , runBlueprintWithEffectEnvironmentRuntimeResult
   , runtimeSnapshot
   )
+import Framework.Runtime.Diagnosis
 import Framework.SelfArtifact
 
 type TrustBaseRuntimeEffectEnvironment = Native.RuntimeEffectEnvironment
