@@ -126,6 +126,9 @@ Bootstrap.Runtime
 Framework.Runtime
   typed runtime backend。用于 RuntimeM interpreter 入口和兼容 re-export。
 
+Framework.Runtime.Interpreter
+  typed RuntimeM interpreter implementation。
+
 Framework.Runtime.Types
 Framework.Runtime.Values
 Framework.Runtime.Handlers

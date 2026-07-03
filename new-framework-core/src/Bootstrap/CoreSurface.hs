@@ -96,6 +96,7 @@ explicitCoreSurfaceModules =
   , backgroundWorkflowEff
   , backgroundWorkflowRender
   , backgroundRuntime
+  , runtimeInterpreterFacade
   , runtimeConcurrencyFacade
   , runtimeDiagnosisFacade
   , runtimeEvidenceFacade
@@ -280,6 +281,7 @@ coreSurfaceSlices =
           , "Bootstrap.Runtime.Types"
           , "Framework.Handler"
           , "Framework.Runtime"
+          , "Framework.Runtime.Interpreter"
           , "Framework.Runtime.Diagnosis"
           , "Framework.Runtime.Handlers"
           , "Framework.Runtime.Values"
@@ -1343,6 +1345,43 @@ backgroundRuntimeDiagnosis =
         , "runtimeDiagnosisEvidencePayloadPassed"
         , "renderRuntimeFailureDiagnosis"
         ]
+    )
+
+runtimeInterpreterFacade :: CoreSurfaceModule
+runtimeInterpreterFacade =
+  moduleSurface
+    "Framework.Runtime.Interpreter"
+    "typed RuntimeM interpreter implementation behind the Framework.Runtime compatibility facade"
+    ( map typeCapability
+        [ "RuntimeEnv"
+        , "RuntimeCallback"
+        , "RuntimeError"
+        , "RuntimeResult"
+        , "RuntimeM"
+        , "RuntimeState"
+        ]
+        ++ map valueCapability
+          [ "applyRuntimeTransform"
+          , "defaultRuntimeEnv"
+          , "getRuntimeState"
+          , "liftRuntimeIO"
+          , "modifyRuntimeState"
+          , "putRuntimeState"
+          , "renderRuntimeError"
+          , "renderRuntimeSnapshot"
+          , "runBlueprintWithEffectEnvironment"
+          , "runBlueprintWithEffectEnvironmentResult"
+          , "runBlueprintWithEffectEnvironmentRuntimeResult"
+          , "runRuntimeM"
+          , "runRuntimeMOrThrow"
+          , "runtimeEnv"
+          , "runtimeSnapshot"
+          , "throwRuntimeError"
+          , "traceRuntimeM"
+          , "withRuntimeCallbacks"
+          , "withRuntimeEnv"
+          , "withRuntimeMiddleware"
+          ]
     )
 
 runtimeConcurrencyFacade :: CoreSurfaceModule

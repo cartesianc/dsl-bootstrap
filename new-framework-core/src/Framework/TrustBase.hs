@@ -66,7 +66,7 @@ import Framework.Domain
 import Framework.FixedPoint
 import Framework.RegistryCodegen
 import Framework.Runtime.Concurrency
-import Framework.Runtime
+import Framework.Runtime.Interpreter
   ( Runtime (..)
   , RuntimeError (..)
   , RuntimeFactClaim (..)

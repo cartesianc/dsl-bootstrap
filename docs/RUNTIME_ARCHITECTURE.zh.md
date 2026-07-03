@@ -153,9 +153,12 @@ SelfArtifactManifestExpressedFact -> Framework.SelfArtifact
 
 ## 4. Runtime 模块边界
 
-`Framework.Runtime` 现在保留为 typed runtime facade 和 interpreter 入口。已拆出的 framework runtime 子模块：
+`Framework.Runtime` 现在保留为 typed runtime compatibility facade。已拆出的 framework runtime 子模块：
 
 ```text
+Framework.Runtime.Interpreter
+  typed RuntimeM interpreter implementation and app execution entrypoints
+
 Framework.Runtime.Types
   shared runtime records, fact claims, typed values, events, and diagnosis data types
 

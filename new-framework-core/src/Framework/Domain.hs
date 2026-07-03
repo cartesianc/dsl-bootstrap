@@ -57,7 +57,7 @@ import qualified Domain.EffectHandlers as RegistryHandlers
 import qualified Domain.Interpreter as RegistryInterpreter
 import qualified Domain.Registry as Registry
 import qualified Framework.Background.ConstraintProof as Proof
-import qualified Framework.Runtime as Runtime
+import qualified Framework.Runtime.Interpreter as Runtime
 
 data DomainRuntimeBackend
   = DomainBootstrapBackend Native.RuntimeEffectEnvironment

@@ -84,6 +84,7 @@ library
                      , Framework.Runtime.Diagnosis
                      , Framework.Runtime.Evidence
                      , Framework.Runtime.Handlers
+                     , Framework.Runtime.Interpreter
                      , Framework.Runtime.Types
                      , Framework.Runtime.Values
                      , Framework.SelfArtifact
