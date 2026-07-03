@@ -114,6 +114,22 @@ fixed-point-smoke backend parity payloads
   runtime-backend-parity-artifact
   runtime-backend-parity-report
 
+fixed-point-smoke diff evidence payloads
+  fixed-point-diff-status
+  fixed-point-diff-surface-modules
+  fixed-point-diff-surface-capabilities
+  fixed-point-diff-constraint-total
+  fixed-point-diff-constraint-failed
+  fixed-point-diff-declared-facts
+  fixed-point-diff-root-facts
+  fixed-point-diff-planned-runtime-facts
+  fixed-point-diff-final-runtime-facts
+  fixed-point-diff-missing-final-facts
+  fixed-point-diff-extra-final-facts
+  fixed-point-diff-handler-coverage
+  fixed-point-diff-artifact-types
+  fixed-point-diff-failures
+
 RuntimeFactClosureExpressedFact
   needs RuntimeArtifactClosureValidatedFact
   needs RuntimeSendBoundaryCoveredFact

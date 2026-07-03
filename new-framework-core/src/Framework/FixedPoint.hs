@@ -1,12 +1,18 @@
 module Framework.FixedPoint
   ( EvidenceDiff (..)
   , FixedPointReport (..)
+  , FixedPointDiffEvidencePayload (..)
+  , FixedPointDiffEvidenceStatus (..)
   , FixedPointStatus (..)
   , RuntimeBackendParityEvidencePayload (..)
   , RuntimeBackendParityEvidenceStatus (..)
   , StageEvidence (..)
   , buildFixedPointReport
+  , fixedPointDiffEvidencePayloadPassed
+  , fixedPointDiffEvidencePayloads
   , fixedPointPassed
+  , renderFixedPointDiffEvidencePayload
+  , renderFixedPointDiffEvidenceStatus
   , renderRuntimeBackendParityEvidencePayload
   , renderRuntimeBackendParityEvidenceStatus
   , renderFixedPointReport
@@ -73,6 +79,20 @@ data FixedPointStatus
   | FixedPointFailed
   deriving (Eq, Show)
 
+data FixedPointDiffEvidencePayload = FixedPointDiffEvidencePayload
+  { fixedPointDiffEvidenceClaim :: String
+  , fixedPointDiffEvidenceStatus :: FixedPointDiffEvidenceStatus
+  , fixedPointDiffEvidenceExpected :: String
+  , fixedPointDiffEvidenceObserved :: String
+  , fixedPointDiffEvidenceArtifact :: String
+  }
+  deriving (Eq, Show)
+
+data FixedPointDiffEvidenceStatus
+  = FixedPointDiffEvidencePassed
+  | FixedPointDiffEvidenceFailed
+  deriving (Eq, Show)
+
 data RuntimeBackendParityEvidencePayload = RuntimeBackendParityEvidencePayload
   { runtimeBackendParityEvidenceClaim :: String
   , runtimeBackendParityEvidenceStatus :: RuntimeBackendParityEvidenceStatus
@@ -109,6 +129,7 @@ buildFixedPointReport = do
 fixedPointPassed :: FixedPointReport -> Bool
 fixedPointPassed report =
   fixedPointStatus report == FixedPointPassed
+    && all fixedPointDiffEvidencePayloadPassed (fixedPointDiffEvidencePayloads report)
     && all runtimeBackendParityEvidencePayloadPassed (runtimeBackendParityEvidencePayloads report)
 
 renderFixedPointReport :: FixedPointReport -> [String]
@@ -129,8 +150,34 @@ renderFixedPointReportJson report =
     , jsonField "stage0" (stageEvidenceJson (fixedPointStage0 report))
     , jsonField "stage1" (stageEvidenceJson (fixedPointStage1 report))
     , jsonField "diffs" (jsonArray (map evidenceDiffJson (fixedPointDiffs report)))
+    , jsonField "fixedPointDiffEvidence" (jsonArray (map fixedPointDiffEvidencePayloadJson (fixedPointDiffEvidencePayloads report)))
     , jsonField "runtimeBackendParity" (jsonArray (map runtimeBackendParityEvidencePayloadJson (runtimeBackendParityEvidencePayloads report)))
     ]
+
+fixedPointDiffEvidencePayloads :: FixedPointReport -> [FixedPointDiffEvidencePayload]
+fixedPointDiffEvidencePayloads report =
+  map
+    (fixedPointDiffEvidencePayload (fixedPointStage0 report) (fixedPointStage1 report))
+    fixedPointDiffFields
+
+fixedPointDiffEvidencePayloadPassed :: FixedPointDiffEvidencePayload -> Bool
+fixedPointDiffEvidencePayloadPassed payload =
+  fixedPointDiffEvidenceStatus payload == FixedPointDiffEvidencePassed
+
+renderFixedPointDiffEvidencePayload :: FixedPointDiffEvidencePayload -> [String]
+renderFixedPointDiffEvidencePayload payload =
+  [ "claim: " ++ fixedPointDiffEvidenceClaim payload
+  , "status: " ++ renderFixedPointDiffEvidenceStatus (fixedPointDiffEvidenceStatus payload)
+  , "expected: " ++ fixedPointDiffEvidenceExpected payload
+  , "observed: " ++ fixedPointDiffEvidenceObserved payload
+  , "artifact: " ++ fixedPointDiffEvidenceArtifact payload
+  ]
+
+renderFixedPointDiffEvidenceStatus :: FixedPointDiffEvidenceStatus -> String
+renderFixedPointDiffEvidenceStatus FixedPointDiffEvidencePassed =
+  "passed"
+renderFixedPointDiffEvidenceStatus FixedPointDiffEvidenceFailed =
+  "failed"
 
 runtimeBackendParityEvidencePayloads :: FixedPointReport -> [RuntimeBackendParityEvidencePayload]
 runtimeBackendParityEvidencePayloads report =
@@ -216,6 +263,98 @@ evidenceDiffJson diffReport =
     , jsonField "stage0" (jsonString (evidenceDiffStage0 diffReport))
     , jsonField "stage1" (jsonString (evidenceDiffStage1 diffReport))
     ]
+
+fixedPointDiffEvidencePayloadJson :: FixedPointDiffEvidencePayload -> String
+fixedPointDiffEvidencePayloadJson payload =
+  jsonObject
+    [ jsonField "claim" (jsonString (fixedPointDiffEvidenceClaim payload))
+    , jsonField "status" (jsonString (renderFixedPointDiffEvidenceStatus (fixedPointDiffEvidenceStatus payload)))
+    , jsonField "expected" (jsonString (fixedPointDiffEvidenceExpected payload))
+    , jsonField "observed" (jsonString (fixedPointDiffEvidenceObserved payload))
+    , jsonField "artifact" (jsonString (fixedPointDiffEvidenceArtifact payload))
+    ]
+
+data FixedPointDiffField = FixedPointDiffField
+  { fixedPointDiffFieldName :: String
+  , fixedPointDiffFieldClaim :: String
+  , fixedPointDiffFieldArtifact :: String
+  }
+
+fixedPointDiffFields :: [FixedPointDiffField]
+fixedPointDiffFields =
+  [ FixedPointDiffField "status" "fixed-point-diff-status" "FixedPointStatusDiffArtifact"
+  , FixedPointDiffField "surface modules" "fixed-point-diff-surface-modules" "FixedPointSurfaceModulesDiffArtifact"
+  , FixedPointDiffField "surface capabilities" "fixed-point-diff-surface-capabilities" "FixedPointSurfaceCapabilitiesDiffArtifact"
+  , FixedPointDiffField "constraint total" "fixed-point-diff-constraint-total" "FixedPointConstraintTotalDiffArtifact"
+  , FixedPointDiffField "constraint failed" "fixed-point-diff-constraint-failed" "FixedPointConstraintFailedDiffArtifact"
+  , FixedPointDiffField "declared facts" "fixed-point-diff-declared-facts" "FixedPointDeclaredFactsDiffArtifact"
+  , FixedPointDiffField "root facts" "fixed-point-diff-root-facts" "FixedPointRootFactsDiffArtifact"
+  , FixedPointDiffField "planned runtime facts" "fixed-point-diff-planned-runtime-facts" "FixedPointPlannedRuntimeFactsDiffArtifact"
+  , FixedPointDiffField "final runtime facts" "fixed-point-diff-final-runtime-facts" "FixedPointFinalRuntimeFactsDiffArtifact"
+  , FixedPointDiffField "missing final facts" "fixed-point-diff-missing-final-facts" "FixedPointMissingFinalFactsDiffArtifact"
+  , FixedPointDiffField "extra final facts" "fixed-point-diff-extra-final-facts" "FixedPointExtraFinalFactsDiffArtifact"
+  , FixedPointDiffField "handler coverage" "fixed-point-diff-handler-coverage" "FixedPointHandlerCoverageDiffArtifact"
+  , FixedPointDiffField "artifact types" "fixed-point-diff-artifact-types" "FixedPointArtifactTypesDiffArtifact"
+  , FixedPointDiffField "failures" "fixed-point-diff-failures" "FixedPointFailuresDiffArtifact"
+  ]
+
+fixedPointDiffEvidencePayload :: StageEvidence -> StageEvidence -> FixedPointDiffField -> FixedPointDiffEvidencePayload
+fixedPointDiffEvidencePayload stage0 stage1 field =
+  FixedPointDiffEvidencePayload
+    { fixedPointDiffEvidenceClaim = fixedPointDiffFieldClaim field
+    , fixedPointDiffEvidenceStatus = status
+    , fixedPointDiffEvidenceExpected =
+        "stage0/stage1 " ++ fixedPointDiffFieldName field ++ " match"
+    , fixedPointDiffEvidenceObserved = observed
+    , fixedPointDiffEvidenceArtifact = fixedPointDiffFieldArtifact field
+    }
+  where
+    left =
+      stageEvidenceFieldValue stage0 (fixedPointDiffFieldName field)
+    right =
+      stageEvidenceFieldValue stage1 (fixedPointDiffFieldName field)
+    status =
+      if left == right
+        then FixedPointDiffEvidencePassed
+        else FixedPointDiffEvidenceFailed
+    observed =
+      if left == right
+        then "matched field: " ++ fixedPointDiffFieldName field
+        else "stage0: " ++ left ++ "; stage1: " ++ right
+
+stageEvidenceFieldValue :: StageEvidence -> String -> String
+stageEvidenceFieldValue evidence field =
+  case field of
+    "status" ->
+      stageEvidenceStatus evidence
+    "surface modules" ->
+      show (stageEvidenceSurfaceModules evidence)
+    "surface capabilities" ->
+      show (stageEvidenceSurfaceCapabilities evidence)
+    "constraint total" ->
+      show (stageEvidenceConstraintTotal evidence)
+    "constraint failed" ->
+      show (stageEvidenceConstraintFailed evidence)
+    "declared facts" ->
+      show (stageEvidenceDeclaredFacts evidence)
+    "root facts" ->
+      show (stageEvidenceRootFacts evidence)
+    "planned runtime facts" ->
+      show (stageEvidencePlannedRuntimeFacts evidence)
+    "final runtime facts" ->
+      show (stageEvidenceFinalRuntimeFacts evidence)
+    "missing final facts" ->
+      show (stageEvidenceMissingFinalFacts evidence)
+    "extra final facts" ->
+      show (stageEvidenceExtraFinalFacts evidence)
+    "handler coverage" ->
+      show (stageEvidenceHandlerCoverage evidence)
+    "artifact types" ->
+      show (stageEvidenceArtifactTypes evidence)
+    "failures" ->
+      show (stageEvidenceFailures evidence)
+    _ ->
+      ""
 
 parityPayload :: String -> String -> String -> [String] -> FixedPointReport -> RuntimeBackendParityEvidencePayload
 parityPayload claim artifact expected fields report =

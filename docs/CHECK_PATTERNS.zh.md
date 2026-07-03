@@ -52,6 +52,7 @@ bootstrap-report
 
 fixed-point-smoke
   stage0-bootstrap 与 stage1-framework-facade diff 为 0
+  fixed-point diff evidence payload
   runtime backend parity payload
   fixed-point-report.v1 JSON schema
 ```
@@ -62,6 +63,7 @@ fixed-point-smoke
 bootstrap-report: status passed
 bootstrap-report --json: framework-core-report.v1
 trust-base-manifest-witness: trust-base-manifest.v1
+fixed-point-smoke: fixed-point diff evidence 14 payload claims
 fixed-point-smoke: diffs: 0
 fixed-point-smoke --json: fixed-point-report.v1
 ```
@@ -346,7 +348,6 @@ stack exec self-artifact-witness
 后续还值得继续升级：
 
 ```text
-fixed-point 从文本 diff 进一步升级为 evidence payload diff
 TrustBase manifest 的 schema versioning 和 gate policy 分层
 ```
 
