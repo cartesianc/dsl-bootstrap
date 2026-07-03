@@ -19,6 +19,8 @@ module Framework.FixedPoint
   , renderFixedPointReportJson
   , runtimeBackendParityEvidencePayloadPassed
   , runtimeBackendParityEvidencePayloads
+  , runtimeBackendParityEvidenceArtifactSummary
+  , runtimeBackendParityEvidenceClaimNames
   ) where
 
 import Data.List
@@ -107,6 +109,13 @@ data RuntimeBackendParityEvidenceStatus
   | RuntimeBackendParityEvidenceFailed
   deriving (Eq, Show)
 
+data RuntimeBackendParityEvidenceSpec = RuntimeBackendParityEvidenceSpec
+  { runtimeBackendParityEvidenceSpecClaim :: String
+  , runtimeBackendParityEvidenceSpecArtifact :: String
+  , runtimeBackendParityEvidenceSpecExpected :: String
+  , runtimeBackendParityEvidenceSpecFields :: [String]
+  }
+
 buildFixedPointReport :: IO FixedPointReport
 buildFixedPointReport = do
   stage0Report <- buildFrameworkCoreReport
@@ -181,31 +190,16 @@ renderFixedPointDiffEvidenceStatus FixedPointDiffEvidenceFailed =
 
 runtimeBackendParityEvidencePayloads :: FixedPointReport -> [RuntimeBackendParityEvidencePayload]
 runtimeBackendParityEvidencePayloads report =
-  [ parityPayload
-      "runtime-backend-parity-plan"
-      "RuntimeBackendParityPlanArtifact"
-      "stage0/stage1 plan metadata and constraints match"
-      planParityFields
-      report
-  , parityPayload
-      "runtime-backend-parity-fact-closure"
-      "RuntimeBackendParityFactClosureArtifact"
-      "stage0/stage1 fact closure matches"
-      factClosureParityFields
-      report
-  , parityPayload
-      "runtime-backend-parity-artifact"
-      "RuntimeBackendParityArtifactClosureArtifact"
-      "stage0/stage1 runtime artifact types match"
-      artifactParityFields
-      report
-  , parityPayload
-      "runtime-backend-parity-report"
-      "RuntimeBackendParityReportArtifact"
-      "stage0/stage1 report status, coverage, and failures match"
-      reportParityFields
-      report
-  ]
+  map (`runtimeBackendParityEvidencePayload` report) runtimeBackendParityEvidenceSpecs
+
+runtimeBackendParityEvidenceClaimNames :: [String]
+runtimeBackendParityEvidenceClaimNames =
+  map runtimeBackendParityEvidenceSpecClaim runtimeBackendParityEvidenceSpecs
+
+runtimeBackendParityEvidenceArtifactSummary :: String
+runtimeBackendParityEvidenceArtifactSummary =
+  "runtime backend parity evidence payload claims: "
+    ++ joinWith ", " runtimeBackendParityEvidenceClaimNames
 
 runtimeBackendParityEvidencePayloadPassed :: RuntimeBackendParityEvidencePayload -> Bool
 runtimeBackendParityEvidencePayloadPassed payload =
@@ -356,25 +350,49 @@ stageEvidenceFieldValue evidence field =
     _ ->
       ""
 
-parityPayload :: String -> String -> String -> [String] -> FixedPointReport -> RuntimeBackendParityEvidencePayload
-parityPayload claim artifact expected fields report =
+runtimeBackendParityEvidenceSpecs :: [RuntimeBackendParityEvidenceSpec]
+runtimeBackendParityEvidenceSpecs =
+  [ RuntimeBackendParityEvidenceSpec
+      "runtime-backend-parity-plan"
+      "RuntimeBackendParityPlanArtifact"
+      "stage0/stage1 plan metadata and constraints match"
+      planParityFields
+  , RuntimeBackendParityEvidenceSpec
+      "runtime-backend-parity-fact-closure"
+      "RuntimeBackendParityFactClosureArtifact"
+      "stage0/stage1 fact closure matches"
+      factClosureParityFields
+  , RuntimeBackendParityEvidenceSpec
+      "runtime-backend-parity-artifact"
+      "RuntimeBackendParityArtifactClosureArtifact"
+      "stage0/stage1 runtime artifact types match"
+      artifactParityFields
+  , RuntimeBackendParityEvidenceSpec
+      "runtime-backend-parity-report"
+      "RuntimeBackendParityReportArtifact"
+      "stage0/stage1 report status, coverage, and failures match"
+      reportParityFields
+  ]
+
+runtimeBackendParityEvidencePayload :: RuntimeBackendParityEvidenceSpec -> FixedPointReport -> RuntimeBackendParityEvidencePayload
+runtimeBackendParityEvidencePayload spec report =
   RuntimeBackendParityEvidencePayload
-    { runtimeBackendParityEvidenceClaim = claim
+    { runtimeBackendParityEvidenceClaim = runtimeBackendParityEvidenceSpecClaim spec
     , runtimeBackendParityEvidenceStatus = status
-    , runtimeBackendParityEvidenceExpected = expected
+    , runtimeBackendParityEvidenceExpected = runtimeBackendParityEvidenceSpecExpected spec
     , runtimeBackendParityEvidenceObserved = observed
-    , runtimeBackendParityEvidenceArtifact = artifact
+    , runtimeBackendParityEvidenceArtifact = runtimeBackendParityEvidenceSpecArtifact spec
     }
   where
     diffs =
-      diffsForFields fields (fixedPointDiffs report)
+      diffsForFields (runtimeBackendParityEvidenceSpecFields spec) (fixedPointDiffs report)
     status =
       if null diffs
         then RuntimeBackendParityEvidencePassed
         else RuntimeBackendParityEvidenceFailed
     observed =
       if null diffs
-        then "matched fields: " ++ show fields
+        then "matched fields: " ++ show (runtimeBackendParityEvidenceSpecFields spec)
         else "diff fields: " ++ show (map evidenceDiffField diffs)
 
 diffsForFields :: [String] -> [EvidenceDiff] -> [EvidenceDiff]

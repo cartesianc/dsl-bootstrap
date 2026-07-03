@@ -265,7 +265,16 @@ runBootstrapNative RunRuntimeDiagnosisEvidence _ _ =
         )
     )
 runBootstrapNative RunRuntimeBackendParityEvidence _ _ =
-  pure (succeedArtifact RuntimeBackendParityEvidenceArtifact "runtime backend parity evidence delegated to fixed-point and workflow witnesses")
+  pure
+    ( succeedArtifact
+        RuntimeBackendParityEvidenceArtifact
+        ( "runtime backend parity evidence payload claims: "
+            ++ "runtime-backend-parity-plan, "
+            ++ "runtime-backend-parity-fact-closure, "
+            ++ "runtime-backend-parity-artifact, "
+            ++ "runtime-backend-parity-report"
+        )
+    )
 runBootstrapNative RunFrameworkCoreFrontendCodegenEvidence _ _ =
   runFrameworkCoreFrontendEvidence
 runBootstrapNative RunRegistryCodegenEvidence _ _ =

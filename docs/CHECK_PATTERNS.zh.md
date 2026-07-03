@@ -161,7 +161,16 @@ runtime-diagnosis-retry-probe
 runtime-diagnosis-non-idempotent-blocker
 ```
 
-注意：`RunRuntimeBackendParityEvidence` 仍然有 aggregate evidence 的成分。backend parity 已经由 `fixed-point-smoke` 输出 plan / fact closure / artifact / report 四条 payload；workflow semantics 已经由 `workflow-semantics-witness` 输出 12 条 payload。
+`RunRuntimeBackendParityEvidence` 现在对应 4 条 `RuntimeBackendParityEvidencePayload`：
+
+```text
+runtime-backend-parity-plan
+runtime-backend-parity-fact-closure
+runtime-backend-parity-artifact
+runtime-backend-parity-report
+```
+
+workflow semantics 已经由 `workflow-semantics-witness` 输出 12 条 payload。
 
 ## 3. Framework Core 前台与 Codegen
 

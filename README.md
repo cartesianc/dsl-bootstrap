@@ -568,6 +568,15 @@ fixed-point-smoke: runtime backend parity evidence 4 payload claims
 fixed-point-smoke: diffs: 0
 ```
 
+backend parity payload claims：
+
+```text
+runtime-backend-parity-plan
+runtime-backend-parity-fact-closure
+runtime-backend-parity-artifact
+runtime-backend-parity-report
+```
+
 artifact gate 会物化 `.generated/stage1-framework`，只复制 framework/code artifact inputs，不复制 `docs`、`README.md`、`CHANGELOG.md`、`TODO.md` 等说明性文档，并在隔离包中运行：
 
 `self-artifact-witness` 是高危/重型 gate：只有大构建和轻量 gates 完成后才允许运行一次。同一轮第二次不允许继续跑；README/docs-only 变更不触发它。
