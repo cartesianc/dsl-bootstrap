@@ -236,7 +236,14 @@ renderSendContract (currentContract : _) =
 renderEffectUnit :: EffectUnit -> [String]
 renderEffectUnit currentUnit =
   (show (effectUnitName currentUnit) ++ ":")
-    : indentLines 2 (map renderEffectSection (effectUnitSections currentUnit))
+    : indentLines
+      2
+      ( [ "imports: " ++ formatList (map show (effectUnitImports currentUnit))
+        , "private: " ++ formatList (map show (effectUnitPrivateFacts currentUnit))
+        , "exports: " ++ formatList (map show (effectUnitExports currentUnit))
+        ]
+          ++ map renderEffectSection (effectUnitSections currentUnit)
+      )
 
 renderEffectSection :: EffectSection -> String
 renderEffectSection (FactClaimSection producer) =
@@ -327,6 +334,9 @@ effectUnitJson :: EffectUnit -> String
 effectUnitJson currentUnit =
   jsonObject
     [ ("name", jsonString (show (effectUnitName currentUnit)))
+    , ("imports", jsonStringArray (map show (effectUnitImports currentUnit)))
+    , ("privateFacts", jsonStringArray (map show (effectUnitPrivateFacts currentUnit)))
+    , ("exports", jsonStringArray (map show (effectUnitExports currentUnit)))
     , ("sections", jsonArray (map effectSectionJson (effectUnitSections currentUnit)))
     ]
 

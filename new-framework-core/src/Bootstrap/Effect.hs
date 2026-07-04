@@ -4,6 +4,7 @@
 module Bootstrap.Effect
   ( EffectName (..)
   , EffectSection (..)
+  , EffectSystemClause (..)
   , EffectTheory (..)
   , EffectUnit (..)
   , ExternalTakeBoundary (..)
@@ -23,14 +24,21 @@ module Bootstrap.Effect
   , WorkflowFact (..)
   , effect
   , error
+  , effectSystem
+  , effectUnitBoundary
+  , effectUnitProducedFacts
+  , effectUnitSystem
+  , exports
   , externalMake
   , idempotent
+  , imports
   , make
   , needs
   , onFailure
   , pattern ErrorInput
   , pattern NoInput
   , pattern Unit
+  , privateFacts
   , retry
   , take
   , theory
@@ -46,6 +54,7 @@ import Prelude hiding
 import Bootstrap.Workflow
   ( WorkflowFact (..)
   )
+import qualified Bootstrap.Workflow as Workflow
 
 newtype EffectName = EffectName
   { effectNameText :: String
@@ -107,8 +116,16 @@ newtype EffectTheory = EffectTheory
 
 data EffectUnit = EffectUnit
   { effectUnitName :: EffectName
+  , effectUnitImports :: [WorkflowFact]
+  , effectUnitPrivateFacts :: [WorkflowFact]
+  , effectUnitExports :: [WorkflowFact]
   , effectUnitSections :: [EffectSection]
   }
+
+data EffectSystemClause
+  = EffectSystemImports [WorkflowFact]
+  | EffectSystemPrivateFacts [WorkflowFact]
+  | EffectSystemExports [WorkflowFact]
 
 data EffectSection
   = FactClaimSection FactProducer
@@ -167,8 +184,64 @@ theory =
   EffectTheory
 
 effect :: EffectName -> [EffectSection] -> EffectUnit
-effect =
+effect name sections =
   EffectUnit
+    { effectUnitName = name
+    , effectUnitImports = []
+    , effectUnitPrivateFacts = []
+    , effectUnitExports = effectUnitProducedFactsFromSections sections
+    , effectUnitSections = sections
+    }
+
+effectSystem :: EffectName -> [EffectSystemClause] -> [EffectSection] -> EffectUnit
+effectSystem name clauses sections =
+  EffectUnit
+    { effectUnitName = name
+    , effectUnitImports = unique (concatMap clauseImports clauses)
+    , effectUnitPrivateFacts = unique (concatMap clausePrivateFacts clauses)
+    , effectUnitExports = explicitOrProducedExports
+    , effectUnitSections = sections
+    }
+  where
+    explicitExports =
+      unique (concatMap clauseExports clauses)
+    explicitOrProducedExports =
+      if null explicitExports
+        then effectUnitProducedFactsFromSections sections
+        else explicitExports
+
+imports :: [WorkflowFact] -> EffectSystemClause
+imports =
+  EffectSystemImports
+
+privateFacts :: [WorkflowFact] -> EffectSystemClause
+privateFacts =
+  EffectSystemPrivateFacts
+
+exports :: [WorkflowFact] -> EffectSystemClause
+exports =
+  EffectSystemExports
+
+effectUnitBoundary :: EffectUnit -> Workflow.EffectSystemBoundary WorkflowFact
+effectUnitBoundary unit =
+  Workflow.systemBoundaryWithHandlers
+    (Workflow.EffectSystemName (show (effectUnitName unit)))
+    (effectUnitImports unit)
+    (effectUnitPrivateFacts unit)
+    (effectUnitExports unit)
+    (effectUnitBoundarySends unit)
+    (effectUnitBoundaryTransforms unit)
+    (effectUnitBoundaryPolicies unit)
+    []
+    []
+
+effectUnitSystem :: EffectUnit -> Workflow.EffectSystem WorkflowFact
+effectUnitSystem =
+  Workflow.effectSystemFromBoundary . effectUnitBoundary
+
+effectUnitProducedFacts :: EffectUnit -> [WorkflowFact]
+effectUnitProducedFacts =
+  effectUnitProducedFactsFromSections . effectUnitSections
 
 externalMake :: SendName -> TypeName -> TypeName -> EffectSection
 externalMake name input output =
@@ -231,3 +304,85 @@ onFailure =
 error :: SendName -> ProducerStep
 error =
   Error
+
+effectUnitProducedFactsFromSections :: [EffectSection] -> [WorkflowFact]
+effectUnitProducedFactsFromSections sections =
+  unique
+    [ producerFact producer
+    | FactClaimSection producer <- sections
+    ]
+
+effectUnitBoundarySends :: EffectUnit -> [Workflow.EffectSystemBoundarySend]
+effectUnitBoundarySends unit =
+  unique
+    [ Workflow.boundarySend (show (sendBoundaryName boundary))
+    | SendSection boundary <- effectUnitSections unit
+    ]
+
+effectUnitBoundaryTransforms :: EffectUnit -> [Workflow.EffectSystemBoundaryTransform]
+effectUnitBoundaryTransforms unit =
+  unique
+    [ Workflow.boundaryTransform (show name)
+    | FactClaimSection producer <- effectUnitSections unit
+    , Transform _ _ name <- producerSteps producer
+    ]
+
+effectUnitBoundaryPolicies :: EffectUnit -> [Workflow.EffectSystemBoundaryPolicy]
+effectUnitBoundaryPolicies unit =
+  concatMap sectionBoundaryPolicies (effectUnitSections unit)
+
+sectionBoundaryPolicies :: EffectSection -> [Workflow.EffectSystemBoundaryPolicy]
+sectionBoundaryPolicies (SendPolicySection policy) =
+  idempotencyPolicy ++ retryPolicy
+  where
+    send =
+      show (sendPolicyName policy)
+    idempotencyPolicy =
+      case sendPolicyIdempotency policy of
+        Just Idempotent ->
+          [Workflow.boundaryIdempotent send]
+        _ ->
+          []
+    retryPolicy =
+      case sendPolicyRetry policy of
+        Just RetryOnce ->
+          [Workflow.boundaryRetryOnce send]
+        _ ->
+          []
+sectionBoundaryPolicies _ =
+  []
+
+clauseImports :: EffectSystemClause -> [WorkflowFact]
+clauseImports clause =
+  case clause of
+    EffectSystemImports facts ->
+      facts
+    _ ->
+      []
+
+clausePrivateFacts :: EffectSystemClause -> [WorkflowFact]
+clausePrivateFacts clause =
+  case clause of
+    EffectSystemPrivateFacts facts ->
+      facts
+    _ ->
+      []
+
+clauseExports :: EffectSystemClause -> [WorkflowFact]
+clauseExports clause =
+  case clause of
+    EffectSystemExports facts ->
+      facts
+    _ ->
+      []
+
+unique :: Eq item => [item] -> [item]
+unique =
+  foldl appendUnique []
+
+appendUnique :: Eq item => [item] -> item -> [item]
+appendUnique items item
+  | item `elem` items =
+      items
+  | otherwise =
+      items ++ [item]

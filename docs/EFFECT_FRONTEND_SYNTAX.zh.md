@@ -20,6 +20,7 @@ Bootstrap.Business / Framework.Business
 
 Bootstrap.Effect / Framework.Effect
   normalized effect IR。保留 effect/fact/needs/take/make/uses/externalMake/transform/retry/idempotent。
+  system-level authoring 使用 effectSystem/imports/privateFacts/exports 表达 scope boundary。
 ```
 
 ## 2. Capability 源码
@@ -88,6 +89,10 @@ Lowering 后的 effect IR 继续使用这些语义构件：
 
 ```text
 effect        effect theory 分组
+effectSystem  带 imports/privateFacts/exports 的 system-level effect 分组
+imports       system 需要外部已经导出的 fact
+privateFacts  system 内部 fact
+exports       system 对外承诺的 fact
 fact          可观察 fact producer
 needs         fact 依赖
 take          artifact 输入类型
@@ -115,6 +120,21 @@ witness 或 test IR
 ```text
 effect/fact/needs/take/make/uses/externalMake
 ```
+
+`effect name sections` 仍然兼容旧 IR：默认 exports 为本 unit 里声明的 producer fact，imports 和 private facts 为空。需要显式 system scope 时使用：
+
+```haskell
+effectSystem Name
+  [ imports [InputReadyFact]
+  , privateFacts [InternalPreparedFact]
+  , exports [OutputReadyFact]
+  ]
+  [ fact InternalPreparedFact [needs InputReadyFact]
+  , fact OutputReadyFact [needs InternalPreparedFact]
+  ]
+```
+
+`effectUnitBoundary` 和 `effectUnitSystem` 把这层 IR lower 到 `Workflow.EffectSystemBoundary` / `Workflow.EffectSystem`，供 runtime boundary checker、report 和 witness 使用。
 
 ## 5. Fact / Artifact / Internal
 
@@ -209,12 +229,13 @@ Effects.* 等于对应 Domain.Business capability group lowering
 Domain.Business 导入 Framework.Business 且不导入 Framework.Effect
 allDomainCapabilities 通过 business-shape checker
 runtime pipeline adapter 可以执行 transform 链
+effectSystem/imports/privateFacts/exports lower 到 Workflow.EffectSystemBoundary
 ```
 
 期望输出：
 
 ```text
-[witness] ok business syntax evidence 13 payload claims
+[witness] ok business syntax evidence 14 payload claims
 ```
 
 日常 capability/lowering 语法改动只需要跑 `business-syntax-witness`。高危 `self-artifact-witness` artifact gate 内部也会包含这项检查，但不会因为语法文档或 README/docs-only 变更单独触发。

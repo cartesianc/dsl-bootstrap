@@ -296,12 +296,18 @@ effectSystemBoundaryMetadataPassed =
   explicitBoundaryMatches
     && derivedBoundaryMatches
     && derivedRuntimeSystemMatches
+    && defaultEffectUnitBoundaryMatches
+    && explicitEffectUnitMetadataMatches
+    && explicitEffectUnitBoundaryMatches
+    && explicitEffectUnitSystemMatches
   where
+    privateFact =
+      WorkflowFact "PipelinePrivateFact"
     explicitBoundary =
       Workflow.systemBoundary
         (Workflow.EffectSystemName "BoundaryProbe")
         [pipelineSourceFact]
-        [WorkflowFact "PipelinePrivateFact"]
+        [privateFact]
         [pipelineAdapterFact]
     derivedSystem =
       Workflow.effectSystem
@@ -311,10 +317,30 @@ effectSystemBoundaryMetadataPassed =
       Workflow.effectSystemBoundary derivedSystem
     derivedRuntimeSystem =
       Workflow.effectSystemFromBoundary explicitBoundary
+    defaultEffectUnit =
+      Effect.effect
+        (EffectName "BoundaryProbe")
+        [Effect.fact pipelineAdapterFact ([] :: [ProducerStep])]
+    defaultEffectUnitBoundary =
+      Effect.effectUnitBoundary defaultEffectUnit
+    explicitEffectUnit =
+      Effect.effectSystem
+        (EffectName "BoundaryProbe")
+        [ Effect.imports [pipelineSourceFact]
+        , Effect.privateFacts [privateFact]
+        , Effect.exports [pipelineAdapterFact]
+        ]
+        [ Effect.fact privateFact [Effect.needs pipelineSourceFact]
+        , Effect.fact pipelineAdapterFact [Effect.needs privateFact]
+        ]
+    explicitEffectUnitBoundary =
+      Effect.effectUnitBoundary explicitEffectUnit
+    explicitEffectUnitSystem =
+      Effect.effectUnitSystem explicitEffectUnit
     explicitBoundaryMatches =
       Workflow.effectSystemBoundaryName explicitBoundary == Workflow.EffectSystemName "BoundaryProbe"
         && Workflow.effectSystemBoundaryImports explicitBoundary == [pipelineSourceFact]
-        && Workflow.effectSystemBoundaryPrivateFacts explicitBoundary == [WorkflowFact "PipelinePrivateFact"]
+        && Workflow.effectSystemBoundaryPrivateFacts explicitBoundary == [privateFact]
         && Workflow.effectSystemBoundaryExports explicitBoundary == [pipelineAdapterFact]
     derivedBoundaryMatches =
       Workflow.effectSystemBoundaryName derivedBoundary == Workflow.EffectSystemName "BoundaryProbe"
@@ -324,6 +350,28 @@ effectSystemBoundaryMetadataPassed =
     derivedRuntimeSystemMatches =
       Workflow.effectSystemName derivedRuntimeSystem == Workflow.EffectSystemName "BoundaryProbe"
         && case Workflow.effectSystemSuccess derivedRuntimeSystem of
+          Workflow.FactItems requirement ->
+            Workflow.requirementItems requirement == [pipelineAdapterFact]
+          _ ->
+            False
+    defaultEffectUnitBoundaryMatches =
+      Workflow.effectSystemBoundaryName defaultEffectUnitBoundary == Workflow.EffectSystemName "BoundaryProbe"
+        && null (Workflow.effectSystemBoundaryImports defaultEffectUnitBoundary)
+        && null (Workflow.effectSystemBoundaryPrivateFacts defaultEffectUnitBoundary)
+        && Workflow.effectSystemBoundaryExports defaultEffectUnitBoundary == [pipelineAdapterFact]
+    explicitEffectUnitMetadataMatches =
+      effectUnitImports explicitEffectUnit == [pipelineSourceFact]
+        && effectUnitPrivateFacts explicitEffectUnit == [privateFact]
+        && effectUnitExports explicitEffectUnit == [pipelineAdapterFact]
+        && Effect.effectUnitProducedFacts explicitEffectUnit == [privateFact, pipelineAdapterFact]
+    explicitEffectUnitBoundaryMatches =
+      Workflow.effectSystemBoundaryName explicitEffectUnitBoundary == Workflow.EffectSystemName "BoundaryProbe"
+        && Workflow.effectSystemBoundaryImports explicitEffectUnitBoundary == [pipelineSourceFact]
+        && Workflow.effectSystemBoundaryPrivateFacts explicitEffectUnitBoundary == [privateFact]
+        && Workflow.effectSystemBoundaryExports explicitEffectUnitBoundary == [pipelineAdapterFact]
+    explicitEffectUnitSystemMatches =
+      Workflow.effectSystemBoundaryExplicit explicitEffectUnitSystem
+        && case Workflow.effectSystemSuccess explicitEffectUnitSystem of
           Workflow.FactItems requirement ->
             Workflow.requirementItems requirement == [pipelineAdapterFact]
           _ ->
