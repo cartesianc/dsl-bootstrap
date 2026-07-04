@@ -56,6 +56,7 @@ architectureConcernCoreClaimNames =
   , "session3-business-facade-boundary"
   , "session3-trustbase-machine-readable-gates"
   , "session3-runtime-hot-path-guard"
+  , "session3-runtime-policy-evidence-payloads"
   , "session123-schema-catalog-coverage"
   , "session123-report-json-renderer-coverage"
   , architectureSemanticRiskReviewClaimName

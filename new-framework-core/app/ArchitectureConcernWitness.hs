@@ -45,6 +45,8 @@ import Framework.Runtime.Diagnosis
   ( runtimeDiagnosisEvidenceClaimNames )
 import Framework.Runtime.HotPath
   ( runtimeHotPathEvidenceClaimNames )
+import Framework.Runtime.Policy
+  ( runtimePolicyEvidenceClaimNames )
 import Framework.TrustBase.Manifest
   ( TrustBaseGatePolicy (..)
   , TrustBaseManifest (..)
@@ -97,6 +99,7 @@ architectureConcernEvidencePayloads = do
       , businessFacadeBoundaryPayload
       , trustBaseMachineReadableGatesPayload
       , runtimeHotPathGuardPayload
+      , runtimePolicyEvidencePayload
       , schemaCatalogCoveragePayload
       , reportJsonRendererCoveragePayload
       , semanticRiskReviewPayload
@@ -409,6 +412,36 @@ runtimeHotPathGuardPayload =
       , ("hot-path import boundary claim", "runtime-hot-path-import-boundary" `elem` runtimeHotPathEvidenceClaimNames)
       , ("hot-path behavior claim", "runtime-hot-path-executes-minimal-workflow" `elem` runtimeHotPathEvidenceClaimNames)
       ]
+    missing =
+      [ name | (name, present) <- required, not present ]
+
+runtimePolicyEvidencePayload :: ArchitectureConcernEvidencePayload
+runtimePolicyEvidencePayload =
+  concernEvidence
+    "session3-runtime-policy-evidence-payloads"
+    (null missing)
+    "runtime policy evidence exposes error dispatch, retry, and idempotency payload claims through schema catalog and CoreSurface"
+    (observedList missing)
+    "RuntimePolicyEvidenceCoverageArtifact"
+    "low:evidence-schema"
+    "keep policy evidence payload coverage stable; review runtime-policy-algebra before changing policy meanings"
+  where
+    expectedClaims =
+      [ "runtime-policy-error-dispatch"
+      , "runtime-policy-retry"
+      , "runtime-policy-idempotency"
+      ]
+    required =
+      [ ("runtime-policy-evidence schema", schemaPresent "runtime-policy-evidence.v1")
+      , ("Framework.Runtime.Policy RuntimePolicyEvidencePayload type", coreSurfaceTypeCapabilityPresent "Framework.Runtime.Policy" "RuntimePolicyEvidencePayload")
+      , ("Framework.Runtime.Policy RuntimePolicyEvidenceStatus type", coreSurfaceTypeCapabilityPresent "Framework.Runtime.Policy" "RuntimePolicyEvidenceStatus")
+      , ("Framework.Runtime.Policy runtimePolicyEvidenceClaimNames value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Policy" "runtimePolicyEvidenceClaimNames")
+      , ("Framework.Runtime.Policy renderRuntimePolicyEvidencePayloadsJson value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Policy" "renderRuntimePolicyEvidencePayloadsJson")
+      , ("Framework.Runtime.Policy runtimePolicyEvidencePayloads value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Policy" "runtimePolicyEvidencePayloads")
+      ]
+        ++ [ ("runtime policy claim: " ++ claim, claim `elem` runtimePolicyEvidenceClaimNames)
+           | claim <- expectedClaims
+           ]
     missing =
       [ name | (name, present) <- required, not present ]
 
