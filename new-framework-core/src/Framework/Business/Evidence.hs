@@ -48,6 +48,7 @@ businessSyntaxCoreClaimNames =
   , "business-syntax-authoring-default-frontend-boundary"
   , "business-syntax-app-runner-frontdoor"
   , "business-syntax-friendly-diagnostics"
+  , "business-syntax-effect-row-algebra"
   ]
 
 businessSyntaxEvidenceClaimNames :: [String]

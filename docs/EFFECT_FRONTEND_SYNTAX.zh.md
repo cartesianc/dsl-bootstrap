@@ -144,6 +144,8 @@ effectSystem Name
 
 `effectUnitBoundary` 和 `effectUnitSystem` 把这层 IR lower 到 `Workflow.EffectSystemBoundary` / `Workflow.EffectSystem`，供 runtime boundary checker、report 和 witness 使用。
 
+EffectRow is a value-level semantic IR for algebraic boundary composition / diff / evidence; row polymorphism remains a future backend encoding and is not business syntax in this round.
+
 ## 5. Fact / Artifact / Internal
 
 Fact 是业务世界的可观察状态：

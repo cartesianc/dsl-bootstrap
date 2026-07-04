@@ -86,6 +86,20 @@ import "new-framework-core" Framework.App
   ( RuntimeError (..)
   , runAppResult
   )
+import "new-framework-core" Framework.Workflow
+  ( EffectRow (..)
+  , EffectRowDiff (..)
+  , effectRowDiff
+  , effectRowExportsClean
+  , effectRowFromBoundary
+  , effectRowHidePrivate
+  , effectRowImportsSatisfied
+  , effectRowPipelineArtifacts
+  , effectRowPipelineEdges
+  , effectRowSubset
+  , effectRowUnion
+  , renderEffectRowDiff
+  )
 import "new-framework-core" Framework.Business.Diagnostics
   ( renderBusinessShapeDiagnostic
   , renderRuntimeErrorDiagnostic
@@ -271,6 +285,12 @@ businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPasse
       "business diagnostics map existing runtime and shape errors to author fix actions"
       (observedBool friendlyDiagnosticsPassed)
       "BusinessFriendlyDiagnosticsArtifact"
+  , businessEvidence
+      "business-syntax-effect-row-algebra"
+      effectRowAlgebraPassed
+      "GenerateReport capability lowering exposes a value-level EffectRow with expected imports, exports, send, handler, transform, policy, and pipeline edge"
+      effectRowAlgebraObserved
+      "BusinessEffectRowAlgebraArtifact"
   ]
 
 businessSyntaxClaimManifestPayload :: [BusinessSyntaxEvidencePayload] -> BusinessSyntaxEvidencePayload
@@ -607,6 +627,124 @@ friendlyDiagnosticsPassed =
     , "Align handlerBinding inputs" `isInfixOf` renderBusinessShapeDiagnostic (HandlerConsumesMismatch RuntimeGenerateReport "GenerateReport" [ReportInput] [UserName])
     , "adjacent pipeline edge" `isInfixOf` renderBusinessShapeDiagnostic (TransformBindingOutsidePipeline UserNameToReportInput UserName ReportInput)
     ]
+
+effectRowAlgebraPassed :: Bool
+effectRowAlgebraPassed =
+  all
+    id
+    [ effectRowImports generateReportEffectRow
+        == [ AddCalculatedFact
+           , FactorialCalculatedFact
+           , SquaresCalculatedFact
+           , UserNameAskedFact
+           ]
+    , effectRowExports generateReportEffectRow == [ReportGeneratedFact]
+    , map show (effectRowSends generateReportEffectRow) == [show GenerateReport]
+    , map (show . Workflow.effectSystemBoundaryHandlerSend) (effectRowHandlers generateReportEffectRow) == [show GenerateReport]
+    , map Workflow.effectSystemBoundaryHandlerName (effectRowHandlers generateReportEffectRow) == [show RuntimeGenerateReport]
+    , map show (effectRowTransforms generateReportEffectRow) == [show UserNameToReportInput]
+    , map show (effectRowPolicies generateReportEffectRow) == ["idempotent " ++ show GenerateReport]
+    , map show (effectRowPipelineArtifacts generateReportEffectRow) == [show UserName, show ReportInput, show ReportOutput]
+    , expectedPipelineEdgesCovered
+    , effectRowSubset expectedGenerateReportEffectRow generateReportEffectRow
+    , effectRowDiffEmpty generateReportRowDiff
+    , effectRowImportsSatisfied generateReportProviderRows generateReportEffectRow
+    , effectRowExportsClean generateReportEffectRow
+    , effectRowHidePrivate generateReportEffectRow == generateReportEffectRow
+    , effectRowSubset expectedGenerateReportEffectRow (effectRowUnion generateReportEffectRow generateReportEffectRow)
+    ]
+
+effectRowAlgebraObserved :: String
+effectRowAlgebraObserved =
+  "imports="
+    ++ show (length (effectRowImports generateReportEffectRow))
+    ++ ", exports="
+    ++ show (length (effectRowExports generateReportEffectRow))
+    ++ ", sends="
+    ++ show (length (effectRowSends generateReportEffectRow))
+    ++ ", handlers="
+    ++ show (length (effectRowHandlers generateReportEffectRow))
+    ++ ", transforms="
+    ++ show (length (effectRowTransforms generateReportEffectRow))
+    ++ ", policies="
+    ++ show (length (effectRowPolicies generateReportEffectRow))
+    ++ ", pipelineEdges="
+    ++ show (length (effectRowPipelineEdges generateReportEffectRow))
+    ++ ", diff="
+    ++ joinWith "; " (renderEffectRowDiff generateReportRowDiff)
+
+generateReportEffectRow :: EffectRow WorkflowFact
+generateReportEffectRow =
+  effectRowFromBoundary generateReportBoundary
+
+expectedGenerateReportEffectRow :: EffectRow WorkflowFact
+expectedGenerateReportEffectRow =
+  effectRowFromBoundary expectedGenerateReportBoundary
+
+generateReportRowDiff :: EffectRowDiff WorkflowFact
+generateReportRowDiff =
+  effectRowDiff expectedGenerateReportEffectRow generateReportEffectRow
+
+generateReportProviderRows :: [EffectRow WorkflowFact]
+generateReportProviderRows =
+  [ effectRowFromBoundary
+      ( Workflow.systemBoundary
+          (Workflow.EffectSystemName "GenerateReportImportProviders")
+          []
+          []
+          (effectRowImports generateReportEffectRow)
+      )
+  ]
+
+generateReportBoundary :: Workflow.EffectSystemBoundary WorkflowFact
+generateReportBoundary =
+  capabilityEffectSystemBoundary "GenerateReportSystem" generateReportCapability
+
+expectedGenerateReportBoundary :: Workflow.EffectSystemBoundary WorkflowFact
+expectedGenerateReportBoundary =
+  Workflow.systemBoundaryWithHandlers
+    (Workflow.EffectSystemName "GenerateReportExpectedRow")
+    [ AddCalculatedFact
+    , FactorialCalculatedFact
+    , SquaresCalculatedFact
+    , UserNameAskedFact
+    ]
+    []
+    [ReportGeneratedFact]
+    [Workflow.boundarySend (show GenerateReport)]
+    [Workflow.boundaryTransform (show UserNameToReportInput)]
+    [Workflow.boundaryIdempotent (show GenerateReport)]
+    [ Workflow.boundaryPipeline
+        "GenerateReportPipeline"
+        [ Workflow.boundaryArtifact (show UserName)
+        , Workflow.boundaryArtifact (show ReportInput)
+        , Workflow.boundaryArtifact (show ReportOutput)
+        ]
+    ]
+    [Workflow.boundaryHandler (show GenerateReport) (show RuntimeGenerateReport)]
+
+expectedPipelineEdgesCovered :: Bool
+expectedPipelineEdgesCovered =
+  all (`elem` effectRowPipelineEdges generateReportEffectRow) expectedPipelineEdges
+
+expectedPipelineEdges :: [(Workflow.EffectSystemBoundaryArtifact, Workflow.EffectSystemBoundaryArtifact)]
+expectedPipelineEdges =
+  [ (Workflow.boundaryArtifact (show UserName), Workflow.boundaryArtifact (show ReportInput))
+  , (Workflow.boundaryArtifact (show ReportInput), Workflow.boundaryArtifact (show ReportOutput))
+  ]
+
+effectRowDiffEmpty :: EffectRowDiff fact -> Bool
+effectRowDiffEmpty diff =
+  null (effectRowDiffMissingImportProviders diff)
+    && null (effectRowDiffImportPrivateFacts diff)
+    && null (effectRowDiffPrivateFactExports diff)
+    && null (effectRowDiffPrivateFactImports diff)
+    && null (effectRowDiffMissingSends diff)
+    && null (effectRowDiffMissingHandlers diff)
+    && null (effectRowDiffMissingTransforms diff)
+    && null (effectRowDiffMissingPolicies diff)
+    && null (effectRowDiffPipelineArtifactsOutsideRow diff)
+    && null (effectRowDiffPipelineTransformEdgesOutsideRow diff)
 
 boundaryPipelineArtifacts :: Workflow.EffectSystemBoundary Workflow.WorkflowFact -> [String]
 boundaryPipelineArtifacts boundary =

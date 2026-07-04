@@ -15,6 +15,8 @@ module Bootstrap.Workflow
   , EffectSystemBoundarySend (..)
   , EffectSystemBoundaryTransform (..)
   , EffectSystemName (..)
+  , EffectRow (..)
+  , EffectRowDiff (..)
   , FactExpr (..)
   , Fallback (..)
   , Hanging (..)
@@ -55,6 +57,15 @@ module Bootstrap.Workflow
   , effectSystem
   , effectSystemFromBoundary
   , effectSystemRuntimeFacts
+  , effectRowDiff
+  , effectRowExportsClean
+  , effectRowFromBoundary
+  , effectRowHidePrivate
+  , effectRowImportsSatisfied
+  , effectRowPipelineArtifacts
+  , effectRowPipelineEdges
+  , effectRowSubset
+  , effectRowUnion
   , factAll
   , factAny
   , factItems
@@ -90,6 +101,7 @@ module Bootstrap.Workflow
   , requirementItems
   , listenDuringRunMode
   , renderBeforeRunMode
+  , renderEffectRowDiff
   , run
   , suspense
   , systemBoundary
@@ -263,6 +275,33 @@ data EffectSystemBoundary fact = EffectSystemBoundary
   , effectSystemBoundaryPipelines :: [EffectSystemBoundaryPipeline]
   , effectSystemBoundaryHandlers :: [EffectSystemBoundaryHandler]
   }
+
+data EffectRow fact = EffectRow
+  { effectRowName :: EffectSystemName
+  , effectRowImports :: [fact]
+  , effectRowPrivateFacts :: [fact]
+  , effectRowExports :: [fact]
+  , effectRowSends :: [EffectSystemBoundarySend]
+  , effectRowTransforms :: [EffectSystemBoundaryTransform]
+  , effectRowPolicies :: [EffectSystemBoundaryPolicy]
+  , effectRowPipelines :: [EffectSystemBoundaryPipeline]
+  , effectRowHandlers :: [EffectSystemBoundaryHandler]
+  }
+  deriving (Eq, Show)
+
+data EffectRowDiff fact = EffectRowDiff
+  { effectRowDiffMissingImportProviders :: [fact]
+  , effectRowDiffImportPrivateFacts :: [fact]
+  , effectRowDiffPrivateFactExports :: [fact]
+  , effectRowDiffPrivateFactImports :: [fact]
+  , effectRowDiffMissingSends :: [EffectSystemBoundarySend]
+  , effectRowDiffMissingHandlers :: [EffectSystemBoundaryHandler]
+  , effectRowDiffMissingTransforms :: [EffectSystemBoundaryTransform]
+  , effectRowDiffMissingPolicies :: [EffectSystemBoundaryPolicy]
+  , effectRowDiffPipelineArtifactsOutsideRow :: [EffectSystemBoundaryArtifact]
+  , effectRowDiffPipelineTransformEdgesOutsideRow :: [(EffectSystemBoundaryArtifact, EffectSystemBoundaryArtifact)]
+  }
+  deriving (Eq, Show)
 
 data EffectSystemBoundaryHandler = EffectSystemBoundaryHandler
   { effectSystemBoundaryHandlerSend :: EffectSystemBoundarySend
@@ -512,6 +551,121 @@ boundaryHandler currentSend handlerName =
     , effectSystemBoundaryHandlerName = handlerName
     }
 
+effectRowFromBoundary :: EffectSystemBoundary fact -> EffectRow fact
+effectRowFromBoundary boundary =
+  EffectRow
+    { effectRowName = effectSystemBoundaryName boundary
+    , effectRowImports = effectSystemBoundaryImports boundary
+    , effectRowPrivateFacts = effectSystemBoundaryPrivateFacts boundary
+    , effectRowExports = effectSystemBoundaryExports boundary
+    , effectRowSends = effectSystemBoundarySends boundary
+    , effectRowTransforms = effectSystemBoundaryTransforms boundary
+    , effectRowPolicies = effectSystemBoundaryPolicies boundary
+    , effectRowPipelines = effectSystemBoundaryPipelines boundary
+    , effectRowHandlers = effectSystemBoundaryHandlers boundary
+    }
+
+effectRowUnion :: Eq fact => EffectRow fact -> EffectRow fact -> EffectRow fact
+effectRowUnion left right =
+  EffectRow
+    { effectRowName =
+        EffectSystemName (show (effectRowName left) ++ "+" ++ show (effectRowName right))
+    , effectRowImports = unionItems (effectRowImports left) (effectRowImports right)
+    , effectRowPrivateFacts = unionItems (effectRowPrivateFacts left) (effectRowPrivateFacts right)
+    , effectRowExports = unionItems (effectRowExports left) (effectRowExports right)
+    , effectRowSends = unionItems (effectRowSends left) (effectRowSends right)
+    , effectRowTransforms = unionItems (effectRowTransforms left) (effectRowTransforms right)
+    , effectRowPolicies = unionItems (effectRowPolicies left) (effectRowPolicies right)
+    , effectRowPipelines = unionItems (effectRowPipelines left) (effectRowPipelines right)
+    , effectRowHandlers = unionItems (effectRowHandlers left) (effectRowHandlers right)
+    }
+
+effectRowSubset :: Eq fact => EffectRow fact -> EffectRow fact -> Bool
+effectRowSubset expected actual =
+  effectRowDiffEmpty (effectRowDiff expected actual)
+
+effectRowDiff :: Eq fact => EffectRow fact -> EffectRow fact -> EffectRowDiff fact
+effectRowDiff expected actual =
+  EffectRowDiff
+    { effectRowDiffMissingImportProviders =
+        missingItems (effectRowImports expected) (unionItems (effectRowImports actual) (effectRowExports actual))
+    , effectRowDiffImportPrivateFacts =
+        intersectItems (effectRowImports expected) (effectRowPrivateFacts actual)
+    , effectRowDiffPrivateFactExports =
+        intersectItems (effectRowPrivateFacts actual) (effectRowExports actual)
+    , effectRowDiffPrivateFactImports =
+        intersectItems (effectRowPrivateFacts actual) (effectRowImports actual)
+    , effectRowDiffMissingSends =
+        missingItems (effectRowSends expected) (effectRowSends actual)
+    , effectRowDiffMissingHandlers =
+        missingItems (effectRowHandlers expected) (effectRowHandlers actual)
+    , effectRowDiffMissingTransforms =
+        missingItems (effectRowTransforms expected) (effectRowTransforms actual)
+    , effectRowDiffMissingPolicies =
+        missingItems (effectRowPolicies expected) (effectRowPolicies actual)
+    , effectRowDiffPipelineArtifactsOutsideRow =
+        missingItems (effectRowPipelineArtifacts expected) (effectRowPipelineArtifacts actual)
+    , effectRowDiffPipelineTransformEdgesOutsideRow =
+        missingItems (effectRowPipelineEdges expected) (effectRowPipelineEdges actual)
+    }
+
+effectRowHidePrivate :: Eq fact => EffectRow fact -> EffectRow fact
+effectRowHidePrivate row =
+  row
+    { effectRowImports = removeItems (effectRowPrivateFacts row) (effectRowImports row)
+    , effectRowPrivateFacts = []
+    , effectRowExports = removeItems (effectRowPrivateFacts row) (effectRowExports row)
+    }
+
+effectRowImportsSatisfied :: Eq fact => [EffectRow fact] -> EffectRow fact -> Bool
+effectRowImportsSatisfied providers row =
+  all (`elem` providerExports) (effectRowImports row)
+    && null (intersectItems (effectRowImports row) providerPrivateFacts)
+  where
+    providerExports =
+      uniqueItems (concatMap effectRowExports providers)
+    providerPrivateFacts =
+      uniqueItems (concatMap effectRowPrivateFacts providers)
+
+effectRowExportsClean :: Eq fact => EffectRow fact -> Bool
+effectRowExportsClean row =
+  null (intersectItems (effectRowPrivateFacts row) (effectRowExports row))
+    && null (intersectItems (effectRowPrivateFacts row) (effectRowImports row))
+
+effectRowPipelineArtifacts :: EffectRow fact -> [EffectSystemBoundaryArtifact]
+effectRowPipelineArtifacts row =
+  uniqueItems
+    [ artifact
+    | pipeline <- effectRowPipelines row
+    , artifact <- effectSystemBoundaryPipelineArtifacts pipeline
+    ]
+
+effectRowPipelineEdges :: EffectRow fact -> [(EffectSystemBoundaryArtifact, EffectSystemBoundaryArtifact)]
+effectRowPipelineEdges row =
+  uniqueItems
+    ( concatMap
+        (adjacentPairs . effectSystemBoundaryPipelineArtifacts)
+        (effectRowPipelines row)
+    )
+
+renderEffectRowDiff :: Show fact => EffectRowDiff fact -> [String]
+renderEffectRowDiff diff
+  | effectRowDiffEmpty diff =
+      ["effect-row-diff clean"]
+  | otherwise =
+      concat
+        [ renderDiffItems "missing import provider" show (effectRowDiffMissingImportProviders diff)
+        , renderDiffItems "import references private fact" show (effectRowDiffImportPrivateFacts diff)
+        , renderDiffItems "private fact exported" show (effectRowDiffPrivateFactExports diff)
+        , renderDiffItems "private fact imported" show (effectRowDiffPrivateFactImports diff)
+        , renderDiffItems "missing send" show (effectRowDiffMissingSends diff)
+        , renderDiffItems "missing handler" show (effectRowDiffMissingHandlers diff)
+        , renderDiffItems "missing transform" show (effectRowDiffMissingTransforms diff)
+        , renderDiffItems "missing policy" show (effectRowDiffMissingPolicies diff)
+        , renderDiffItems "pipeline artifact outside row" show (effectRowDiffPipelineArtifactsOutsideRow diff)
+        , renderDiffItems "pipeline transform edge outside row" renderArtifactEdge (effectRowDiffPipelineTransformEdgesOutsideRow diff)
+        ]
+
 recursionMode :: String -> RecursionSchemeMode
 recursionMode =
   RecursionSchemeMode
@@ -676,3 +830,69 @@ factExprFacts expr =
       concatMap factExprFacts items
     FactAny items ->
       concatMap factExprFacts items
+
+effectRowDiffEmpty :: EffectRowDiff fact -> Bool
+effectRowDiffEmpty diff =
+  null (effectRowDiffMissingImportProviders diff)
+    && null (effectRowDiffImportPrivateFacts diff)
+    && null (effectRowDiffPrivateFactExports diff)
+    && null (effectRowDiffPrivateFactImports diff)
+    && null (effectRowDiffMissingSends diff)
+    && null (effectRowDiffMissingHandlers diff)
+    && null (effectRowDiffMissingTransforms diff)
+    && null (effectRowDiffMissingPolicies diff)
+    && null (effectRowDiffPipelineArtifactsOutsideRow diff)
+    && null (effectRowDiffPipelineTransformEdgesOutsideRow diff)
+
+renderDiffItems :: String -> (item -> String) -> [item] -> [String]
+renderDiffItems _ _ [] =
+  []
+renderDiffItems label renderItem items =
+  [label ++ ": " ++ joinWith ", " (map renderItem items)]
+
+renderArtifactEdge :: (EffectSystemBoundaryArtifact, EffectSystemBoundaryArtifact) -> String
+renderArtifactEdge (left, right) =
+  show left ++ " -> " ++ show right
+
+adjacentPairs :: [item] -> [(item, item)]
+adjacentPairs [] =
+  []
+adjacentPairs [_] =
+  []
+adjacentPairs (left : right : rest) =
+  (left, right) : adjacentPairs (right : rest)
+
+unionItems :: Eq item => [item] -> [item] -> [item]
+unionItems left right =
+  foldl appendUnique left right
+
+uniqueItems :: Eq item => [item] -> [item]
+uniqueItems =
+  foldl appendUnique []
+
+appendUnique :: Eq item => [item] -> item -> [item]
+appendUnique items item
+  | item `elem` items =
+      items
+  | otherwise =
+      items ++ [item]
+
+missingItems :: Eq item => [item] -> [item] -> [item]
+missingItems expected actual =
+  [item | item <- expected, item `notElem` actual]
+
+intersectItems :: Eq item => [item] -> [item] -> [item]
+intersectItems left right =
+  [item | item <- left, item `elem` right]
+
+removeItems :: Eq item => [item] -> [item] -> [item]
+removeItems removals items =
+  [item | item <- items, item `notElem` removals]
+
+joinWith :: String -> [String] -> String
+joinWith _ [] =
+  ""
+joinWith _ [item] =
+  item
+joinWith separator (item : rest) =
+  item ++ separator ++ joinWith separator rest
