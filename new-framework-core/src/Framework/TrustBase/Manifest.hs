@@ -180,6 +180,7 @@ trustBaseManifestRequiredJsonSchemas =
   , "domain-report.v1 <- domain-app-report -- --json"
   , "fixed-point-report.v1 <- fixed-point-smoke -- --json"
   , "fixed-point-summary.v1 <- fixed-point-smoke -- --summary-json"
+  , "framework-core-frontend-evidence.v1 <- framework-core-frontend-witness -- --json"
   , "trust-base-manifest.v2 <- trust-base-manifest-witness -- --json"
   , "trust-base-manifest-evidence.v1 <- trust-base-manifest-witness -- --evidence-json"
   , "business-syntax-evidence.v1 <- business-syntax-witness -- --json"
@@ -198,7 +199,7 @@ trustBaseManifestRequiredGatePolicies =
       ".\\scripts\\check-fast.cmd -List"
       False
       [ "stack --work-dir .stack-work-codex build"
-      , "stack --work-dir .stack-work-codex exec framework-core-frontend-witness"
+      , "stack --work-dir .stack-work-codex exec framework-core-frontend-witness -- --json"
       , "stack --work-dir .stack-work-codex exec business-syntax-witness -- --json"
       , "stack --work-dir .stack-work-codex exec runtime-hot-path-witness -- --json"
       , "stack --work-dir .stack-work-codex exec runtime-policy-witness -- --json"
@@ -210,7 +211,7 @@ trustBaseManifestRequiredGatePolicies =
       ".\\scripts\\check-semantic.cmd -List"
       False
       [ "stack --work-dir .stack-work-codex build"
-      , "stack --work-dir .stack-work-codex exec framework-core-frontend-witness"
+      , "stack --work-dir .stack-work-codex exec framework-core-frontend-witness -- --json"
       , "stack --work-dir .stack-work-codex exec business-syntax-witness -- --json"
       , "stack --work-dir .stack-work-codex exec domain-app-report -- --json"
       , "stack --work-dir .stack-work-codex exec runtime-hot-path-witness -- --json"
@@ -260,7 +261,7 @@ releaseGateBaseCommands =
   , "stack --work-dir .stack-work-codex exec workflow-semantics-witness -- --json"
   , "stack --work-dir .stack-work-codex exec workflow-semantics-witness -- --runtime-concurrency-json"
   , "stack --work-dir .stack-work-codex exec constraint-proof-witness -- --smt=auto"
-  , "stack --work-dir .stack-work-codex exec framework-core-frontend-witness"
+  , "stack --work-dir .stack-work-codex exec framework-core-frontend-witness -- --json"
   , "stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json"
   , "stack --work-dir .stack-work-codex exec registry-codegen-witness"
   ]

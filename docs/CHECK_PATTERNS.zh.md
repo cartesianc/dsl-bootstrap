@@ -78,7 +78,7 @@ check-release
 
 ```powershell
 stack build
-stack exec framework-core-frontend-witness
+stack exec framework-core-frontend-witness -- --json
 stack exec business-syntax-witness
 stack exec business-syntax-witness -- --json
 stack exec runtime-hot-path-witness -- --json
@@ -123,6 +123,7 @@ runtime-hot-path-witness: ok runtime hot-path evidence 2 payload claims
 runtime-hot-path-witness --json: runtime-hot-path-evidence.v1
 runtime-policy-witness: ok runtime policy evidence 3 payload claims
 runtime-policy-witness --json: runtime-policy-evidence.v1
+framework-core-frontend-witness --json: framework-core-frontend-evidence.v1
 business-syntax-witness -- --json: business-syntax-evidence.v1
 trust-base-manifest-witness: trust-base-manifest.v2
 trust-base-manifest-witness -- --evidence-json: trust-base-manifest-evidence.v1
@@ -213,6 +214,7 @@ JSON schema：
 runtime-evidence.v1
 runtime-hot-path-evidence.v1
 runtime-policy-evidence.v1
+framework-core-frontend-evidence.v1
 runtime-diagnosis-evidence.v1
 workflow-semantics-evidence.v1
 runtime-concurrency-evidence.v1
@@ -263,7 +265,7 @@ workflow semantics 已经由 `workflow-semantics-witness` 输出 14 条 payload�
 framework-core facade/codegen 改动优先跑：
 
 ```powershell
-stack exec framework-core-frontend-witness
+stack exec framework-core-frontend-witness -- --json
 stack exec registry-codegen-witness
 ```
 
@@ -273,6 +275,8 @@ stack exec registry-codegen-witness
 generated frontend sources
 AST claim -> CoreSurface module -> cabal exposed-module
 ```
+
+`--json` 输出 `framework-core-frontend-evidence.v1`，每条 payload 都包含 `claim`、`status`、`expected`、`observed` 和 `artifact` 字段。
 
 当前自动校验的 link：
 
@@ -407,7 +411,7 @@ stack exec runtime-evidence-witness
 stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
 stack exec runtime-diagnosis-witness
-stack exec framework-core-frontend-witness
+stack exec framework-core-frontend-witness -- --json
 stack exec domain-app-report
 stack exec registry-codegen-witness
 stack exec business-syntax-witness
@@ -439,7 +443,7 @@ framework-core frontend/codegen 改动：
 
 ```powershell
 stack build
-stack exec framework-core-frontend-witness
+stack exec framework-core-frontend-witness -- --json
 stack exec trust-base-manifest-witness
 stack exec bootstrap-report
 stack exec fixed-point-smoke

@@ -585,10 +585,13 @@ framework-core-report.v1
 domain-report.v1
 fixed-point-report.v1
 fixed-point-summary.v1
+framework-core-frontend-evidence.v1
 trust-base-manifest.v2
 trust-base-manifest-evidence.v1
 business-syntax-evidence.v1
 runtime-evidence.v1
+runtime-hot-path-evidence.v1
+runtime-policy-evidence.v1
 runtime-diagnosis-evidence.v1
 workflow-semantics-evidence.v1
 runtime-concurrency-evidence.v1
@@ -642,7 +645,7 @@ stack exec runtime-evidence-witness
 stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
 stack exec runtime-diagnosis-witness
-stack exec framework-core-frontend-witness
+stack exec framework-core-frontend-witness -- --json
 stack exec domain-app-report
 stack exec registry-codegen-witness
 stack exec business-syntax-witness
@@ -681,7 +684,7 @@ stack exec fixed-point-smoke
 witness：
 
 ```powershell
-stack exec framework-core-frontend-witness
+stack exec framework-core-frontend-witness -- --json
 stack exec runtime-evidence-witness
 stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness -- --smt=auto

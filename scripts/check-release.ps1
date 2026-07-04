@@ -29,7 +29,7 @@ $commands = @(
   ,@("stack", "--work-dir", $WorkDir, "exec", "workflow-semantics-witness", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "workflow-semantics-witness", "--", "--runtime-concurrency-json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "constraint-proof-witness", "--", "--smt=auto")
-  ,@("stack", "--work-dir", $WorkDir, "exec", "framework-core-frontend-witness")
+  ,@("stack", "--work-dir", $WorkDir, "exec", "framework-core-frontend-witness", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "trust-base-manifest-witness", "--", "--evidence-json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "registry-codegen-witness")
 )
