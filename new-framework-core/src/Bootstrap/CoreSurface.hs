@@ -754,6 +754,7 @@ businessFacade =
           , "output"
           , "pipeline"
           , "pipelineTransformCandidates"
+          , "privateFact"
           , "policy"
           , "produces"
           , "renderBusinessShapeIssue"

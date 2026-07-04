@@ -49,6 +49,7 @@ requires
 input
 output
 uses
+privateFact
 produces
 policy
 pipeline
@@ -97,6 +98,7 @@ requires F        -> needs F
 input T           -> take T
 output T          -> make T
 uses S I O        -> uses S + externalMake S I O
+privateFact F     -> private FactProducer F + EffectSystemBoundary private fact
 produces F        -> FactProducer F
 policy retry      -> retry S
 policy idempotent -> idempotent S
@@ -198,7 +200,7 @@ runtime pipeline adapter 可以执行 transform 链
 期望输出：
 
 ```text
-[witness] ok business syntax evidence 16 payload claims
+[witness] ok business syntax evidence 17 payload claims
 ```
 
 `--json` 输出 `business-syntax-evidence.v1`，用于记录 capability lowering、facade boundary、pipeline adapter 和 `EffectSystemBoundary` 元数据。

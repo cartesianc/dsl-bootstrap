@@ -35,6 +35,7 @@ module Bootstrap.Business
   , output
   , pipeline
   , pipelineTransformCandidates
+  , privateFact
   , policy
   , produces
   , renderBusinessShapeIssue
@@ -70,6 +71,7 @@ data Capability = Capability
   , capabilityOutput :: [TypeName]
   , capabilityUses :: [CapabilityUse]
   , capabilityErrors :: [CapabilityUse]
+  , capabilityPrivateFacts :: [WorkflowFact]
   , capabilityProduces :: [WorkflowFact]
   , capabilityPolicy :: [CapabilityPolicy]
   , capabilityPipelines :: [Pipeline]
@@ -118,6 +120,7 @@ data CapabilityClause
   | CapabilityOutput TypeName
   | CapabilityUses CapabilityUse
   | CapabilityError CapabilityUse
+  | CapabilityPrivateFact WorkflowFact
   | CapabilityProduces WorkflowFact
   | CapabilityPolicyClause CapabilityPolicy
   | CapabilityPipeline Pipeline
@@ -148,6 +151,7 @@ capability name =
         , capabilityOutput = []
         , capabilityUses = []
         , capabilityErrors = []
+        , capabilityPrivateFacts = []
         , capabilityProduces = []
         , capabilityPolicy = []
         , capabilityPipelines = []
@@ -168,6 +172,8 @@ applyCapabilityClause current clause =
       current {capabilityUses = appendUnique (capabilityUses current) currentUse}
     CapabilityError currentUse ->
       current {capabilityErrors = appendUnique (capabilityErrors current) currentUse}
+    CapabilityPrivateFact fact ->
+      current {capabilityPrivateFacts = appendUnique (capabilityPrivateFacts current) fact}
     CapabilityProduces fact ->
       current {capabilityProduces = appendUnique (capabilityProduces current) fact}
     CapabilityPolicyClause currentPolicy ->
@@ -198,6 +204,10 @@ uses send inputType outputType =
 onError :: SendName -> TypeName -> TypeName -> CapabilityClause
 onError send inputType outputType =
   CapabilityError (CapabilityUse send inputType outputType)
+
+privateFact :: WorkflowFact -> CapabilityClause
+privateFact =
+  CapabilityPrivateFact
 
 produces :: WorkflowFact -> CapabilityClause
 produces =
@@ -254,14 +264,18 @@ capabilitiesEffect name capabilities =
 
 capabilitiesEffectSystemClauses :: [Capability] -> [Effect.EffectSystemClause]
 capabilitiesEffectSystemClauses capabilities =
-  importsClause ++ exportsClause ++ pipelineClauses ++ handlerClauses
+  importsClause ++ privateFactsClause ++ exportsClause ++ pipelineClauses ++ handlerClauses
   where
     importedFacts =
       unique (concatMap capabilityRequires capabilities)
+    privateFacts =
+      unique (concatMap capabilityPrivateFacts capabilities)
     exportedFacts =
       unique (concatMap capabilityProduces capabilities)
     importsClause =
       [Effect.imports importedFacts | not (null importedFacts)]
+    privateFactsClause =
+      [Effect.privateFacts privateFacts | not (null privateFacts)]
     exportsClause =
       [Effect.exports exportedFacts | not (null exportedFacts)]
     pipelineClauses =
@@ -283,7 +297,8 @@ capabilityHandlerClauses current =
 
 capabilityEffectSections :: Capability -> [EffectSection]
 capabilityEffectSections current =
-  producerSections current
+  privateFactSections current
+    ++ producerSections current
     ++ useBoundarySections current
     ++ errorBoundarySections current
     ++ policySections current
@@ -297,7 +312,7 @@ capabilityEffectSystemBoundary name current =
   Workflow.systemBoundaryWithHandlers
     (Workflow.EffectSystemName name)
     (capabilityRequires current)
-    []
+    (capabilityPrivateFacts current)
     (capabilityProduces current)
     (map sendBoundary (capabilityBoundarySends current))
     (map transformBoundary (activeTransformBindings current))
@@ -367,6 +382,12 @@ handlerUseEmits currentUse
       []
   | otherwise =
       [capabilityUseOutput currentUse]
+
+privateFactSections :: Capability -> [EffectSection]
+privateFactSections current =
+  [ FactClaimSection (FactProducer currentFact [])
+  | currentFact <- capabilityPrivateFacts current
+  ]
 
 producerSections :: Capability -> [EffectSection]
 producerSections current =
@@ -556,6 +577,7 @@ checkFactArtifactInternalShape capabilities =
 capabilityFacts :: Capability -> [WorkflowFact]
 capabilityFacts current =
   capabilityRequires current
+    ++ capabilityPrivateFacts current
     ++ capabilityProduces current
     ++ concatMap handlerBindingSpecClaims (capabilityHandlers current)
 

@@ -32,6 +32,7 @@ import qualified "domain-app" Effects.System as SystemEffects
 import qualified "domain-app" Effects.User as UserEffects
 import "new-framework-core" Framework.Business
   ( BusinessShapeIssue
+  , Capability (..)
   , capabilitiesEffect
   , capabilityEffectSections
   , capabilityEffectSystem
@@ -41,6 +42,7 @@ import "new-framework-core" Framework.Business
   , idempotentPolicy
   , pipelineTransformCandidates
   , policy
+  , privateFact
   , renderBusinessShapeIssue
   , retryOnce
   , produces
@@ -221,6 +223,12 @@ businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPasse
       "capability lowers to EffectSystemBoundary with send, handler, transform, policy, and pipeline contracts"
       (observedBool capabilitySystemBoundaryPassed)
       "BusinessCapabilitySystemBoundaryArtifact"
+  , businessEvidence
+      "business-syntax-capability-private-fact-boundary"
+      capabilityPrivateFactBoundaryPassed
+      "capability privateFact lowers to private EffectSystemBoundary fact without becoming an export"
+      (observedBool capabilityPrivateFactBoundaryPassed)
+      "BusinessCapabilityPrivateFactBoundaryArtifact"
   ]
 
 businessEvidence :: String -> Bool -> String -> String -> String -> BusinessSyntaxEvidencePayload
@@ -315,13 +323,13 @@ effectSystemBoundaryMetadataPassed =
     && explicitEffectUnitBoundaryMatches
     && explicitEffectUnitSystemMatches
   where
-    privateFact =
+    boundaryPrivateFact =
       WorkflowFact "PipelinePrivateFact"
     explicitBoundary =
       Workflow.systemBoundary
         (Workflow.EffectSystemName "BoundaryProbe")
         [pipelineSourceFact]
-        [privateFact]
+        [boundaryPrivateFact]
         [pipelineAdapterFact]
     derivedSystem =
       Workflow.effectSystem
@@ -341,18 +349,18 @@ effectSystemBoundaryMetadataPassed =
       Effect.effectSystem
         (EffectName "BoundaryProbe")
         [ Effect.imports [pipelineSourceFact]
-        , Effect.privateFacts [privateFact]
+        , Effect.privateFacts [boundaryPrivateFact]
         , Effect.exports [pipelineAdapterFact]
         , Effect.pipeline "BoundaryProbePipeline" [UserName, ReportInput, ReportOutput]
         , Effect.handler GenerateReport RuntimeGenerateReport
         ]
-        [ Effect.fact privateFact
+        [ Effect.fact boundaryPrivateFact
             [ Effect.needs pipelineSourceFact
             , Effect.take UserName
             , Effect.transform UserName ReportInput UserNameToReportInput
             ]
         , Effect.fact pipelineAdapterFact
-            [ Effect.needs privateFact
+            [ Effect.needs boundaryPrivateFact
             , Effect.uses GenerateReport
             , Effect.make ReportOutput
             ]
@@ -365,7 +373,7 @@ effectSystemBoundaryMetadataPassed =
     explicitBoundaryMatches =
       Workflow.effectSystemBoundaryName explicitBoundary == Workflow.EffectSystemName "BoundaryProbe"
         && Workflow.effectSystemBoundaryImports explicitBoundary == [pipelineSourceFact]
-        && Workflow.effectSystemBoundaryPrivateFacts explicitBoundary == [privateFact]
+        && Workflow.effectSystemBoundaryPrivateFacts explicitBoundary == [boundaryPrivateFact]
         && Workflow.effectSystemBoundaryExports explicitBoundary == [pipelineAdapterFact]
     derivedBoundaryMatches =
       Workflow.effectSystemBoundaryName derivedBoundary == Workflow.EffectSystemName "BoundaryProbe"
@@ -386,16 +394,16 @@ effectSystemBoundaryMetadataPassed =
         && Workflow.effectSystemBoundaryExports defaultEffectUnitBoundary == [pipelineAdapterFact]
     explicitEffectUnitMetadataMatches =
       effectUnitImports explicitEffectUnit == [pipelineSourceFact]
-        && effectUnitPrivateFacts explicitEffectUnit == [privateFact]
+        && effectUnitPrivateFacts explicitEffectUnit == [boundaryPrivateFact]
         && effectUnitExports explicitEffectUnit == [pipelineAdapterFact]
-        && Effect.effectUnitProducedFacts explicitEffectUnit == [privateFact, pipelineAdapterFact]
+        && Effect.effectUnitProducedFacts explicitEffectUnit == [boundaryPrivateFact, pipelineAdapterFact]
         && effectUnitPipelineArtifacts explicitEffectUnit == [show UserName, show ReportInput, show ReportOutput]
         && map Effect.effectSystemHandlerName (effectUnitHandlers explicitEffectUnit) == [RuntimeGenerateReport]
         && map Effect.effectSystemHandlerSend (effectUnitHandlers explicitEffectUnit) == [GenerateReport]
     explicitEffectUnitBoundaryMatches =
       Workflow.effectSystemBoundaryName explicitEffectUnitBoundary == Workflow.EffectSystemName "BoundaryProbe"
         && Workflow.effectSystemBoundaryImports explicitEffectUnitBoundary == [pipelineSourceFact]
-        && Workflow.effectSystemBoundaryPrivateFacts explicitEffectUnitBoundary == [privateFact]
+        && Workflow.effectSystemBoundaryPrivateFacts explicitEffectUnitBoundary == [boundaryPrivateFact]
         && Workflow.effectSystemBoundaryExports explicitEffectUnitBoundary == [pipelineAdapterFact]
         && boundaryPipelineArtifacts explicitEffectUnitBoundary == [show UserName, show ReportInput, show ReportOutput]
         && map Workflow.effectSystemBoundaryHandlerName (Workflow.effectSystemBoundaryHandlers explicitEffectUnitBoundary) == [show RuntimeGenerateReport]
@@ -411,15 +419,15 @@ effectSystemBoundaryMetadataPassed =
 
 effectSystemScopeMetadataPassed :: Bool
 effectSystemScopeMetadataPassed =
-  privateFact `elem` Effect.effectUnitProducedFacts explicitEffectUnit
-    && privateFact `elem` effectUnitPrivateFacts explicitEffectUnit
-    && privateFact `notElem` effectUnitExports explicitEffectUnit
+  scopePrivateFact `elem` Effect.effectUnitProducedFacts explicitEffectUnit
+    && scopePrivateFact `elem` effectUnitPrivateFacts explicitEffectUnit
+    && scopePrivateFact `notElem` effectUnitExports explicitEffectUnit
     && exportedFact `elem` Effect.effectUnitProducedFacts explicitEffectUnit
     && effectUnitExports explicitEffectUnit == [exportedFact]
-    && Workflow.effectSystemBoundaryPrivateFacts boundary == [privateFact]
+    && Workflow.effectSystemBoundaryPrivateFacts boundary == [scopePrivateFact]
     && Workflow.effectSystemBoundaryExports boundary == [exportedFact]
   where
-    privateFact =
+    scopePrivateFact =
       WorkflowFact "ScopePrivateFact"
     exportedFact =
       WorkflowFact "ScopeExportedFact"
@@ -427,14 +435,14 @@ effectSystemScopeMetadataPassed =
       Effect.effectSystem
         (EffectName "ScopeProbe")
         [ Effect.imports [pipelineSourceFact]
-        , Effect.privateFacts [privateFact]
+        , Effect.privateFacts [scopePrivateFact]
         , Effect.exports [exportedFact]
         ]
-        [ Effect.fact privateFact
+        [ Effect.fact scopePrivateFact
             [ Effect.needs pipelineSourceFact
             ]
         , Effect.fact exportedFact
-            [ Effect.needs privateFact
+            [ Effect.needs scopePrivateFact
             ]
         ]
     boundary =
@@ -486,6 +494,39 @@ capabilitySystemBoundaryPassed =
             , produces ReportGeneratedFact
             ]
         )
+
+capabilityPrivateFactBoundaryPassed :: Bool
+capabilityPrivateFactBoundaryPassed =
+  capabilityPrivateFacts probeCapability == [probePrivateFact]
+    && capabilityProduces probeCapability == [probeExportedFact]
+    && Effect.effectUnitProducedFacts probeEffectUnit == [probePrivateFact, probeExportedFact]
+    && effectUnitPrivateFacts probeEffectUnit == [probePrivateFact]
+    && effectUnitExports probeEffectUnit == [probeExportedFact]
+    && Workflow.effectSystemBoundaryPrivateFacts probeBoundary == [probePrivateFact]
+    && Workflow.effectSystemBoundaryExports probeBoundary == [probeExportedFact]
+    && Workflow.effectSystemBoundaryExplicit probeSystem
+    && case Workflow.effectSystemSuccess probeSystem of
+      Workflow.FactItems requirement ->
+        Workflow.requirementItems requirement == [probeExportedFact]
+      _ ->
+        False
+  where
+    probePrivateFact =
+      WorkflowFact "CapabilityPrivateFact"
+    probeExportedFact =
+      WorkflowFact "CapabilityExportedFact"
+    probeCapability =
+      capability
+        "CapabilityPrivateProbe"
+        [ privateFact probePrivateFact
+        , produces probeExportedFact
+        ]
+    probeEffectUnit =
+      capabilitiesEffect (EffectName "CapabilityPrivateProbe") [probeCapability]
+    probeBoundary =
+      capabilityEffectSystemBoundary "CapabilityPrivateProbeSystem" probeCapability
+    probeSystem =
+      capabilityEffectSystem "CapabilityPrivateProbeSystem" probeCapability
 
 boundaryPipelineArtifacts :: Workflow.EffectSystemBoundary Workflow.WorkflowFact -> [String]
 boundaryPipelineArtifacts boundary =

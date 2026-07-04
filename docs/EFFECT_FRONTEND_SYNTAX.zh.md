@@ -34,6 +34,7 @@ requires
 input
 output
 uses
+privateFact
 produces
 policy
 pipeline
@@ -69,6 +70,7 @@ requires F        -> needs F
 input T           -> take T
 output T          -> make T
 uses S I O        -> uses S + externalMake S I O
+privateFact F     -> private FactProducer F + EffectSystemBoundary private fact
 produces F        -> FactProducer F
 policy retry      -> retry S
 policy idempotent -> idempotent S
@@ -244,7 +246,7 @@ effectSystem privateFacts 保持内部 scope，exports 定义 public boundary
 期望输出：
 
 ```text
-[witness] ok business syntax evidence 16 payload claims
+[witness] ok business syntax evidence 17 payload claims
 ```
 
 日常 capability/lowering 语法改动只需要跑 `business-syntax-witness`。高危 `self-artifact-witness` artifact gate 内部也会包含这项检查，但不会因为语法文档或 README/docs-only 变更单独触发。
