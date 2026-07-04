@@ -434,7 +434,7 @@ reportJsonRendererCoveragePayload =
   concernEvidence
     "session123-report-json-renderer-coverage"
     (null missing)
-    "framework-core and domain report JSON renderers are schema-cataloged and indexed in CoreSurface"
+    "framework-core, domain, and fixed-point report JSON renderers are schema-cataloged and indexed in CoreSurface"
     (observedList missing)
     "ReportJsonRendererCoverageArtifact"
     "low:report-schema"
@@ -443,12 +443,18 @@ reportJsonRendererCoveragePayload =
     required =
       [ ("framework-core-report.v1 schema", schemaPresent "framework-core-report.v1")
       , ("domain-report.v1 schema", schemaPresent "domain-report.v1")
+      , ("fixed-point-report.v1 schema", schemaPresent "fixed-point-report.v1")
+      , ("fixed-point-summary.v1 schema", schemaPresent "fixed-point-summary.v1")
       , ("Bootstrap.Report FrameworkCoreReport type", coreSurfaceTypeCapabilityPresent "Bootstrap.Report" "FrameworkCoreReport")
       , ("Bootstrap.Report renderFrameworkCoreReportJson value", coreSurfaceValueCapabilityPresent "Bootstrap.Report" "renderFrameworkCoreReportJson")
       , ("Bootstrap.Report buildFrameworkCoreReport value", coreSurfaceValueCapabilityPresent "Bootstrap.Report" "buildFrameworkCoreReport")
       , ("Framework.Domain DomainReport type", coreSurfaceTypeCapabilityPresent "Framework.Domain" "DomainReport")
       , ("Framework.Domain renderDomainReportJson value", coreSurfaceValueCapabilityPresent "Framework.Domain" "renderDomainReportJson")
       , ("Framework.Domain buildDomainReport value", coreSurfaceValueCapabilityPresent "Framework.Domain" "buildDomainReport")
+      , ("Framework.FixedPoint FixedPointReport type", coreSurfaceTypeCapabilityPresent "Framework.FixedPoint" "FixedPointReport")
+      , ("Framework.FixedPoint renderFixedPointReportJson value", coreSurfaceValueCapabilityPresent "Framework.FixedPoint" "renderFixedPointReportJson")
+      , ("Framework.FixedPoint renderFixedPointReportSummaryJson value", coreSurfaceValueCapabilityPresent "Framework.FixedPoint" "renderFixedPointReportSummaryJson")
+      , ("Framework.FixedPoint buildFixedPointReport value", coreSurfaceValueCapabilityPresent "Framework.FixedPoint" "buildFixedPointReport")
       ]
     missing =
       [ name | (name, present) <- required, not present ]
