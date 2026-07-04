@@ -5,7 +5,7 @@ module FrameworkCore.CurrentEffects
 import Domain.Effects
   ( frameworkCoreEffects
   )
-import Framework.Effect
+import Framework.Business
   ( EffectTheory
   )
 
