@@ -5,6 +5,10 @@ module Framework.RegistryCodegen
   , diffGeneratedLines
   , frameworkCoreFrontendSources
   , generatedLinesMatch
+  , registryCodegenEvidenceClaimNames
+  , registryCodegenEvidenceStatus
+  , renderRegistryCodegenEvidencePayload
+  , renderRegistryCodegenEvidencePayloadsJson
   , renderEffectsTheoryModule
   , renderFrameworkCoreBaseAppModule
   , renderFrameworkCoreCurrentAppModule
@@ -23,6 +27,8 @@ import Bootstrap.RegistryCodegen
   , renderFrameworkCoreCurrentEffectsModule
   , renderFrameworkCoreCurrentInterpreterModule
   )
+import Framework.Domain
+  ( DomainSemanticEvidencePayload (..) )
 
 data PluginRegistryBinding = PluginRegistryBinding
   { pluginRegistryBindingName :: String
@@ -36,6 +42,49 @@ data EffectRegistryBinding = EffectRegistryBinding
   , effectRegistryBindingName :: String
   }
   deriving (Eq, Show)
+
+registryCodegenEvidenceClaimNames :: [String]
+registryCodegenEvidenceClaimNames =
+  [ "registry-codegen-plugins"
+  , "registry-codegen-effects"
+  ]
+
+renderRegistryCodegenEvidencePayload :: DomainSemanticEvidencePayload -> [String]
+renderRegistryCodegenEvidencePayload payload =
+  [ "claim: " ++ domainSemanticEvidencePayloadClaim payload
+  , "status: " ++ domainSemanticEvidencePayloadStatus payload
+  , "expected: " ++ domainSemanticEvidencePayloadExpected payload
+  , "observed: " ++ domainSemanticEvidencePayloadObserved payload
+  , "artifact: " ++ domainSemanticEvidencePayloadArtifact payload
+  ]
+
+renderRegistryCodegenEvidencePayloadsJson :: [DomainSemanticEvidencePayload] -> [String] -> [String] -> [String] -> [String] -> String
+renderRegistryCodegenEvidencePayloadsJson payloads missing failed missingPayloads failedPayloads =
+  jsonObject
+    [ jsonField "schema" (jsonString "registry-codegen-evidence.v1")
+    , jsonField "status" (jsonString (registryCodegenEvidenceStatus missing failed missingPayloads failedPayloads))
+    , jsonField "payloads" (jsonArray (map registryCodegenEvidencePayloadJson payloads))
+    , jsonField "missing" (jsonStringArray missing)
+    , jsonField "failed" (jsonStringArray failed)
+    , jsonField "missingPayloads" (jsonStringArray missingPayloads)
+    , jsonField "failedPayloads" (jsonStringArray failedPayloads)
+    ]
+
+registryCodegenEvidenceStatus :: [String] -> [String] -> [String] -> [String] -> String
+registryCodegenEvidenceStatus [] [] [] [] =
+  "passed"
+registryCodegenEvidenceStatus _ _ _ _ =
+  "failed"
+
+registryCodegenEvidencePayloadJson :: DomainSemanticEvidencePayload -> String
+registryCodegenEvidencePayloadJson payload =
+  jsonObject
+    [ jsonField "claim" (jsonString (domainSemanticEvidencePayloadClaim payload))
+    , jsonField "status" (jsonString (domainSemanticEvidencePayloadStatus payload))
+    , jsonField "expected" (jsonString (domainSemanticEvidencePayloadExpected payload))
+    , jsonField "observed" (jsonString (domainSemanticEvidencePayloadObserved payload))
+    , jsonField "artifact" (jsonString (domainSemanticEvidencePayloadArtifact payload))
+    ]
 
 renderPluginsModule :: [PluginRegistryBinding] -> [String]
 renderPluginsModule bindings =
@@ -137,3 +186,47 @@ uniqueOn keyFor =
           items
       | otherwise =
           items ++ [item]
+
+jsonObject :: [String] -> String
+jsonObject fields =
+  "{" ++ joinWith "," fields ++ "}"
+
+jsonField :: String -> String -> String
+jsonField name value =
+  jsonString name ++ ":" ++ value
+
+jsonArray :: [String] -> String
+jsonArray values =
+  "[" ++ joinWith "," values ++ "]"
+
+jsonStringArray :: [String] -> String
+jsonStringArray =
+  jsonArray . map jsonString
+
+jsonString :: String -> String
+jsonString value =
+  "\"" ++ concatMap jsonChar value ++ "\""
+
+jsonChar :: Char -> String
+jsonChar currentChar =
+  case currentChar of
+    '"' ->
+      "\\\""
+    '\\' ->
+      "\\\\"
+    '\n' ->
+      "\\n"
+    '\r' ->
+      "\\r"
+    '\t' ->
+      "\\t"
+    _ ->
+      [currentChar]
+
+joinWith :: String -> [String] -> String
+joinWith _ [] =
+  ""
+joinWith _ [item] =
+  item
+joinWith separator (item : rest) =
+  item ++ separator ++ joinWith separator rest

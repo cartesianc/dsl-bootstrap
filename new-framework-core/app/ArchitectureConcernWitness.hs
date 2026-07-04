@@ -421,6 +421,9 @@ schemaCatalogCoveragePayload =
       , ("Framework.TrustBase.Manifest schemaCatalogEvidence value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "schemaCatalogEvidence")
       , ("Framework.TrustBase.Manifest schemaCatalogEvidencePayloadPassed value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "schemaCatalogEvidencePayloadPassed")
       , ("Framework.TrustBase.Manifest renderSchemaCatalogEvidencePayloadsJson value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "renderSchemaCatalogEvidencePayloadsJson")
+      , ("Framework.RegistryCodegen registryCodegenEvidenceClaimNames value", coreSurfaceValueCapabilityPresent "Framework.RegistryCodegen" "registryCodegenEvidenceClaimNames")
+      , ("Framework.RegistryCodegen renderRegistryCodegenEvidencePayload value", coreSurfaceValueCapabilityPresent "Framework.RegistryCodegen" "renderRegistryCodegenEvidencePayload")
+      , ("Framework.RegistryCodegen renderRegistryCodegenEvidencePayloadsJson value", coreSurfaceValueCapabilityPresent "Framework.RegistryCodegen" "renderRegistryCodegenEvidencePayloadsJson")
       ]
     missing =
       [ name | (name, present) <- required, not present ]

@@ -9,6 +9,11 @@ import Framework.Domain
   , buildDomainReport
   , domainSemanticEvidencePassed
   )
+import Framework.RegistryCodegen
+  ( registryCodegenEvidenceClaimNames
+  , renderRegistryCodegenEvidencePayload
+  , renderRegistryCodegenEvidencePayloadsJson
+  )
 import SelfDomainApp
   ( domainAppDomain )
 import System.Environment
@@ -48,22 +53,16 @@ main = do
         ( "[witness] "
             ++ statusText missing failed missingPayloads failedPayloads
             ++ " registry codegen evidence "
-            ++ show (length expectedEvidence)
+            ++ show (length registryCodegenEvidenceClaimNames)
             ++ " payload claims"
         )
       failWhenRegistryCodegenEvidenceFailed missing failed missingPayloads failedPayloads
-
-expectedEvidence :: [String]
-expectedEvidence =
-  [ "registry-codegen-plugins"
-  , "registry-codegen-effects"
-  ]
 
 registryCodegenEvidence :: DomainReport -> [DomainSemanticEvidence]
 registryCodegenEvidence report =
   [ evidence
   | evidence <- domainReportSemanticEvidence report
-  , domainSemanticEvidenceName evidence `elem` expectedEvidence
+  , domainSemanticEvidenceName evidence `elem` registryCodegenEvidenceClaimNames
   ]
 
 registryCodegenPayloads :: [DomainSemanticEvidence] -> [DomainSemanticEvidencePayload]
@@ -76,7 +75,7 @@ registryCodegenPayloads evidence =
 missingRegistryCodegenEvidence :: DomainReport -> [String]
 missingRegistryCodegenEvidence report =
   [ name
-  | name <- expectedEvidence
+  | name <- registryCodegenEvidenceClaimNames
   , not (evidencePresent name report)
   ]
 
@@ -112,37 +111,6 @@ renderPayloadBlock payload =
   map ("  " ++) (renderRegistryCodegenEvidencePayload payload)
     ++ [""]
 
-renderRegistryCodegenEvidencePayload :: DomainSemanticEvidencePayload -> [String]
-renderRegistryCodegenEvidencePayload payload =
-  [ "claim: " ++ domainSemanticEvidencePayloadClaim payload
-  , "status: " ++ domainSemanticEvidencePayloadStatus payload
-  , "expected: " ++ domainSemanticEvidencePayloadExpected payload
-  , "observed: " ++ domainSemanticEvidencePayloadObserved payload
-  , "artifact: " ++ domainSemanticEvidencePayloadArtifact payload
-  ]
-
-renderRegistryCodegenEvidencePayloadsJson :: [DomainSemanticEvidencePayload] -> [String] -> [String] -> [String] -> [String] -> String
-renderRegistryCodegenEvidencePayloadsJson payloads missing failed missingPayloads failedPayloads =
-  jsonObject
-    [ jsonField "schema" (jsonString "registry-codegen-evidence.v1")
-    , jsonField "status" (jsonString (jsonStatus missing failed missingPayloads failedPayloads))
-    , jsonField "payloads" (jsonArray (map registryCodegenEvidencePayloadJson payloads))
-    , jsonField "missing" (jsonStringArray missing)
-    , jsonField "failed" (jsonStringArray failed)
-    , jsonField "missingPayloads" (jsonStringArray missingPayloads)
-    , jsonField "failedPayloads" (jsonStringArray failedPayloads)
-    ]
-
-registryCodegenEvidencePayloadJson :: DomainSemanticEvidencePayload -> String
-registryCodegenEvidencePayloadJson payload =
-  jsonObject
-    [ jsonField "claim" (jsonString (domainSemanticEvidencePayloadClaim payload))
-    , jsonField "status" (jsonString (domainSemanticEvidencePayloadStatus payload))
-    , jsonField "expected" (jsonString (domainSemanticEvidencePayloadExpected payload))
-    , jsonField "observed" (jsonString (domainSemanticEvidencePayloadObserved payload))
-    , jsonField "artifact" (jsonString (domainSemanticEvidencePayloadArtifact payload))
-    ]
-
 failWhenRegistryCodegenEvidenceFailed :: [String] -> [DomainSemanticEvidence] -> [String] -> [DomainSemanticEvidencePayload] -> IO ()
 failWhenRegistryCodegenEvidenceFailed [] [] [] [] =
   pure ()
@@ -166,53 +134,3 @@ statusText [] [] [] [] =
   "ok"
 statusText _ _ _ _ =
   "failed"
-
-jsonStatus :: [String] -> [String] -> [String] -> [String] -> String
-jsonStatus [] [] [] [] =
-  "passed"
-jsonStatus _ _ _ _ =
-  "failed"
-
-jsonObject :: [String] -> String
-jsonObject fields =
-  "{" ++ joinWith "," fields ++ "}"
-
-jsonField :: String -> String -> String
-jsonField name value =
-  jsonString name ++ ":" ++ value
-
-jsonArray :: [String] -> String
-jsonArray values =
-  "[" ++ joinWith "," values ++ "]"
-
-jsonStringArray :: [String] -> String
-jsonStringArray =
-  jsonArray . map jsonString
-
-jsonString :: String -> String
-jsonString value =
-  "\"" ++ concatMap jsonChar value ++ "\""
-
-jsonChar :: Char -> String
-jsonChar currentChar =
-  case currentChar of
-    '"' ->
-      "\\\""
-    '\\' ->
-      "\\\\"
-    '\n' ->
-      "\\n"
-    '\r' ->
-      "\\r"
-    '\t' ->
-      "\\t"
-    _ ->
-      [currentChar]
-
-joinWith :: String -> [String] -> String
-joinWith _ [] =
-  ""
-joinWith _ [item] =
-  item
-joinWith separator (item : rest) =
-  item ++ separator ++ joinWith separator rest
