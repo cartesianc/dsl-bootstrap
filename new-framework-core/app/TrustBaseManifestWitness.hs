@@ -31,6 +31,7 @@ import Framework.TrustBase
   , renderTrustBaseManifestEvidencePayload
   , renderTrustBaseManifestEvidencePayloadsJson
   , renderTrustBaseManifestJson
+  , trustBaseManifestEvidenceClaimNames
   , trustBaseManifestEvidencePayloadPassed
   , trustBaseManifestRequiredCoreSurfaceModules
   , trustBaseManifestRequiredGatePolicies
@@ -76,82 +77,103 @@ trustBaseManifestEvidencePayloads manifest = do
       manifestModules =
         trustBaseManifestKernelModules manifest ++ trustBaseManifestFacadeModules manifest
   gatePolicyOutput <- observedGatePolicyOutput
-  pure
-    [ manifestEvidence
-        "trust-base-kernel-modules-exposed"
-        (null (missingItems exposedModules (trustBaseManifestKernelModules manifest)))
-        "all TrustBase kernel modules are cabal exposed-modules"
-        (observedItems "missing kernel modules" (missingItems exposedModules (trustBaseManifestKernelModules manifest)))
-        "TrustBaseKernelModulesArtifact"
-    , manifestEvidence
-        "trust-base-facade-modules-exposed"
-        (null (missingItems exposedModules (trustBaseManifestFacadeModules manifest)))
-        "all TrustBase facade modules are cabal exposed-modules"
-        (observedItems "missing facade modules" (missingItems exposedModules (trustBaseManifestFacadeModules manifest)))
-        "TrustBaseFacadeModulesArtifact"
-    , manifestEvidence
-        "trust-base-report-executables-present"
-        (null (missingItems executables (trustBaseManifestReportExecutables manifest)))
-        "all TrustBase report executables are cabal executable stanzas"
-        (observedItems "missing report executables" (missingItems executables (trustBaseManifestReportExecutables manifest)))
-        "TrustBaseReportExecutablesArtifact"
-    , manifestEvidence
-        "trust-base-witness-executables-present"
-        (null (missingItems executables (trustBaseManifestWitnessExecutables manifest)))
-        "all TrustBase witness executables are cabal executable stanzas"
-        (observedItems "missing witness executables" (missingItems executables (trustBaseManifestWitnessExecutables manifest)))
-        "TrustBaseWitnessExecutablesArtifact"
-    , manifestEvidence
-        "trust-base-artifact-gate-executable-present"
-        (null (missingItems executables [trustBaseManifestArtifactGateExecutable manifest]))
-        "TrustBase artifact gate executable is a cabal executable stanza"
-        (observedItems "missing artifact gate executable" (missingItems executables [trustBaseManifestArtifactGateExecutable manifest]))
-        "TrustBaseArtifactGateExecutableArtifact"
-    , manifestEvidence
-        "trust-base-artifact-sources-synced"
-        (trustBaseManifestArtifactSources manifest == currentArtifactSources)
-        "TrustBase artifact sources mirror defaultSelfArtifactManifest"
-        (observedDrift "artifact sources" (trustBaseManifestArtifactSources manifest) currentArtifactSources)
-        "TrustBaseArtifactSourcesArtifact"
-    , manifestEvidence
-        "trust-base-artifact-commands-synced"
-        (trustBaseManifestArtifactCommands manifest == currentArtifactCommands)
-        "TrustBase artifact commands mirror defaultSelfArtifactManifest"
-        (observedDrift "artifact commands" (trustBaseManifestArtifactCommands manifest) currentArtifactCommands)
-        "TrustBaseArtifactCommandsArtifact"
-    , manifestEvidence
-        "trust-base-artifact-docs-excluded"
-        ( null missingArtifactDocumentationExclusions
-            && null directDocumentationSources
-            && null missingArtifactDocumentationPredicateExclusions
-            && null unexpectedArtifactSourceExclusions
-        )
-        "self artifact excludes docs and README/CHANGELOG/TODO documentation files without excluding code artifact sources"
-        (observedArtifactDocumentationExclusions directDocumentationSources)
-        "TrustBaseArtifactDocumentationExclusionArtifact"
-    , manifestEvidence
-        "trust-base-core-surface-covered"
-        ( null (missingItems coreSurfaceModuleNames trustBaseManifestRequiredCoreSurfaceModules)
-            && null (missingItems manifestModules trustBaseManifestRequiredCoreSurfaceModules)
-        )
-        "required TrustBase modules are present in CoreSurface and manifest"
-        (observedCoreSurfaceCoverage manifestModules)
-        "TrustBaseCoreSurfaceCoverageArtifact"
-    , manifestEvidence
-        "trust-base-json-schemas-synced"
-        (trustBaseManifestJsonSchemas manifest == trustBaseManifestRequiredJsonSchemas)
-        "TrustBase manifest lists every published machine-readable schema"
-        (observedDrift "json schemas" (trustBaseManifestJsonSchemas manifest) trustBaseManifestRequiredJsonSchemas)
-        "TrustBaseJsonSchemaCatalogArtifact"
-    , manifestEvidence
-        "trust-base-gate-policies-synced"
-        ( trustBaseManifestGatePolicies manifest == trustBaseManifestRequiredGatePolicies
-            && null (gatePolicyDrift gatePolicyOutput (trustBaseManifestGatePolicies manifest))
-        )
-        "TrustBase manifest gate policies match check script -List output"
-        (observedGatePolicyDrift gatePolicyOutput (trustBaseManifestGatePolicies manifest))
-        "TrustBaseGatePolicyCatalogArtifact"
-    ]
+  let corePayloads =
+        [ manifestEvidence
+            "trust-base-kernel-modules-exposed"
+            (null (missingItems exposedModules (trustBaseManifestKernelModules manifest)))
+            "all TrustBase kernel modules are cabal exposed-modules"
+            (observedItems "missing kernel modules" (missingItems exposedModules (trustBaseManifestKernelModules manifest)))
+            "TrustBaseKernelModulesArtifact"
+        , manifestEvidence
+            "trust-base-facade-modules-exposed"
+            (null (missingItems exposedModules (trustBaseManifestFacadeModules manifest)))
+            "all TrustBase facade modules are cabal exposed-modules"
+            (observedItems "missing facade modules" (missingItems exposedModules (trustBaseManifestFacadeModules manifest)))
+            "TrustBaseFacadeModulesArtifact"
+        , manifestEvidence
+            "trust-base-report-executables-present"
+            (null (missingItems executables (trustBaseManifestReportExecutables manifest)))
+            "all TrustBase report executables are cabal executable stanzas"
+            (observedItems "missing report executables" (missingItems executables (trustBaseManifestReportExecutables manifest)))
+            "TrustBaseReportExecutablesArtifact"
+        , manifestEvidence
+            "trust-base-witness-executables-present"
+            (null (missingItems executables (trustBaseManifestWitnessExecutables manifest)))
+            "all TrustBase witness executables are cabal executable stanzas"
+            (observedItems "missing witness executables" (missingItems executables (trustBaseManifestWitnessExecutables manifest)))
+            "TrustBaseWitnessExecutablesArtifact"
+        , manifestEvidence
+            "trust-base-artifact-gate-executable-present"
+            (null (missingItems executables [trustBaseManifestArtifactGateExecutable manifest]))
+            "TrustBase artifact gate executable is a cabal executable stanza"
+            (observedItems "missing artifact gate executable" (missingItems executables [trustBaseManifestArtifactGateExecutable manifest]))
+            "TrustBaseArtifactGateExecutableArtifact"
+        , manifestEvidence
+            "trust-base-artifact-sources-synced"
+            (trustBaseManifestArtifactSources manifest == currentArtifactSources)
+            "TrustBase artifact sources mirror defaultSelfArtifactManifest"
+            (observedDrift "artifact sources" (trustBaseManifestArtifactSources manifest) currentArtifactSources)
+            "TrustBaseArtifactSourcesArtifact"
+        , manifestEvidence
+            "trust-base-artifact-commands-synced"
+            (trustBaseManifestArtifactCommands manifest == currentArtifactCommands)
+            "TrustBase artifact commands mirror defaultSelfArtifactManifest"
+            (observedDrift "artifact commands" (trustBaseManifestArtifactCommands manifest) currentArtifactCommands)
+            "TrustBaseArtifactCommandsArtifact"
+        , manifestEvidence
+            "trust-base-artifact-docs-excluded"
+            ( null missingArtifactDocumentationExclusions
+                && null directDocumentationSources
+                && null missingArtifactDocumentationPredicateExclusions
+                && null unexpectedArtifactSourceExclusions
+            )
+            "self artifact excludes docs and README/CHANGELOG/TODO documentation files without excluding code artifact sources"
+            (observedArtifactDocumentationExclusions directDocumentationSources)
+            "TrustBaseArtifactDocumentationExclusionArtifact"
+        , manifestEvidence
+            "trust-base-core-surface-covered"
+            ( null (missingItems coreSurfaceModuleNames trustBaseManifestRequiredCoreSurfaceModules)
+                && null (missingItems manifestModules trustBaseManifestRequiredCoreSurfaceModules)
+            )
+            "required TrustBase modules are present in CoreSurface and manifest"
+            (observedCoreSurfaceCoverage manifestModules)
+            "TrustBaseCoreSurfaceCoverageArtifact"
+        , manifestEvidence
+            "trust-base-json-schemas-synced"
+            (trustBaseManifestJsonSchemas manifest == trustBaseManifestRequiredJsonSchemas)
+            "TrustBase manifest lists every published machine-readable schema"
+            (observedDrift "json schemas" (trustBaseManifestJsonSchemas manifest) trustBaseManifestRequiredJsonSchemas)
+            "TrustBaseJsonSchemaCatalogArtifact"
+        , manifestEvidence
+            "trust-base-gate-policies-synced"
+            ( trustBaseManifestGatePolicies manifest == trustBaseManifestRequiredGatePolicies
+                && null (gatePolicyDrift gatePolicyOutput (trustBaseManifestGatePolicies manifest))
+            )
+            "TrustBase manifest gate policies match check script -List output"
+            (observedGatePolicyDrift gatePolicyOutput (trustBaseManifestGatePolicies manifest))
+            "TrustBaseGatePolicyCatalogArtifact"
+        ]
+  pure (corePayloads ++ [trustBaseManifestClaimManifestPayload corePayloads])
+
+trustBaseManifestClaimManifestPayload :: [TrustBaseManifestEvidencePayload] -> TrustBaseManifestEvidencePayload
+trustBaseManifestClaimManifestPayload payloads =
+  manifestEvidence
+    "trust-base-manifest-claim-manifest"
+    manifestSynced
+    "TrustBase manifest witness claims match exported claim manifest"
+    observed
+    "TrustBaseManifestClaimManifestArtifact"
+  where
+    actualCoreClaimNames =
+      map trustBaseManifestEvidenceClaim payloads
+    actualEvidenceClaimNames =
+      actualCoreClaimNames ++ ["trust-base-manifest-claim-manifest"]
+    manifestSynced =
+      actualEvidenceClaimNames == trustBaseManifestEvidenceClaimNames
+    observed =
+      if manifestSynced
+        then "claim manifest synced: " ++ show (length actualCoreClaimNames) ++ " core claims"
+        else "expected " ++ show trustBaseManifestEvidenceClaimNames ++ "; actual " ++ show actualEvidenceClaimNames
 
 manifestEvidence :: String -> Bool -> String -> String -> String -> TrustBaseManifestEvidencePayload
 manifestEvidence claim passed expected observed artifact =

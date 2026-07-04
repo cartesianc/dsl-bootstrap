@@ -544,6 +544,7 @@ trustBaseMachineReadableGatesPayload =
       [ ("architecture-concern-witness manifest executable", "architecture-concern-witness" `elem` trustBaseManifestWitnessExecutables defaultTrustBaseManifest)
       , ("trust-base witness executable evidence", "trust-base-witness-executables-present" `elem` trustBaseManifestEvidenceClaimNames)
       , ("trust-base artifact docs excluded evidence", "trust-base-artifact-docs-excluded" `elem` trustBaseManifestEvidenceClaimNames)
+      , ("trust-base claim manifest evidence", "trust-base-manifest-claim-manifest" `elem` trustBaseManifestEvidenceClaimNames)
       , ("architecture-concern-evidence schema", schemaPresent "architecture-concern-evidence.v1")
       , ("check-fast gate policy", gatePolicyPresent "check-fast")
       , ("check-semantic gate policy", gatePolicyPresent "check-semantic")
@@ -552,6 +553,7 @@ trustBaseMachineReadableGatesPayload =
       , ("Framework.SelfArtifact artifactEntryExcluded value", coreSurfaceValueCapabilityPresent "Framework.SelfArtifact" "artifactEntryExcluded")
       , ("Framework.SelfArtifact artifactExcludedDirectoryNames value", coreSurfaceValueCapabilityPresent "Framework.SelfArtifact" "artifactExcludedDirectoryNames")
       , ("Framework.SelfArtifact artifactExcludedEntryNames value", coreSurfaceValueCapabilityPresent "Framework.SelfArtifact" "artifactExcludedEntryNames")
+      , ("Framework.SelfArtifact artifactExcludedExtensions value", coreSurfaceValueCapabilityPresent "Framework.SelfArtifact" "artifactExcludedExtensions")
       ]
     missing =
       [ name | (name, present) <- required, not present ]

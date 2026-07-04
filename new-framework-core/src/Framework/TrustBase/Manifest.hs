@@ -175,6 +175,7 @@ trustBaseManifestEvidenceClaimNames =
   , "trust-base-core-surface-covered"
   , "trust-base-json-schemas-synced"
   , "trust-base-gate-policies-synced"
+  , "trust-base-manifest-claim-manifest"
   ]
 
 trustBaseManifestEvidenceArtifactSummary :: String
