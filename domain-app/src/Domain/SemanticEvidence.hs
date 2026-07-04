@@ -44,9 +44,7 @@ import Framework.TrustBase
   , buildApp
   , buildFailureDiagnosis
   , diffGeneratedLines
-  , domainEvidenceFailed
   , domainEvidenceFailedWithPayload
-  , domainEvidencePassed
   , domainEvidencePassedWithPayload
   , emptyRuntime
   , generatedLinesMatch
@@ -126,16 +124,46 @@ runGeneratedFileEvidence registration evidenceName path expectedLines = do
   pure
     ( if generatedLinesMatch expectedLines actualLines
         then
-          domainEvidencePassed
+          domainEvidencePassedWithPayload
             evidenceName
             [ "domain: " ++ domainRegistrationName registration
             , "generated source matches " ++ path
             ]
+            (generatedFilePayloadPassed evidenceName path)
         else
-          domainEvidenceFailed
+          domainEvidenceFailedWithPayload
             evidenceName
             mismatchDetails
+            (generatedFilePayloadFailed evidenceName path)
     )
+
+generatedFilePayloadPassed :: String -> FilePath -> DomainSemanticEvidencePayload
+generatedFilePayloadPassed evidenceName path =
+  DomainSemanticEvidencePayload
+    { domainSemanticEvidencePayloadClaim = evidenceName
+    , domainSemanticEvidencePayloadStatus = "passed"
+    , domainSemanticEvidencePayloadExpected = "generated source matches registry codegen spec"
+    , domainSemanticEvidencePayloadObserved = "generated source matches " ++ path
+    , domainSemanticEvidencePayloadArtifact = generatedFileArtifact evidenceName
+    }
+
+generatedFilePayloadFailed :: String -> FilePath -> DomainSemanticEvidencePayload
+generatedFilePayloadFailed evidenceName path =
+  DomainSemanticEvidencePayload
+    { domainSemanticEvidencePayloadClaim = evidenceName
+    , domainSemanticEvidencePayloadStatus = "failed"
+    , domainSemanticEvidencePayloadExpected = "generated source matches registry codegen spec"
+    , domainSemanticEvidencePayloadObserved = "generated source differs from " ++ path
+    , domainSemanticEvidencePayloadArtifact = generatedFileArtifact evidenceName
+    }
+
+generatedFileArtifact :: String -> String
+generatedFileArtifact "registry-codegen-plugins" =
+  "RegistryCodegenPluginsArtifact"
+generatedFileArtifact "registry-codegen-effects" =
+  "RegistryCodegenEffectsArtifact"
+generatedFileArtifact evidenceName =
+  "GeneratedFileEvidenceArtifact:" ++ evidenceName
 
 runtimeDiagnosisEvidencePayloads :: IO [RuntimeDiagnosisEvidencePayload]
 runtimeDiagnosisEvidencePayloads =

@@ -253,15 +253,21 @@ runtime-diagnosis-non-idempotent-blocker
 runtime-diagnosis-system-root-cause
 ```
 
-`domain-app-report -- --json` 会把这些 runtime diagnosis claim 放进 `semanticEvidence.payload`，字段为 `claim/status/expected/observed/artifact`；`details` 保留给文本阅读。
+`domain-app-report -- --json` 会把 semanticEvidence 放进 `semanticEvidence.payload`，字段为 `claim/status/expected/observed/artifact`；`details` 保留给文本阅读。
 
-`domain-app-report -- --json` 也会把 built-in semanticEvidence 放进同一 payload 结构：
+当前 domain-app semanticEvidence payload 覆盖：
 
 ```text
 constraint-ir-built
 constraint-proof-passed
 constraint-negative-check
 runtime-closure-executed
+runtime-diagnosis-error-handler
+runtime-diagnosis-retry-probe
+runtime-diagnosis-non-idempotent-blocker
+runtime-diagnosis-system-root-cause
+registry-codegen-plugins
+registry-codegen-effects
 ```
 
 `RunRuntimeBackendParityEvidence` 现在对应 4 条 `RuntimeBackendParityEvidencePayload`：
