@@ -246,7 +246,7 @@ effectSystem privateFacts 保持内部 scope，exports 定义 public boundary
 期望输出：
 
 ```text
-[witness] ok business syntax evidence 17 payload claims
+[witness] ok business syntax evidence 18 payload claims
 ```
 
 日常 capability/lowering 语法改动只需要跑 `business-syntax-witness`。高危 `self-artifact-witness` artifact gate 内部也会包含这项检查，但不会因为语法文档或 README/docs-only 变更单独触发。

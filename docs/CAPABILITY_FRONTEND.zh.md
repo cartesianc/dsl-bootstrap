@@ -200,7 +200,7 @@ runtime pipeline adapter 可以执行 transform 链
 期望输出：
 
 ```text
-[witness] ok business syntax evidence 17 payload claims
+[witness] ok business syntax evidence 18 payload claims
 ```
 
 `--json` 输出 `business-syntax-evidence.v1`，用于记录 capability lowering、facade boundary、pipeline adapter 和 `EffectSystemBoundary` 元数据。

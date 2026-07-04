@@ -79,6 +79,7 @@ architectureConcernEvidencePayloads = do
     , backendParityPayload
     , effectSystemScopePayload
     , workflowAndConcurrencyManifestPayload
+    , businessSyntaxClaimManifestPayload businessWitnessSource
     , capabilityPrivateFactPayload businessWitnessSource
     , businessFacadeBoundaryPayload domainBusinessSource effectVocabularySource
     , trustBaseMachineReadableGatesPayload cabalText
@@ -224,6 +225,26 @@ workflowAndConcurrencyManifestPayload =
     missing =
       map ("workflow: " ++) (missingItems workflowSemanticsEvidenceClaimNames requiredWorkflowClaims)
         ++ map ("runtime concurrency: " ++) (missingItems runtimeConcurrencyEvidenceClaimNames requiredConcurrencyClaims)
+
+businessSyntaxClaimManifestPayload :: String -> ArchitectureConcernEvidencePayload
+businessSyntaxClaimManifestPayload businessWitnessSource =
+  concernEvidence
+    "session1-business-syntax-claim-manifest"
+    (null missing)
+    "business syntax evidence exposes a stable claim manifest with self-check payload"
+    (observedList missing)
+    "BusinessSyntaxClaimManifestCoverageArtifact"
+    "low:evidence-manifest"
+    "update business syntax claim manifest before adding or removing capability frontend evidence payloads"
+  where
+    required =
+      [ ("businessSyntaxCoreClaimNames", "businessSyntaxCoreClaimNames ::" `isInfixOf` businessWitnessSource)
+      , ("businessSyntaxEvidenceClaimNames", "businessSyntaxEvidenceClaimNames ::" `isInfixOf` businessWitnessSource)
+      , ("business-syntax-claim-manifest payload", "business-syntax-claim-manifest" `isInfixOf` businessWitnessSource)
+      , ("capability private fact claim", "business-syntax-capability-private-fact-boundary" `isInfixOf` businessWitnessSource)
+      ]
+    missing =
+      [ name | (name, present) <- required, not present ]
 
 capabilityPrivateFactPayload :: String -> ArchitectureConcernEvidencePayload
 capabilityPrivateFactPayload businessWitnessSource =

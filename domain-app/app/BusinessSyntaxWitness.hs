@@ -89,7 +89,7 @@ main = do
   domainVocabularyBoundaryPassed <- domainEffectVocabularyBoundaryPassed
   effectFacadeBoundaryPassed <- effectsFacadeBoundaryPassed
   let payloads =
-        businessSyntaxEvidencePayloads
+        businessSyntaxEvidencePayloadsWithManifest
           runtimePipelinePassed
           domainBusinessBoundaryPassed
           domainVocabularyBoundaryPassed
@@ -124,6 +124,42 @@ data BusinessSyntaxEvidenceStatus
 businessSyntaxEvidencePayloadPassed :: BusinessSyntaxEvidencePayload -> Bool
 businessSyntaxEvidencePayloadPassed payload =
   businessSyntaxEvidenceStatus payload == BusinessSyntaxEvidencePassed
+
+businessSyntaxEvidencePayloadsWithManifest :: Bool -> Bool -> Bool -> Bool -> [BusinessSyntaxEvidencePayload]
+businessSyntaxEvidencePayloadsWithManifest runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed effectFacadeBoundaryPassed =
+  corePayloads ++ [businessSyntaxClaimManifestPayload corePayloads]
+  where
+    corePayloads =
+      businessSyntaxEvidencePayloads
+        runtimePipelinePassed
+        domainBusinessBoundaryPassed
+        domainVocabularyBoundaryPassed
+        effectFacadeBoundaryPassed
+
+businessSyntaxCoreClaimNames :: [String]
+businessSyntaxCoreClaimNames =
+  [ "business-syntax-needs-lowering"
+  , "business-syntax-take-lowering"
+  , "business-syntax-make-lowering"
+  , "business-syntax-uses-lowering"
+  , "business-syntax-external-make-lowering"
+  , "business-syntax-transform-lowering"
+  , "business-syntax-effects-facade-lowering"
+  , "business-syntax-domain-business-boundary"
+  , "business-syntax-domain-effect-vocabulary-boundary"
+  , "business-syntax-effects-facade-boundary"
+  , "business-syntax-handler-binding-alignment"
+  , "business-syntax-pipeline-adjacent-transform"
+  , "business-syntax-runtime-pipeline-adapter"
+  , "effect-system-boundary-metadata"
+  , "effect-system-scope-metadata"
+  , "business-syntax-capability-system-boundary"
+  , "business-syntax-capability-private-fact-boundary"
+  ]
+
+businessSyntaxEvidenceClaimNames :: [String]
+businessSyntaxEvidenceClaimNames =
+  businessSyntaxCoreClaimNames ++ ["business-syntax-claim-manifest"]
 
 businessSyntaxEvidencePayloads :: Bool -> Bool -> Bool -> Bool -> [BusinessSyntaxEvidencePayload]
 businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed effectFacadeBoundaryPassed =
@@ -230,6 +266,31 @@ businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPasse
       (observedBool capabilityPrivateFactBoundaryPassed)
       "BusinessCapabilityPrivateFactBoundaryArtifact"
   ]
+
+businessSyntaxClaimManifestPayload :: [BusinessSyntaxEvidencePayload] -> BusinessSyntaxEvidencePayload
+businessSyntaxClaimManifestPayload payloads =
+  BusinessSyntaxEvidencePayload
+    { businessSyntaxEvidenceClaim = "business-syntax-claim-manifest"
+    , businessSyntaxEvidenceStatus =
+        if manifestSynced
+          then BusinessSyntaxEvidencePassed
+          else BusinessSyntaxEvidenceFailed
+    , businessSyntaxEvidenceExpected =
+        "business syntax executable claims match exported claim manifest"
+    , businessSyntaxEvidenceObserved =
+        if manifestSynced
+          then "claim manifest synced: " ++ show (length actualClaimNames) ++ " core claims"
+          else "expected " ++ show businessSyntaxEvidenceClaimNames ++ "; actual " ++ show actualEvidenceClaimNames
+    , businessSyntaxEvidenceArtifact = "BusinessSyntaxClaimManifestArtifact"
+    }
+  where
+    actualClaimNames =
+      map businessSyntaxEvidenceClaim payloads
+    actualEvidenceClaimNames =
+      actualClaimNames ++ ["business-syntax-claim-manifest"]
+    manifestSynced =
+      actualClaimNames == businessSyntaxCoreClaimNames
+        && actualEvidenceClaimNames == businessSyntaxEvidenceClaimNames
 
 businessEvidence :: String -> Bool -> String -> String -> String -> BusinessSyntaxEvidencePayload
 businessEvidence claim passed expected observed artifact =
