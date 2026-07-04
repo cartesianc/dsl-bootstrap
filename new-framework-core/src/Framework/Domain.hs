@@ -11,11 +11,14 @@ module Framework.Domain
   , pattern DomainNativeRuntime
   , DomainSemanticCheck (..)
   , DomainSemanticEvidence (..)
+  , DomainSemanticEvidencePayload (..)
   , DomainSemanticEvidenceStatus (..)
   , buildDomainReport
   , domain
   , domainEvidenceFailed
+  , domainEvidenceFailedWithPayload
   , domainEvidencePassed
+  , domainEvidencePassedWithPayload
   , domainReportSemanticEvidencePassed
   , domainSemanticEvidencePassed
   , domainWithRuntimeAndEvidence
@@ -85,7 +88,17 @@ data DomainSemanticEvidence = DomainSemanticEvidence
   { domainSemanticEvidenceName :: String
   , domainSemanticEvidenceStatus :: DomainSemanticEvidenceStatus
   , domainSemanticEvidenceDetails :: [String]
+  , domainSemanticEvidencePayload :: Maybe DomainSemanticEvidencePayload
   }
+
+data DomainSemanticEvidencePayload = DomainSemanticEvidencePayload
+  { domainSemanticEvidencePayloadClaim :: String
+  , domainSemanticEvidencePayloadStatus :: String
+  , domainSemanticEvidencePayloadExpected :: String
+  , domainSemanticEvidencePayloadObserved :: String
+  , domainSemanticEvidencePayloadArtifact :: String
+  }
+  deriving (Eq, Show)
 
 data DomainSemanticEvidenceStatus
   = DomainSemanticEvidencePassed
@@ -566,6 +579,7 @@ domainEvidencePassed name details =
     { domainSemanticEvidenceName = name
     , domainSemanticEvidenceStatus = DomainSemanticEvidencePassed
     , domainSemanticEvidenceDetails = details
+    , domainSemanticEvidencePayload = Nothing
     }
 
 domainEvidenceFailed :: String -> [String] -> DomainSemanticEvidence
@@ -574,6 +588,27 @@ domainEvidenceFailed name details =
     { domainSemanticEvidenceName = name
     , domainSemanticEvidenceStatus = DomainSemanticEvidenceFailed
     , domainSemanticEvidenceDetails = details
+    , domainSemanticEvidencePayload = Nothing
+    }
+
+domainEvidencePassedWithPayload ::
+  String -> [String] -> DomainSemanticEvidencePayload -> DomainSemanticEvidence
+domainEvidencePassedWithPayload name details payload =
+  DomainSemanticEvidence
+    { domainSemanticEvidenceName = name
+    , domainSemanticEvidenceStatus = DomainSemanticEvidencePassed
+    , domainSemanticEvidenceDetails = details
+    , domainSemanticEvidencePayload = Just payload
+    }
+
+domainEvidenceFailedWithPayload ::
+  String -> [String] -> DomainSemanticEvidencePayload -> DomainSemanticEvidence
+domainEvidenceFailedWithPayload name details payload =
+  DomainSemanticEvidence
+    { domainSemanticEvidenceName = name
+    , domainSemanticEvidenceStatus = DomainSemanticEvidenceFailed
+    , domainSemanticEvidenceDetails = details
+    , domainSemanticEvidencePayload = Just payload
     }
 
 domainSemanticEvidencePassed :: DomainSemanticEvidence -> Bool
@@ -755,6 +790,17 @@ semanticEvidenceJson evidence =
     [ jsonField "name" (jsonString (domainSemanticEvidenceName evidence))
     , jsonField "status" (jsonString (renderSemanticEvidenceStatus (domainSemanticEvidenceStatus evidence)))
     , jsonField "details" (jsonStringArray (domainSemanticEvidenceDetails evidence))
+    , jsonField "payload" (maybe "null" semanticEvidencePayloadJson (domainSemanticEvidencePayload evidence))
+    ]
+
+semanticEvidencePayloadJson :: DomainSemanticEvidencePayload -> String
+semanticEvidencePayloadJson payload =
+  jsonObject
+    [ jsonField "claim" (jsonString (domainSemanticEvidencePayloadClaim payload))
+    , jsonField "status" (jsonString (domainSemanticEvidencePayloadStatus payload))
+    , jsonField "expected" (jsonString (domainSemanticEvidencePayloadExpected payload))
+    , jsonField "observed" (jsonString (domainSemanticEvidencePayloadObserved payload))
+    , jsonField "artifact" (jsonString (domainSemanticEvidencePayloadArtifact payload))
     ]
 
 countProofStatus :: Proof.SmtStatus -> [Proof.SmtResult] -> Int

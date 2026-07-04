@@ -253,6 +253,8 @@ runtime-diagnosis-non-idempotent-blocker
 runtime-diagnosis-system-root-cause
 ```
 
+`domain-app-report -- --json` 会把这些 runtime diagnosis claim 放进 `semanticEvidence.payload`，字段为 `claim/status/expected/observed/artifact`；`details` 保留给文本阅读。
+
 `RunRuntimeBackendParityEvidence` 现在对应 4 条 `RuntimeBackendParityEvidencePayload`：
 
 ```text

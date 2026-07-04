@@ -16,11 +16,14 @@ module Framework.TrustBase
   , DomainRegistration (domainRegistrationName)
   , DomainSemanticCheck (..)
   , DomainSemanticEvidence
+  , DomainSemanticEvidencePayload (..)
   , bootstrapRuntimeEffectEnvironment
   , buildApp
   , buildNativeApp
   , domainEvidenceFailed
+  , domainEvidenceFailedWithPayload
   , domainEvidencePassed
+  , domainEvidencePassedWithPayload
   , emptyRuntime
   , renderNativeAppError
   , renderRuntimeError
@@ -62,8 +65,11 @@ import Framework.Domain
   ( DomainRegistration (domainRegistrationName)
   , DomainSemanticCheck (..)
   , DomainSemanticEvidence
+  , DomainSemanticEvidencePayload (..)
   , domainEvidenceFailed
+  , domainEvidenceFailedWithPayload
   , domainEvidencePassed
+  , domainEvidencePassedWithPayload
   )
 import Framework.FixedPoint
 import Framework.RegistryCodegen

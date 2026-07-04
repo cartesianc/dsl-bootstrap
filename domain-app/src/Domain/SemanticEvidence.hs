@@ -25,6 +25,7 @@ import Framework.TrustBase
   ( DomainRegistration (domainRegistrationName)
   , DomainSemanticCheck (..)
   , DomainSemanticEvidence
+  , DomainSemanticEvidencePayload (..)
   , NativeAppPlan
   , Runtime (..)
   , RuntimeDiagnosisBlocker (..)
@@ -44,10 +45,13 @@ import Framework.TrustBase
   , buildFailureDiagnosis
   , diffGeneratedLines
   , domainEvidenceFailed
+  , domainEvidenceFailedWithPayload
   , domainEvidencePassed
+  , domainEvidencePassedWithPayload
   , emptyRuntime
   , generatedLinesMatch
   , renderRuntimeDiagnosisEvidencePayload
+  , renderRuntimeDiagnosisEvidenceStatus
   , runBlueprintWithEffectEnvironmentRuntimeResult
   , runtimeDiagnosisEvidencePayloadPassed
   )
@@ -145,13 +149,22 @@ runtimeDiagnosisEvidencePayloads =
 runtimeDiagnosisEvidenceFromPayload :: RuntimeDiagnosisEvidencePayload -> DomainSemanticEvidence
 runtimeDiagnosisEvidenceFromPayload payload =
   if runtimeDiagnosisEvidencePayloadPassed payload
-    then domainEvidencePassed claim details
-    else domainEvidenceFailed claim details
+    then domainEvidencePassedWithPayload claim details domainPayload
+    else domainEvidenceFailedWithPayload claim details domainPayload
   where
     claim =
       runtimeDiagnosisEvidenceClaim payload
     details =
       renderRuntimeDiagnosisEvidencePayload payload
+    domainPayload =
+      DomainSemanticEvidencePayload
+        { domainSemanticEvidencePayloadClaim = runtimeDiagnosisEvidenceClaim payload
+        , domainSemanticEvidencePayloadStatus =
+            renderRuntimeDiagnosisEvidenceStatus (runtimeDiagnosisEvidenceStatus payload)
+        , domainSemanticEvidencePayloadExpected = runtimeDiagnosisEvidenceExpected payload
+        , domainSemanticEvidencePayloadObserved = runtimeDiagnosisEvidenceObserved payload
+        , domainSemanticEvidencePayloadArtifact = runtimeDiagnosisEvidenceArtifact payload
+        }
 
 runErrorHandlerEvidencePayload :: IO RuntimeDiagnosisEvidencePayload
 runErrorHandlerEvidencePayload = do
