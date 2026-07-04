@@ -85,6 +85,7 @@ explicitCoreSurfaceModules =
   , trustBaseFacade
   , trustBaseManifestFacade
   , fixedPointFacade
+  , frontendEvidenceFacade
   , hyloFacade
   , backgroundAppBuild
   , backgroundBootstrapBoundary
@@ -1004,6 +1005,22 @@ fixedPointFacade =
           , "runtimeBackendParityEvidenceClaimNames"
           , "runtimeBackendParityEvidencePayloadPassed"
           , "runtimeBackendParityEvidencePayloads"
+          ]
+    )
+
+frontendEvidenceFacade :: CoreSurfaceModule
+frontendEvidenceFacade =
+  moduleSurface
+    "Framework.Frontend.Evidence"
+    "machine-readable frontend claim/module link manifest and evidence claim names"
+    ( map typeCapability
+        [ "FrontendClaimModuleLink"
+        ]
+        ++ map valueCapability
+          [ "frameworkCoreFrontendCoreClaimNames"
+          , "frameworkCoreFrontendEvidenceClaimNames"
+          , "frontendClaimModuleLinkEvidenceClaimName"
+          , "frontendClaimModuleLinks"
           ]
     )
 

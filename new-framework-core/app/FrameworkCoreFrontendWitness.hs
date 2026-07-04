@@ -14,15 +14,12 @@ import Bootstrap.CoreSurface
   ( CoreSurfaceModule (..)
   , coreSurfaceModules
   )
-import Domain.Vocabulary
-  ( pattern AstStructureExpressedFact
-  , pattern EffectTheoryDslExpressedFact
-  , pattern RegistryCodegenExpressedFact
-  , pattern RuntimeBackendParityExpressedFact
-  , pattern RuntimeConcurrencySemanticsExpressedFact
-  , pattern RuntimeDiagnosisExpressedFact
-  , pattern RuntimeFactClosureExpressedFact
-  , pattern SelfArtifactManifestExpressedFact
+import Framework.Frontend.Evidence
+  ( FrontendClaimModuleLink (..)
+  , frameworkCoreFrontendCoreClaimNames
+  , frameworkCoreFrontendEvidenceClaimNames
+  , frontendClaimModuleLinkEvidenceClaimName
+  , frontendClaimModuleLinks
   )
 import Framework.Ast
   ( App
@@ -65,7 +62,7 @@ main = do
       generatedSourceCount =
         length frameworkCoreFrontendSources
       claimLinkCount =
-        length claimModuleLinks
+        length frontendClaimModuleLinks
       coreSurfaceModuleCount =
         length coreSurfaceModuleNames
   case args of
@@ -98,10 +95,12 @@ frameworkCoreFrontendEvidencePayloads = do
   sourceBackedModules <- coreSurfaceSourceBackedModuleNames
   runtimeDiagnosisBoundaryPayload <- runtimeDiagnosisImplementationBoundaryEvidencePayload
   let claimPayloads =
-        map (claimModuleLinkEvidencePayload currentAst cabalText) claimModuleLinks
+        map (claimModuleLinkEvidencePayload currentAst cabalText) frontendClaimModuleLinks
       exposurePayload =
         coreSurfaceExposedModulesEvidencePayload cabalText sourceBackedModules
-  pure (generatedPayloads ++ claimPayloads ++ [exposurePayload, runtimeDiagnosisBoundaryPayload])
+      corePayloads =
+        generatedPayloads ++ claimPayloads ++ [exposurePayload, runtimeDiagnosisBoundaryPayload]
+  pure (corePayloads ++ [frameworkCoreFrontendClaimManifestPayload corePayloads])
 
 data FrameworkCoreFrontendEvidencePayload = FrameworkCoreFrontendEvidencePayload
   { frameworkCoreFrontendEvidenceClaim :: String
@@ -143,24 +142,7 @@ generatedSourceEvidencePayload source = do
         ("FrameworkCoreGeneratedSourceArtifact:" ++ generatedSourcePath source)
     )
 
-data ClaimModuleLink = ClaimModuleLink
-  { claimModuleFact :: WorkflowFact
-  , claimModuleName :: String
-  }
-
-claimModuleLinks :: [ClaimModuleLink]
-claimModuleLinks =
-  [ ClaimModuleLink AstStructureExpressedFact "Framework.Ast"
-  , ClaimModuleLink EffectTheoryDslExpressedFact "Framework.Effect"
-  , ClaimModuleLink RuntimeConcurrencySemanticsExpressedFact "Framework.Runtime.Concurrency"
-  , ClaimModuleLink RuntimeDiagnosisExpressedFact "Framework.Runtime.Diagnosis"
-  , ClaimModuleLink RuntimeBackendParityExpressedFact "Framework.FixedPoint"
-  , ClaimModuleLink RuntimeFactClosureExpressedFact "Framework.Runtime.Evidence"
-  , ClaimModuleLink RegistryCodegenExpressedFact "Framework.RegistryCodegen"
-  , ClaimModuleLink SelfArtifactManifestExpressedFact "Framework.SelfArtifact"
-  ]
-
-checkClaimModuleLink :: AppBlueprint -> String -> ClaimModuleLink -> [String]
+checkClaimModuleLink :: AppBlueprint -> String -> FrontendClaimModuleLink -> [String]
 checkClaimModuleLink blueprint cabalText link =
   [ "AST claim missing: " ++ show fact
   | fact `notElem` appBlueprintFacts blueprint
@@ -175,23 +157,23 @@ checkClaimModuleLink blueprint cabalText link =
   ]
   where
     fact =
-      claimModuleFact link
+      frontendClaimModuleFact link
     moduleName =
-      claimModuleName link
+      frontendClaimModuleName link
 
-claimModuleLinkEvidencePayload :: AppBlueprint -> String -> ClaimModuleLink -> FrameworkCoreFrontendEvidencePayload
+claimModuleLinkEvidencePayload :: AppBlueprint -> String -> FrontendClaimModuleLink -> FrameworkCoreFrontendEvidencePayload
 claimModuleLinkEvidencePayload blueprint cabalText link =
   frontendEvidence
-    ("framework-core-frontend-claim-link:" ++ show fact)
+    (frontendClaimModuleLinkEvidenceClaimName link)
     (null failures)
     "AST claim, CoreSurface module, and cabal exposed-module stay linked"
     observed
     ("FrameworkCoreClaimModuleLinkArtifact:" ++ moduleName)
   where
     fact =
-      claimModuleFact link
+      frontendClaimModuleFact link
     moduleName =
-      claimModuleName link
+      frontendClaimModuleName link
     failures =
       checkClaimModuleLink blueprint cabalText link
     observed
@@ -281,6 +263,30 @@ runtimeDiagnosisForbiddenFacadeAnchors =
   [ "( module Framework.Runtime"
   , "import Framework.Runtime\n"
   ]
+
+frameworkCoreFrontendClaimManifestPayload :: [FrameworkCoreFrontendEvidencePayload] -> FrameworkCoreFrontendEvidencePayload
+frameworkCoreFrontendClaimManifestPayload payloads =
+  frontendEvidence
+    "framework-core-frontend-claim-manifest"
+    manifestSynced
+    "framework-core frontend executable claims match exported claim manifest"
+    observed
+    "FrameworkCoreFrontendClaimManifestArtifact"
+  where
+    actualClaimNames =
+      map frameworkCoreFrontendEvidenceClaim payloads
+    actualEvidenceClaimNames =
+      actualClaimNames ++ ["framework-core-frontend-claim-manifest"]
+    manifestSynced =
+      actualClaimNames == frameworkCoreFrontendCoreClaimNames
+        && actualEvidenceClaimNames == frameworkCoreFrontendEvidenceClaimNames
+    observed
+      | manifestSynced =
+          "claim manifest synced: " ++ show (length actualClaimNames) ++ " core claims"
+      | otherwise =
+          "expected " ++ show frameworkCoreFrontendEvidenceClaimNames
+            ++ "; actual "
+            ++ show actualEvidenceClaimNames
 
 frontendEvidence :: String -> Bool -> String -> String -> String -> FrameworkCoreFrontendEvidencePayload
 frontendEvidence claim passed expected observed artifact =

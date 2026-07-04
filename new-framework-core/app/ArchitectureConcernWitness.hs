@@ -9,6 +9,11 @@ import System.Environment
 
 import Framework.FixedPoint
   ( runtimeBackendParityEvidenceClaimNames )
+import Framework.Frontend.Evidence
+  ( FrontendClaimModuleLink (..)
+  , frameworkCoreFrontendEvidenceClaimNames
+  , frontendClaimModuleLinks
+  )
 import Framework.Runtime.Concurrency
   ( runtimeConcurrencyEvidenceClaimNames )
 import Framework.Runtime.Diagnosis
@@ -66,7 +71,6 @@ main = do
 architectureConcernEvidencePayloads :: IO [ArchitectureConcernEvidencePayload]
 architectureConcernEvidencePayloads = do
   cabalText <- readFile "new-framework-core/new-framework-core.cabal"
-  frontendWitnessSource <- readFile "new-framework-core/app/FrameworkCoreFrontendWitness.hs"
   businessWitnessSource <- readFile "domain-app/app/BusinessSyntaxWitness.hs"
   runtimeDiagnosisSource <- readFile "new-framework-core/src/Framework/Runtime/Diagnosis.hs"
   runtimeHotPathSource <- readFile "new-framework-core/src/Framework/Runtime/HotPath.hs"
@@ -74,8 +78,8 @@ architectureConcernEvidencePayloads = do
   effectVocabularySource <- readFile "domain-app/src/Domain/EffectVocabulary.hs"
   pure
     [ runtimeDiagnosisPayloadIrPayload
-    , runtimeDiagnosisImplementationPayload runtimeDiagnosisSource frontendWitnessSource
-    , astCoreCabalClaimLinkPayload cabalText frontendWitnessSource
+    , runtimeDiagnosisImplementationPayload runtimeDiagnosisSource
+    , astCoreCabalClaimLinkPayload cabalText
     , backendParityPayload
     , effectSystemScopePayload
     , workflowAndConcurrencyManifestPayload
@@ -114,8 +118,8 @@ runtimeDiagnosisPayloadIrPayload =
     passed =
       null missing
 
-runtimeDiagnosisImplementationPayload :: String -> String -> ArchitectureConcernEvidencePayload
-runtimeDiagnosisImplementationPayload diagnosisSource frontendWitnessSource =
+runtimeDiagnosisImplementationPayload :: String -> ArchitectureConcernEvidencePayload
+runtimeDiagnosisImplementationPayload diagnosisSource =
   concernEvidence
     "session1-runtime-diagnosis-implementation-boundary"
     (null missing)
@@ -129,13 +133,13 @@ runtimeDiagnosisImplementationPayload diagnosisSource frontendWitnessSource =
       [ ("buildFailureDiagnosisWithSystem", "buildFailureDiagnosisWithSystem ::" `isInfixOf` diagnosisSource)
       , ("diagnosisNodesFrom", "diagnosisNodesFrom ::" `isInfixOf` diagnosisSource)
       , ("runtimeDiagnosisRootCause", "runtimeDiagnosisRootCause ::" `isInfixOf` diagnosisSource)
-      , ("runtime diagnosis implementation boundary witness", "framework-core-frontend-runtime-diagnosis-implementation-boundary" `isInfixOf` frontendWitnessSource)
+      , ("runtime diagnosis implementation boundary witness", "framework-core-frontend-runtime-diagnosis-implementation-boundary" `elem` frameworkCoreFrontendEvidenceClaimNames)
       ]
     missing =
       [ name | (name, present) <- required, not present ]
 
-astCoreCabalClaimLinkPayload :: String -> String -> ArchitectureConcernEvidencePayload
-astCoreCabalClaimLinkPayload cabalText frontendWitnessSource =
+astCoreCabalClaimLinkPayload :: String -> ArchitectureConcernEvidencePayload
+astCoreCabalClaimLinkPayload cabalText =
   concernEvidence
     "session1-ast-core-cabal-claim-link"
     (null missing)
@@ -146,15 +150,24 @@ astCoreCabalClaimLinkPayload cabalText frontendWitnessSource =
     "add new AST claim links through frontend witness and cabal exposed-module checks"
   where
     required =
-      [ ("RuntimeDiagnosisExpressedFact link", "ClaimModuleLink RuntimeDiagnosisExpressedFact \"Framework.Runtime.Diagnosis\"" `isInfixOf` frontendWitnessSource)
-      , ("RuntimeConcurrencySemanticsExpressedFact link", "ClaimModuleLink RuntimeConcurrencySemanticsExpressedFact \"Framework.Runtime.Concurrency\"" `isInfixOf` frontendWitnessSource)
-      , ("RuntimeBackendParityExpressedFact link", "ClaimModuleLink RuntimeBackendParityExpressedFact \"Framework.FixedPoint\"" `isInfixOf` frontendWitnessSource)
+      [ ("RuntimeDiagnosisExpressedFact link", frontendClaimModuleLinkPresent "RuntimeDiagnosisExpressedFact" "Framework.Runtime.Diagnosis")
+      , ("RuntimeConcurrencySemanticsExpressedFact link", frontendClaimModuleLinkPresent "RuntimeConcurrencySemanticsExpressedFact" "Framework.Runtime.Concurrency")
+      , ("RuntimeBackendParityExpressedFact link", frontendClaimModuleLinkPresent "RuntimeBackendParityExpressedFact" "Framework.FixedPoint")
+      , ("frontend claim manifest", "framework-core-frontend-claim-manifest" `elem` frameworkCoreFrontendEvidenceClaimNames)
       , ("Framework.Runtime.Diagnosis exposed", "Framework.Runtime.Diagnosis" `isInfixOf` cabalText)
       , ("Framework.Runtime.Concurrency exposed", "Framework.Runtime.Concurrency" `isInfixOf` cabalText)
       , ("Framework.FixedPoint exposed", "Framework.FixedPoint" `isInfixOf` cabalText)
       ]
     missing =
       [ name | (name, present) <- required, not present ]
+
+frontendClaimModuleLinkPresent :: String -> String -> Bool
+frontendClaimModuleLinkPresent factName moduleName =
+  any matches frontendClaimModuleLinks
+  where
+    matches link =
+      show (frontendClaimModuleFact link) == factName
+        && frontendClaimModuleName link == moduleName
 
 backendParityPayload :: ArchitectureConcernEvidencePayload
 backendParityPayload =
