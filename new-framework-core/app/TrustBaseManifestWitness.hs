@@ -21,6 +21,7 @@ import Framework.TrustBase
   , TrustBaseManifestEvidencePayload (..)
   , TrustBaseManifestEvidenceStatus (..)
   , TrustBaseGatePolicy (..)
+  , artifactEntryExcluded
   , artifactExcludedDirectoryNames
   , artifactExcludedEntryNames
   , defaultSelfArtifactManifest
@@ -120,8 +121,12 @@ trustBaseManifestEvidencePayloads manifest = do
         "TrustBaseArtifactCommandsArtifact"
     , manifestEvidence
         "trust-base-artifact-docs-excluded"
-        (null missingArtifactDocumentationExclusions && null directDocumentationSources)
-        "self artifact excludes docs and README/CHANGELOG/TODO documentation files"
+        ( null missingArtifactDocumentationExclusions
+            && null directDocumentationSources
+            && null missingArtifactDocumentationPredicateExclusions
+            && null unexpectedArtifactSourceExclusions
+        )
+        "self artifact excludes docs and README/CHANGELOG/TODO documentation files without excluding code artifact sources"
         (observedArtifactDocumentationExclusions directDocumentationSources)
         "TrustBaseArtifactDocumentationExclusionArtifact"
     , manifestEvidence
@@ -196,6 +201,41 @@ directDocumentationSources =
   | sourcePath <- artifactSourcePaths
   , sourcePath `elem` requiredDocumentationEntryExclusions
       || sourcePath `elem` requiredDocumentationDirectoryExclusions
+  ]
+
+requiredArtifactSourceEntries :: [FilePath]
+requiredArtifactSourceEntries =
+  [ "new-framework-core"
+  , "domain-app"
+  , "scripts"
+  , ".gitignore"
+  , "cabal.project.wasm"
+  , "hie.yaml"
+  , "stack.yaml"
+  , "stack.yaml.lock"
+  , "LICENSE"
+  ]
+
+documentationPredicateExclusionSamples :: [FilePath]
+documentationPredicateExclusionSamples =
+  requiredDocumentationEntryExclusions
+    ++ requiredDocumentationDirectoryExclusions
+    ++ [ "domain-app/README.md"
+       , "new-framework-core/docs"
+       ]
+
+missingArtifactDocumentationPredicateExclusions :: [FilePath]
+missingArtifactDocumentationPredicateExclusions =
+  [ entry
+  | entry <- documentationPredicateExclusionSamples
+  , not (artifactEntryExcluded entry)
+  ]
+
+unexpectedArtifactSourceExclusions :: [FilePath]
+unexpectedArtifactSourceExclusions =
+  [ entry
+  | entry <- requiredArtifactSourceEntries
+  , artifactEntryExcluded entry
   ]
 
 renderArtifactSourceText :: ArtifactSource -> String
@@ -277,12 +317,19 @@ observedGatePolicyDrift outputs policies
 
 observedArtifactDocumentationExclusions :: [FilePath] -> String
 observedArtifactDocumentationExclusions directSources
-  | null missingArtifactDocumentationExclusions && null directSources =
+  | null missingArtifactDocumentationExclusions
+      && null directSources
+      && null missingArtifactDocumentationPredicateExclusions
+      && null unexpectedArtifactSourceExclusions =
       "documentation exclusions synced"
   | otherwise =
       observedItems "missing documentation exclusions" missingArtifactDocumentationExclusions
         ++ "; "
         ++ observedItems "direct documentation artifact sources" directSources
+        ++ "; "
+        ++ observedItems "predicate did not exclude documentation entries" missingArtifactDocumentationPredicateExclusions
+        ++ "; "
+        ++ observedItems "predicate excluded code artifact sources" unexpectedArtifactSourceExclusions
 
 nonEmptyLines :: String -> [String]
 nonEmptyLines text =

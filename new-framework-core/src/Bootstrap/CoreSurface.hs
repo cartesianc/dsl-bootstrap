@@ -1897,7 +1897,8 @@ selfArtifactFacade =
         , "ArtifactSource"
         ]
         ++ map valueCapability
-          [ "artifactExcludedDirectoryNames"
+          [ "artifactEntryExcluded"
+          , "artifactExcludedDirectoryNames"
           , "artifactExcludedEntryNames"
           , "artifactExcludedExtensions"
           , "defaultSelfArtifactManifest"

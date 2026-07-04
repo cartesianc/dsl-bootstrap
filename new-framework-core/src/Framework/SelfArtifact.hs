@@ -3,6 +3,7 @@ module Framework.SelfArtifact
   , ArtifactCommandResult (..)
   , ArtifactManifest (..)
   , ArtifactSource (..)
+  , artifactEntryExcluded
   , artifactExcludedDirectoryNames
   , artifactExcludedEntryNames
   , artifactExcludedExtensions
@@ -186,7 +187,7 @@ copyArtifactDirectory sourcePath targetPath = do
   mapM_ copyEntry entries
   where
     copyEntry entry
-      | shouldSkipArtifactEntry entry =
+      | artifactEntryExcluded entry =
           pure ()
       | otherwise = do
           let nextSource =
@@ -202,8 +203,8 @@ copyArtifactDirectory sourcePath targetPath = do
                 then copyArtifactDirectory nextSource nextTarget
                 else pure ()
 
-shouldSkipArtifactEntry :: FilePath -> Bool
-shouldSkipArtifactEntry path =
+artifactEntryExcluded :: FilePath -> Bool
+artifactEntryExcluded path =
   entryName `elem` artifactExcludedEntryNames
     || entryName `elem` artifactExcludedDirectoryNames
     || takeExtension path `elem` artifactExcludedExtensions

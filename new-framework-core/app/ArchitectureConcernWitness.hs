@@ -549,6 +549,7 @@ trustBaseMachineReadableGatesPayload =
       , ("check-semantic gate policy", gatePolicyPresent "check-semantic")
       , ("check-release gate policy", gatePolicyPresent "check-release")
       , ("self-artifact high-risk gate policy", highRiskGatePolicyPresent "check-release-with-self-artifact")
+      , ("Framework.SelfArtifact artifactEntryExcluded value", coreSurfaceValueCapabilityPresent "Framework.SelfArtifact" "artifactEntryExcluded")
       , ("Framework.SelfArtifact artifactExcludedDirectoryNames value", coreSurfaceValueCapabilityPresent "Framework.SelfArtifact" "artifactExcludedDirectoryNames")
       , ("Framework.SelfArtifact artifactExcludedEntryNames value", coreSurfaceValueCapabilityPresent "Framework.SelfArtifact" "artifactExcludedEntryNames")
       ]
