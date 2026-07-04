@@ -1048,7 +1048,11 @@ architectureConcernFacade =
         [ "ArchitectureSemanticRisk"
         ]
         ++ map valueCapability
-          [ "architectureSemanticRiskArtifactSummary"
+          [ "architectureConcernClaimManifestEvidenceClaimName"
+          , "architectureConcernCoreClaimNames"
+          , "architectureConcernEvidenceArtifactSummary"
+          , "architectureConcernEvidenceClaimNames"
+          , "architectureSemanticRiskArtifactSummary"
           , "architectureSemanticRiskItemNames"
           , "architectureSemanticRiskItems"
           , "architectureSemanticRiskReviewClaimName"

@@ -13,7 +13,10 @@ import Bootstrap.CoreSurface
   , coreSurfaceModules
   )
 import Framework.Architecture.Concern
-  ( architectureSemanticRiskItemNames
+  ( architectureConcernClaimManifestEvidenceClaimName
+  , architectureConcernCoreClaimNames
+  , architectureConcernEvidenceClaimNames
+  , architectureSemanticRiskItemNames
   , architectureSemanticRiskItems
   , architectureSemanticRiskReviewClaimName
   , renderArchitectureSemanticRisk
@@ -89,21 +92,23 @@ main = do
 
 architectureConcernEvidencePayloads :: IO [ArchitectureConcernEvidencePayload]
 architectureConcernEvidencePayloads = do
-  pure
-    [ runtimeDiagnosisPayloadIrPayload
-    , runtimeDiagnosisImplementationPayload
-    , astCoreCabalClaimLinkPayload
-    , backendParityPayload
-    , effectSystemScopePayload
-    , workflowAndConcurrencyManifestPayload
-    , businessSyntaxClaimManifestPayload
-    , capabilityPrivateFactPayload
-    , businessFacadeBoundaryPayload
-    , trustBaseMachineReadableGatesPayload
-    , runtimeHotPathGuardPayload
-    , schemaCatalogCoveragePayload
-    , semanticRiskReviewPayload
-    ]
+  pure (corePayloads ++ [architectureConcernClaimManifestPayload corePayloads])
+  where
+    corePayloads =
+      [ runtimeDiagnosisPayloadIrPayload
+      , runtimeDiagnosisImplementationPayload
+      , astCoreCabalClaimLinkPayload
+      , backendParityPayload
+      , effectSystemScopePayload
+      , workflowAndConcurrencyManifestPayload
+      , businessSyntaxClaimManifestPayload
+      , capabilityPrivateFactPayload
+      , businessFacadeBoundaryPayload
+      , trustBaseMachineReadableGatesPayload
+      , runtimeHotPathGuardPayload
+      , schemaCatalogCoveragePayload
+      , semanticRiskReviewPayload
+      ]
 
 runtimeDiagnosisPayloadIrPayload :: ArchitectureConcernEvidencePayload
 runtimeDiagnosisPayloadIrPayload =
@@ -428,6 +433,29 @@ semanticRiskReviewPayload =
       if null missing
         then "semantic risk items: " ++ joinWith "; " (map renderArchitectureSemanticRisk architectureSemanticRiskItems)
         else observedList missing
+
+architectureConcernClaimManifestPayload :: [ArchitectureConcernEvidencePayload] -> ArchitectureConcernEvidencePayload
+architectureConcernClaimManifestPayload payloads =
+  concernEvidence
+    architectureConcernClaimManifestEvidenceClaimName
+    manifestSynced
+    "architecture concern executable claims match exported claim manifest"
+    observed
+    "ArchitectureConcernClaimManifestArtifact"
+    "low:evidence-manifest"
+    "update Framework.Architecture.Concern before adding or removing architecture concern evidence payloads"
+  where
+    actualCoreClaimNames =
+      map architectureConcernEvidenceClaim payloads
+    actualEvidenceClaimNames =
+      actualCoreClaimNames ++ [architectureConcernClaimManifestEvidenceClaimName]
+    manifestSynced =
+      actualCoreClaimNames == architectureConcernCoreClaimNames
+        && actualEvidenceClaimNames == architectureConcernEvidenceClaimNames
+    observed =
+      if manifestSynced
+        then "claim manifest synced: " ++ show (length actualCoreClaimNames) ++ " core claims"
+        else "expected " ++ show architectureConcernEvidenceClaimNames ++ "; actual " ++ show actualEvidenceClaimNames
 
 expectedClaimsPresent :: [String] -> [String] -> [String]
 expectedClaimsPresent expected actual =

@@ -1,5 +1,9 @@
 module Framework.Architecture.Concern
   ( ArchitectureSemanticRisk (..)
+  , architectureConcernClaimManifestEvidenceClaimName
+  , architectureConcernCoreClaimNames
+  , architectureConcernEvidenceArtifactSummary
+  , architectureConcernEvidenceClaimNames
   , architectureSemanticRiskArtifactSummary
   , architectureSemanticRiskItemNames
   , architectureSemanticRiskItems
@@ -14,6 +18,36 @@ data ArchitectureSemanticRisk = ArchitectureSemanticRisk
   , architectureSemanticRiskReviewAction :: String
   }
   deriving (Eq, Show)
+
+architectureConcernCoreClaimNames :: [String]
+architectureConcernCoreClaimNames =
+  [ "session1-runtime-diagnosis-payload-ir"
+  , "session1-runtime-diagnosis-implementation-boundary"
+  , "session1-ast-core-cabal-claim-link"
+  , "session1-runtime-backend-parity-payloads"
+  , "session2-effect-system-scope-boundary"
+  , "session2-workflow-concurrency-claim-manifest"
+  , "session1-business-syntax-claim-manifest"
+  , "session2-capability-private-fact-authoring"
+  , "session3-business-facade-boundary"
+  , "session3-trustbase-machine-readable-gates"
+  , "session3-runtime-hot-path-guard"
+  , "session123-schema-catalog-coverage"
+  , architectureSemanticRiskReviewClaimName
+  ]
+
+architectureConcernEvidenceClaimNames :: [String]
+architectureConcernEvidenceClaimNames =
+  architectureConcernCoreClaimNames ++ [architectureConcernClaimManifestEvidenceClaimName]
+
+architectureConcernClaimManifestEvidenceClaimName :: String
+architectureConcernClaimManifestEvidenceClaimName =
+  "architecture-concern-claim-manifest"
+
+architectureConcernEvidenceArtifactSummary :: String
+architectureConcernEvidenceArtifactSummary =
+  "architecture concern evidence payload claims: "
+    ++ joinWith ", " architectureConcernEvidenceClaimNames
 
 architectureSemanticRiskReviewClaimName :: String
 architectureSemanticRiskReviewClaimName =
