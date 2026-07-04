@@ -52,6 +52,7 @@ architectureConcernCoreClaimNames =
   , "session2-effect-system-scope-boundary"
   , "session2-workflow-concurrency-claim-manifest"
   , "session1-business-syntax-claim-manifest"
+  , "session1-capability-authoring-surface-coverage"
   , "session2-capability-private-fact-authoring"
   , "session3-business-facade-boundary"
   , "session3-trustbase-machine-readable-gates"

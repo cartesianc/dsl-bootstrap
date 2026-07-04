@@ -96,6 +96,7 @@ architectureConcernEvidencePayloads = do
       , effectSystemScopePayload
       , workflowAndConcurrencyManifestPayload
       , businessSyntaxClaimManifestPayload
+      , capabilityAuthoringSurfacePayload
       , capabilityPrivateFactPayload
       , businessFacadeBoundaryPayload
       , trustBaseMachineReadableGatesPayload
@@ -339,6 +340,76 @@ businessSyntaxClaimManifestPayload =
       ]
         ++ [ ("business syntax claim: " ++ claim, claim `elem` businessSyntaxEvidenceClaimNames)
            | claim <- requiredClaims
+           ]
+    missing =
+      [ name | (name, present) <- required, not present ]
+
+capabilityAuthoringSurfacePayload :: ArchitectureConcernEvidencePayload
+capabilityAuthoringSurfacePayload =
+  concernEvidence
+    "session1-capability-authoring-surface-coverage"
+    (null missing)
+    "Framework.Business capability authoring surface is indexed in CoreSurface and backed by business syntax evidence"
+    (observedList missing)
+    "CapabilityAuthoringSurfaceCoverageArtifact"
+    "low:public-facade"
+    "keep capability authoring API coverage synced before changing capability lowering semantics"
+  where
+    requiredTypes =
+      [ "Capability"
+      , "CapabilityClause"
+      , "CapabilityPolicy"
+      , "CapabilityUse"
+      , "HandlerBindingSpec"
+      , "Pipeline"
+      , "TransformBindingSpec"
+      ]
+    requiredValues =
+      [ "capabilitiesEffect"
+      , "capability"
+      , "capabilityEffectSections"
+      , "capabilityEffectSystem"
+      , "capabilityEffectSystemBoundary"
+      , "handler"
+      , "handlerBinding"
+      , "idempotentPolicy"
+      , "input"
+      , "onError"
+      , "output"
+      , "pipeline"
+      , "pipelineTransformCandidates"
+      , "privateFact"
+      , "policy"
+      , "produces"
+      , "requires"
+      , "retryOnce"
+      , "transform"
+      , "transformBinding"
+      , "uses"
+      ]
+    requiredClaims =
+      [ "business-syntax-needs-lowering"
+      , "business-syntax-take-lowering"
+      , "business-syntax-make-lowering"
+      , "business-syntax-uses-lowering"
+      , "business-syntax-external-make-lowering"
+      , "business-syntax-transform-lowering"
+      , "business-syntax-handler-binding-alignment"
+      , "business-syntax-pipeline-adjacent-transform"
+      , "business-syntax-runtime-pipeline-adapter"
+      , "business-syntax-capability-system-boundary"
+      ]
+    required =
+      [ ("Framework.Business type: " ++ capability, coreSurfaceTypeCapabilityPresent "Framework.Business" capability)
+      | capability <- requiredTypes
+      ]
+        ++ [ ("Framework.Business value: " ++ capability, coreSurfaceValueCapabilityPresent "Framework.Business" capability)
+           | capability <- requiredValues
+           ]
+        ++ [ ("business syntax evidence claim: " ++ claim, claim `elem` businessSyntaxEvidenceClaimNames)
+           | claim <- requiredClaims
+           ]
+        ++ [ ("business-syntax schema", schemaPresent "business-syntax-evidence.v1")
            ]
     missing =
       [ name | (name, present) <- required, not present ]
