@@ -84,6 +84,7 @@ library
                      , Framework.Runtime.Diagnosis
                      , Framework.Runtime.Evidence
                      , Framework.Runtime.Handlers
+                     , Framework.Runtime.HotPath
                      , Framework.Runtime.Interpreter
                      , Framework.Runtime.Policy
                      , Framework.Runtime.Types
@@ -293,6 +294,22 @@ executable runtime-evidence-witness
 executable runtime-policy-witness
   hs-source-dirs:      app
   main-is:             RuntimePolicyWitness.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , new-framework-core
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable runtime-hot-path-witness
+  hs-source-dirs:      app
+  main-is:             RuntimeHotPathWitness.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , new-framework-core

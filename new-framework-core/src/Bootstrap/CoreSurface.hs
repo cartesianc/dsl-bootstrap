@@ -100,6 +100,7 @@ explicitCoreSurfaceModules =
   , runtimeConcurrencyFacade
   , runtimeDiagnosisFacade
   , runtimeEvidenceFacade
+  , runtimeHotPathFacade
   , runtimePolicyFacade
   , runtimeTypesFacade
   , backgroundRuntimeDiagnosis
@@ -285,6 +286,7 @@ coreSurfaceSlices =
           , "Framework.Runtime.Interpreter"
           , "Framework.Runtime.Diagnosis"
           , "Framework.Runtime.Handlers"
+          , "Framework.Runtime.HotPath"
           , "Framework.Runtime.Policy"
           , "Framework.Runtime.Values"
           , "Framework.TrustBase"
@@ -824,6 +826,8 @@ trustBaseFacade =
         , "RuntimeConcurrencyEvidenceStatus"
         , "RuntimeEvidencePayload"
         , "RuntimeEvidenceStatus"
+        , "RuntimeHotPathEvidencePayload"
+        , "RuntimeHotPathEvidenceStatus"
         , "RuntimePolicyEvidencePayload"
         , "RuntimePolicyEvidenceStatus"
         , "DomainRegistration"
@@ -873,6 +877,13 @@ trustBaseFacade =
           , "runtimeEvidenceClaimNames"
           , "runtimeEvidencePayloadPassed"
           , "runtimeEvidencePayloads"
+          , "renderRuntimeHotPathEvidencePayload"
+          , "renderRuntimeHotPathEvidencePayloadsJson"
+          , "renderRuntimeHotPathEvidenceStatus"
+          , "runtimeHotPathEvidenceArtifactSummary"
+          , "runtimeHotPathEvidenceClaimNames"
+          , "runtimeHotPathEvidencePayloadPassed"
+          , "runtimeHotPathEvidencePayloads"
           , "renderRuntimePolicyEvidencePayload"
           , "renderRuntimePolicyEvidencePayloadsJson"
           , "renderRuntimePolicyEvidenceStatus"
@@ -1524,6 +1535,26 @@ runtimeEvidenceFacade =
           , "runtimeEvidenceClaimNames"
           , "runtimeEvidencePayloadPassed"
           , "runtimeEvidencePayloads"
+          ]
+    )
+
+runtimeHotPathFacade :: CoreSurfaceModule
+runtimeHotPathFacade =
+  moduleSurface
+    "Framework.Runtime.HotPath"
+    "runtime hot-path evidence payload model for typed runtime import and execution guards"
+    ( map typeCapability
+        [ "RuntimeHotPathEvidencePayload"
+        , "RuntimeHotPathEvidenceStatus"
+        ]
+        ++ map valueCapability
+          [ "renderRuntimeHotPathEvidencePayload"
+          , "renderRuntimeHotPathEvidencePayloadsJson"
+          , "renderRuntimeHotPathEvidenceStatus"
+          , "runtimeHotPathEvidenceArtifactSummary"
+          , "runtimeHotPathEvidenceClaimNames"
+          , "runtimeHotPathEvidencePayloadPassed"
+          , "runtimeHotPathEvidencePayloads"
           ]
     )
 

@@ -23,6 +23,7 @@ $commands = @(
   ,@("stack", "--work-dir", $WorkDir, "exec", "bootstrap-report", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "fixed-point-smoke", "--", "--summary-json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "runtime-evidence-witness", "--", "--json")
+  ,@("stack", "--work-dir", $WorkDir, "exec", "runtime-hot-path-witness", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "runtime-policy-witness", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "runtime-diagnosis-witness", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "workflow-semantics-witness", "--", "--json")

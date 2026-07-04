@@ -14,6 +14,7 @@ $commands = @(
   ,@("stack", "--work-dir", $WorkDir, "exec", "framework-core-frontend-witness")
   ,@("stack", "--work-dir", $WorkDir, "exec", "business-syntax-witness", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "domain-app-report", "--", "--json")
+  ,@("stack", "--work-dir", $WorkDir, "exec", "runtime-hot-path-witness", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "runtime-policy-witness", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "runtime-diagnosis-witness", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "workflow-semantics-witness", "--", "--json")
