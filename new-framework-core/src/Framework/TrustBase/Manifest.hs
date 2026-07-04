@@ -101,6 +101,7 @@ defaultTrustBaseManifest =
         , "registry-codegen-witness"
         , "business-syntax-witness"
         , "trust-base-manifest-witness"
+        , "schema-catalog-witness"
         ]
     , trustBaseManifestArtifactGateExecutable = "self-artifact-witness"
     , trustBaseManifestArtifactSources =
@@ -183,6 +184,7 @@ trustBaseManifestRequiredJsonSchemas =
   , "framework-core-frontend-evidence.v1 <- framework-core-frontend-witness -- --json"
   , "trust-base-manifest.v2 <- trust-base-manifest-witness -- --json"
   , "trust-base-manifest-evidence.v1 <- trust-base-manifest-witness -- --evidence-json"
+  , "schema-catalog-evidence.v1 <- schema-catalog-witness -- --json"
   , "business-syntax-evidence.v1 <- business-syntax-witness -- --json"
   , "runtime-evidence.v1 <- runtime-evidence-witness -- --json"
   , "runtime-hot-path-evidence.v1 <- runtime-hot-path-witness -- --json"
@@ -263,6 +265,7 @@ releaseGateBaseCommands =
   , "stack --work-dir .stack-work-codex exec constraint-proof-witness -- --smt=auto"
   , "stack --work-dir .stack-work-codex exec framework-core-frontend-witness -- --json"
   , "stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json"
+  , "stack --work-dir .stack-work-codex exec schema-catalog-witness -- --json"
   , "stack --work-dir .stack-work-codex exec registry-codegen-witness"
   ]
 

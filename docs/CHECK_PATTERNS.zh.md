@@ -127,6 +127,7 @@ framework-core-frontend-witness --json: framework-core-frontend-evidence.v1
 business-syntax-witness -- --json: business-syntax-evidence.v1
 trust-base-manifest-witness: trust-base-manifest.v2
 trust-base-manifest-witness -- --evidence-json: trust-base-manifest-evidence.v1
+schema-catalog-witness -- --json: schema-catalog-evidence.v1
 fixed-point-smoke: fixed-point diff evidence 14 payload claims
 fixed-point-smoke: diffs: 0
 fixed-point-smoke --json: fixed-point-report.v1
@@ -217,6 +218,7 @@ runtime-evidence.v1
 runtime-hot-path-evidence.v1
 runtime-policy-evidence.v1
 framework-core-frontend-evidence.v1
+schema-catalog-evidence.v1
 runtime-diagnosis-evidence.v1
 workflow-semantics-evidence.v1
 runtime-concurrency-evidence.v1
