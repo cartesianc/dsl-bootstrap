@@ -21,6 +21,8 @@ import Framework.TrustBase
   , TrustBaseManifestEvidencePayload (..)
   , TrustBaseManifestEvidenceStatus (..)
   , TrustBaseGatePolicy (..)
+  , artifactExcludedDirectoryNames
+  , artifactExcludedEntryNames
   , defaultSelfArtifactManifest
   , defaultTrustBaseManifest
   , renderArtifactCommand
@@ -117,6 +119,12 @@ trustBaseManifestEvidencePayloads manifest = do
         (observedDrift "artifact commands" (trustBaseManifestArtifactCommands manifest) currentArtifactCommands)
         "TrustBaseArtifactCommandsArtifact"
     , manifestEvidence
+        "trust-base-artifact-docs-excluded"
+        (null missingArtifactDocumentationExclusions && null directDocumentationSources)
+        "self artifact excludes docs and README/CHANGELOG/TODO documentation files"
+        (observedArtifactDocumentationExclusions directDocumentationSources)
+        "TrustBaseArtifactDocumentationExclusionArtifact"
+    , manifestEvidence
         "trust-base-core-surface-covered"
         ( null (missingItems coreSurfaceModuleNames trustBaseManifestRequiredCoreSurfaceModules)
             && null (missingItems manifestModules trustBaseManifestRequiredCoreSurfaceModules)
@@ -160,6 +168,35 @@ currentArtifactSources =
 currentArtifactCommands :: [String]
 currentArtifactCommands =
   map renderArtifactCommand (artifactManifestCommands defaultSelfArtifactManifest)
+
+artifactSourcePaths :: [FilePath]
+artifactSourcePaths =
+  map artifactSourcePath (artifactManifestSources defaultSelfArtifactManifest)
+
+requiredDocumentationEntryExclusions :: [FilePath]
+requiredDocumentationEntryExclusions =
+  [ "README.md"
+  , "CHANGELOG.md"
+  , "TODO.md"
+  ]
+
+requiredDocumentationDirectoryExclusions :: [FilePath]
+requiredDocumentationDirectoryExclusions =
+  [ "docs"
+  ]
+
+missingArtifactDocumentationExclusions :: [FilePath]
+missingArtifactDocumentationExclusions =
+  missingItems artifactExcludedEntryNames requiredDocumentationEntryExclusions
+    ++ missingItems artifactExcludedDirectoryNames requiredDocumentationDirectoryExclusions
+
+directDocumentationSources :: [FilePath]
+directDocumentationSources =
+  [ sourcePath
+  | sourcePath <- artifactSourcePaths
+  , sourcePath `elem` requiredDocumentationEntryExclusions
+      || sourcePath `elem` requiredDocumentationDirectoryExclusions
+  ]
 
 renderArtifactSourceText :: ArtifactSource -> String
 renderArtifactSourceText source =
@@ -237,6 +274,15 @@ observedGatePolicyDrift outputs policies
   where
     drift =
       gatePolicyDrift outputs policies
+
+observedArtifactDocumentationExclusions :: [FilePath] -> String
+observedArtifactDocumentationExclusions directSources
+  | null missingArtifactDocumentationExclusions && null directSources =
+      "documentation exclusions synced"
+  | otherwise =
+      observedItems "missing documentation exclusions" missingArtifactDocumentationExclusions
+        ++ "; "
+        ++ observedItems "direct documentation artifact sources" directSources
 
 nonEmptyLines :: String -> [String]
 nonEmptyLines text =

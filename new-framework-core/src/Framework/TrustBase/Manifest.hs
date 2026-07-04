@@ -171,6 +171,7 @@ trustBaseManifestEvidenceClaimNames =
   , "trust-base-artifact-gate-executable-present"
   , "trust-base-artifact-sources-synced"
   , "trust-base-artifact-commands-synced"
+  , "trust-base-artifact-docs-excluded"
   , "trust-base-core-surface-covered"
   , "trust-base-json-schemas-synced"
   , "trust-base-gate-policies-synced"

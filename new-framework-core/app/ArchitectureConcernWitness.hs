@@ -543,11 +543,14 @@ trustBaseMachineReadableGatesPayload =
     required =
       [ ("architecture-concern-witness manifest executable", "architecture-concern-witness" `elem` trustBaseManifestWitnessExecutables defaultTrustBaseManifest)
       , ("trust-base witness executable evidence", "trust-base-witness-executables-present" `elem` trustBaseManifestEvidenceClaimNames)
+      , ("trust-base artifact docs excluded evidence", "trust-base-artifact-docs-excluded" `elem` trustBaseManifestEvidenceClaimNames)
       , ("architecture-concern-evidence schema", schemaPresent "architecture-concern-evidence.v1")
       , ("check-fast gate policy", gatePolicyPresent "check-fast")
       , ("check-semantic gate policy", gatePolicyPresent "check-semantic")
       , ("check-release gate policy", gatePolicyPresent "check-release")
       , ("self-artifact high-risk gate policy", highRiskGatePolicyPresent "check-release-with-self-artifact")
+      , ("Framework.SelfArtifact artifactExcludedDirectoryNames value", coreSurfaceValueCapabilityPresent "Framework.SelfArtifact" "artifactExcludedDirectoryNames")
+      , ("Framework.SelfArtifact artifactExcludedEntryNames value", coreSurfaceValueCapabilityPresent "Framework.SelfArtifact" "artifactExcludedEntryNames")
       ]
     missing =
       [ name | (name, present) <- required, not present ]

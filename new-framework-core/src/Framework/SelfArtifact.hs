@@ -3,6 +3,9 @@ module Framework.SelfArtifact
   , ArtifactCommandResult (..)
   , ArtifactManifest (..)
   , ArtifactSource (..)
+  , artifactExcludedDirectoryNames
+  , artifactExcludedEntryNames
+  , artifactExcludedExtensions
   , defaultSelfArtifactManifest
   , materializeSelfArtifact
   , renderArtifactCommand
@@ -201,15 +204,38 @@ copyArtifactDirectory sourcePath targetPath = do
 
 shouldSkipArtifactEntry :: FilePath -> Bool
 shouldSkipArtifactEntry path =
-  takeFileName path
-    `elem`
-      [ ".stack-work"
-      , "dist"
-      , "dist-newstyle"
-      , ".git"
-      , ".generated"
-      ]
-    || takeExtension path `elem` [".hi", ".o", ".dyn_hi", ".dyn_o", ".hie"]
+  entryName `elem` artifactExcludedEntryNames
+    || entryName `elem` artifactExcludedDirectoryNames
+    || takeExtension path `elem` artifactExcludedExtensions
+  where
+    entryName =
+      takeFileName path
+
+artifactExcludedDirectoryNames :: [FilePath]
+artifactExcludedDirectoryNames =
+  [ ".stack-work"
+  , "dist"
+  , "dist-newstyle"
+  , ".git"
+  , ".generated"
+  , "docs"
+  ]
+
+artifactExcludedEntryNames :: [FilePath]
+artifactExcludedEntryNames =
+  [ "README.md"
+  , "CHANGELOG.md"
+  , "TODO.md"
+  ]
+
+artifactExcludedExtensions :: [String]
+artifactExcludedExtensions =
+  [ ".hi"
+  , ".o"
+  , ".dyn_hi"
+  , ".dyn_o"
+  , ".hie"
+  ]
 
 ensureSafeArtifactRoot :: FilePath -> IO ()
 ensureSafeArtifactRoot root =
