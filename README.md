@@ -599,7 +599,7 @@ runtime-concurrency-evidence.v1
 ```
 
 `bootstrap-report -- --json` 和 `domain-app-report -- --json` 输出 report 后会检查 `status`；`failed` 会让命令返回非零退出码。
-`domain-app-report` 的 runtime diagnosis semanticEvidence 保留 `details`，同时提供结构化 `payload`：`claim/status/expected/observed/artifact`。
+`domain-app-report` 的 built-in semanticEvidence 和 runtime diagnosis semanticEvidence 保留 `details`，同时提供结构化 `payload`：`claim/status/expected/observed/artifact`。当前 built-in payload 覆盖 `constraint-ir-built`、`constraint-proof-passed`、`constraint-negative-check` 和 `runtime-closure-executed`。
 
 fixed-point 比较：
 

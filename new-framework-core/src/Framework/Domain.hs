@@ -536,27 +536,78 @@ builtInDomainSemanticEvidence blueprint effects plan proofResults runtimeResult 
 constraintIrBuiltEvidence :: [Proof.ConstraintFact] -> DomainSemanticEvidence
 constraintIrBuiltEvidence constraints
   | null constraints =
-      domainEvidenceFailed "constraint-ir-built" ["constraint fact set is empty"]
+      domainEvidenceFailedWithPayload
+        "constraint-ir-built"
+        ["constraint fact set is empty"]
+        ( semanticPayloadFailed
+            "constraint-ir-built"
+            "constraint IR contains at least one fact"
+            "constraint fact set is empty"
+            "ConstraintIrBuiltArtifact"
+        )
   | otherwise =
-      domainEvidencePassed "constraint-ir-built" ["constraint facts: " ++ show (length constraints)]
+      domainEvidencePassedWithPayload
+        "constraint-ir-built"
+        ["constraint facts: " ++ show (length constraints)]
+        ( semanticPayloadPassed
+            "constraint-ir-built"
+            "constraint IR contains at least one fact"
+            ("constraint facts: " ++ show (length constraints))
+            "ConstraintIrBuiltArtifact"
+        )
 
 pureSmtProofEvidence :: [Proof.SmtResult] -> DomainSemanticEvidence
 pureSmtProofEvidence results
   | Proof.smtPassed results =
-      domainEvidencePassed "constraint-proof-passed" ["pure propositions: " ++ show (length results)]
-  | otherwise =
-      domainEvidenceFailed
+      domainEvidencePassedWithPayload
         "constraint-proof-passed"
-        [ Proof.renderSmtResult result
-        | result <- results
-        , Proof.smtResultStatus result == Proof.SmtFailed
-        ]
+        ["pure propositions: " ++ show (length results)]
+        ( semanticPayloadPassed
+            "constraint-proof-passed"
+            "all pure SMT propositions pass"
+            ("pure propositions: " ++ show (length results))
+            "ConstraintProofArtifact"
+        )
+  | otherwise =
+      domainEvidenceFailedWithPayload
+        "constraint-proof-passed"
+        failedProofs
+        ( semanticPayloadFailed
+            "constraint-proof-passed"
+            "all pure SMT propositions pass"
+            ("failed propositions: " ++ show (length failedProofs))
+            "ConstraintProofArtifact"
+        )
+  where
+    failedProofs =
+      [ Proof.renderSmtResult result
+      | result <- results
+      , Proof.smtResultStatus result == Proof.SmtFailed
+      ]
 
 negativeConstraintEvidence :: DomainSemanticEvidence
 negativeConstraintEvidence =
   if Proof.MissingFactSource missingFact `elem` errors
-    then domainEvidencePassed "constraint-negative-check" ["missing fact source is detected"]
-    else domainEvidenceFailed "constraint-negative-check" ["missing fact source was accepted"]
+    then
+      domainEvidencePassedWithPayload
+        "constraint-negative-check"
+        ["missing fact source is detected"]
+        ( semanticPayloadPassed
+            "constraint-negative-check"
+            "negative constraint check rejects missing fact source"
+            "missing fact source is detected"
+            "ConstraintNegativeCheckArtifact"
+        )
+    else
+      domainEvidenceFailedWithPayload
+        "constraint-negative-check"
+        ["missing fact source was accepted"]
+        ( semanticPayloadFailed
+            "constraint-negative-check"
+            "negative constraint check rejects missing fact source"
+            "missing fact source was accepted"
+            "ConstraintNegativeCheckArtifact"
+        )
   where
     missingFact =
       WorkflowFact "SelfEvidenceMissingFact"
@@ -567,11 +618,55 @@ runtimeClosureEvidence :: DomainRuntimeResult -> DomainSemanticEvidence
 runtimeClosureEvidence runtimeResult =
   case runtimeResult of
     DomainRuntimeSucceeded _ _ [] ->
-      domainEvidencePassed "runtime-closure-executed" ["runtime result is successful"]
+      domainEvidencePassedWithPayload
+        "runtime-closure-executed"
+        ["runtime result is successful"]
+        ( semanticPayloadPassed
+            "runtime-closure-executed"
+            "runtime executes final fact closure without failures"
+            "runtime result is successful"
+            "RuntimeClosureArtifact"
+        )
     DomainRuntimeSucceeded _ _ runtimeFailures ->
-      domainEvidenceFailed "runtime-closure-executed" runtimeFailures
+      domainEvidenceFailedWithPayload
+        "runtime-closure-executed"
+        runtimeFailures
+        ( semanticPayloadFailed
+            "runtime-closure-executed"
+            "runtime executes final fact closure without failures"
+            ("runtime failures: " ++ show runtimeFailures)
+            "RuntimeClosureArtifact"
+        )
     DomainRuntimeFailed message ->
-      domainEvidenceFailed "runtime-closure-executed" [message]
+      domainEvidenceFailedWithPayload
+        "runtime-closure-executed"
+        [message]
+        ( semanticPayloadFailed
+            "runtime-closure-executed"
+            "runtime executes final fact closure without failures"
+            message
+            "RuntimeClosureArtifact"
+        )
+
+semanticPayloadPassed :: String -> String -> String -> String -> DomainSemanticEvidencePayload
+semanticPayloadPassed claim expected observed artifact =
+  DomainSemanticEvidencePayload
+    { domainSemanticEvidencePayloadClaim = claim
+    , domainSemanticEvidencePayloadStatus = "passed"
+    , domainSemanticEvidencePayloadExpected = expected
+    , domainSemanticEvidencePayloadObserved = observed
+    , domainSemanticEvidencePayloadArtifact = artifact
+    }
+
+semanticPayloadFailed :: String -> String -> String -> String -> DomainSemanticEvidencePayload
+semanticPayloadFailed claim expected observed artifact =
+  DomainSemanticEvidencePayload
+    { domainSemanticEvidencePayloadClaim = claim
+    , domainSemanticEvidencePayloadStatus = "failed"
+    , domainSemanticEvidencePayloadExpected = expected
+    , domainSemanticEvidencePayloadObserved = observed
+    , domainSemanticEvidencePayloadArtifact = artifact
+    }
 
 domainEvidencePassed :: String -> [String] -> DomainSemanticEvidence
 domainEvidencePassed name details =
