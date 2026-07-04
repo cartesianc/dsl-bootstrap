@@ -51,6 +51,7 @@ architectureConcernCoreClaimNames =
   , "session1-runtime-backend-parity-payloads"
   , "session2-effect-system-scope-boundary"
   , "session2-workflow-concurrency-claim-manifest"
+  , "session2-runtime-concurrency-evidence-payloads"
   , "session1-business-syntax-claim-manifest"
   , "session1-capability-authoring-surface-coverage"
   , "session2-capability-private-fact-authoring"

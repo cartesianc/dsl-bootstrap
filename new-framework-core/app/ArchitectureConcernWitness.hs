@@ -95,6 +95,7 @@ architectureConcernEvidencePayloads = do
       , backendParityPayload
       , effectSystemScopePayload
       , workflowAndConcurrencyManifestPayload
+      , runtimeConcurrencyEvidencePayload
       , businessSyntaxClaimManifestPayload
       , capabilityAuthoringSurfacePayload
       , capabilityPrivateFactPayload
@@ -320,6 +321,39 @@ workflowAndConcurrencyManifestPayload =
     missing =
       map ("workflow: " ++) (missingItems workflowSemanticsEvidenceClaimNames requiredWorkflowClaims)
         ++ map ("runtime concurrency: " ++) (missingItems runtimeConcurrencyEvidenceClaimNames requiredConcurrencyClaims)
+
+runtimeConcurrencyEvidencePayload :: ArchitectureConcernEvidencePayload
+runtimeConcurrencyEvidencePayload =
+  concernEvidence
+    "session2-runtime-concurrency-evidence-payloads"
+    (null missing)
+    "runtime concurrency evidence payloads are schema-cataloged, CoreSurface-indexed, and split into parallel/race claims"
+    (observedList missing)
+    "RuntimeConcurrencyEvidenceCoverageArtifact"
+    "low:evidence-schema"
+    "keep runtime-concurrency-evidence.v1 synced before changing parallel or race semantics"
+  where
+    expectedClaims =
+      [ "runtime-concurrency-parallel-branches"
+      , "runtime-concurrency-parallel-merge-conflict"
+      , "runtime-concurrency-race-cancellation"
+      , "runtime-concurrency-race-exhausted"
+      ]
+    required =
+      [ ("runtime-concurrency-evidence schema", schemaPresent "runtime-concurrency-evidence.v1")
+      , ("TrustBase required CoreSurface module: Framework.Runtime.Concurrency", "Framework.Runtime.Concurrency" `elem` trustBaseManifestRequiredCoreSurfaceModules)
+      , ("Framework.Runtime.Concurrency RuntimeConcurrencyEvidencePayload type", coreSurfaceTypeCapabilityPresent "Framework.Runtime.Concurrency" "RuntimeConcurrencyEvidencePayload")
+      , ("Framework.Runtime.Concurrency RuntimeConcurrencyEvidenceStatus type", coreSurfaceTypeCapabilityPresent "Framework.Runtime.Concurrency" "RuntimeConcurrencyEvidenceStatus")
+      , ("Framework.Runtime.Concurrency runtimeConcurrencyEvidenceClaimNames value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Concurrency" "runtimeConcurrencyEvidenceClaimNames")
+      , ("Framework.Runtime.Concurrency runtimeConcurrencyEvidencePayloads value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Concurrency" "runtimeConcurrencyEvidencePayloads")
+      , ("Framework.Runtime.Concurrency runtimeConcurrencyEvidencePayloadPassed value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Concurrency" "runtimeConcurrencyEvidencePayloadPassed")
+      , ("Framework.Runtime.Concurrency renderRuntimeConcurrencyEvidencePayloadsJson value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Concurrency" "renderRuntimeConcurrencyEvidencePayloadsJson")
+      ]
+        ++ [ ("runtime concurrency claim: " ++ claim, claim `elem` runtimeConcurrencyEvidenceClaimNames)
+           | claim <- expectedClaims
+           ]
+    missing =
+      [ name | (name, present) <- required, not present ]
 
 businessSyntaxClaimManifestPayload :: ArchitectureConcernEvidencePayload
 businessSyntaxClaimManifestPayload =
