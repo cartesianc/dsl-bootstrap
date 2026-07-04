@@ -138,7 +138,7 @@ runtimeDiagnosisImplementationPayload =
   concernEvidence
     "session1-runtime-diagnosis-implementation-boundary"
     (null missing)
-    "Framework.Runtime.Diagnosis implementation boundary is covered by frontend and diagnosis evidence manifests"
+    "Framework.Runtime.Diagnosis implementation boundary is covered by frontend, system root-cause evidence, and CoreSurface capabilities"
     (observedList missing)
     "RuntimeDiagnosisImplementationCoverageArtifact"
     "medium:module-boundary"
@@ -147,6 +147,13 @@ runtimeDiagnosisImplementationPayload =
     required =
       [ ("runtime diagnosis implementation boundary witness", "framework-core-frontend-runtime-diagnosis-implementation-boundary" `elem` frameworkCoreFrontendEvidenceClaimNames)
       , ("runtime diagnosis system root-cause claim", "runtime-diagnosis-system-root-cause" `elem` runtimeDiagnosisEvidenceClaimNames)
+      , ("Framework.Runtime.Diagnosis RuntimeDiagnosisStep type", coreSurfaceTypeCapabilityPresent "Framework.Runtime.Diagnosis" "RuntimeDiagnosisStep")
+      , ("Framework.Runtime.Diagnosis RuntimeDiagnosisRootCause type", coreSurfaceTypeCapabilityPresent "Framework.Runtime.Diagnosis" "RuntimeDiagnosisRootCause")
+      , ("Framework.Runtime.Diagnosis RuntimeFailureDiagnosis type", coreSurfaceTypeCapabilityPresent "Framework.Runtime.Diagnosis" "RuntimeFailureDiagnosis")
+      , ("Framework.Runtime.Diagnosis runtimeDiagnosisStep value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Diagnosis" "runtimeDiagnosisStep")
+      , ("Framework.Runtime.Diagnosis runtimeDiagnosisRootCause value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Diagnosis" "runtimeDiagnosisRootCause")
+      , ("Framework.Runtime.Diagnosis buildFailureDiagnosisWithSystem value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Diagnosis" "buildFailureDiagnosisWithSystem")
+      , ("Framework.Runtime.Diagnosis renderRuntimeFailureDiagnosis value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Diagnosis" "renderRuntimeFailureDiagnosis")
       ]
     missing =
       [ name | (name, present) <- required, not present ]
