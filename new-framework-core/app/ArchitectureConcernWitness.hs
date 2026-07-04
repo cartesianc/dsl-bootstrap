@@ -253,7 +253,7 @@ effectSystemScopePayload =
   concernEvidence
     "session2-effect-system-scope-boundary"
     (null missing)
-    "EffectSystemBoundary imports, private facts, exports, contracts, and pipelines have workflow semantics evidence"
+    "EffectSystemBoundary imports, private facts, exports, contracts, and pipelines have workflow semantics evidence and CoreSurface capability coverage"
     (observedList missing)
     "EffectSystemScopeCoverageArtifact"
     "high:semantic-review-required"
@@ -265,8 +265,23 @@ effectSystemScopePayload =
       , "workflow-effect-system-contracts"
       , "workflow-effect-system-pipeline"
       ]
+    requiredCapabilities =
+      [ ("Framework.Workflow EffectSystemBoundary type", coreSurfaceTypeCapabilityPresent "Framework.Workflow" "EffectSystemBoundary")
+      , ("Framework.Workflow EffectSystemBoundaryArtifact type", coreSurfaceTypeCapabilityPresent "Framework.Workflow" "EffectSystemBoundaryArtifact")
+      , ("Framework.Workflow EffectSystemBoundaryHandler type", coreSurfaceTypeCapabilityPresent "Framework.Workflow" "EffectSystemBoundaryHandler")
+      , ("Framework.Workflow EffectSystemBoundaryPipeline type", coreSurfaceTypeCapabilityPresent "Framework.Workflow" "EffectSystemBoundaryPipeline")
+      , ("Framework.Workflow EffectSystemBoundaryPolicy type", coreSurfaceTypeCapabilityPresent "Framework.Workflow" "EffectSystemBoundaryPolicy")
+      , ("Framework.Workflow effectSystemFromBoundary value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "effectSystemFromBoundary")
+      , ("Framework.Workflow effectSystemRuntimeFacts value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "effectSystemRuntimeFacts")
+      , ("Framework.Workflow systemBoundary value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "systemBoundary")
+      , ("Framework.Workflow systemBoundaryWithHandlers value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "systemBoundaryWithHandlers")
+      , ("Framework.Workflow boundaryArtifact value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "boundaryArtifact")
+      , ("Framework.Workflow boundaryHandler value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "boundaryHandler")
+      , ("Framework.Workflow boundaryPipeline value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "boundaryPipeline")
+      ]
     missing =
       missingItems workflowSemanticsCoreClaimNames requiredClaims
+        ++ [ name | (name, present) <- requiredCapabilities, not present ]
 
 workflowAndConcurrencyManifestPayload :: ArchitectureConcernEvidencePayload
 workflowAndConcurrencyManifestPayload =
