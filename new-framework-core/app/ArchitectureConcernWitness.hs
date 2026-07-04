@@ -44,7 +44,9 @@ import Framework.Frontend.Evidence
   , frontendClaimModuleLinks
   )
 import Framework.Runtime.Concurrency
-  ( runtimeConcurrencyEvidenceClaimNames )
+  ( runtimeConcurrencyCoreClaimNames
+  , runtimeConcurrencyEvidenceClaimNames
+  )
 import Framework.Runtime.Diagnosis
   ( runtimeDiagnosisCoreClaimNames
   , runtimeDiagnosisEvidenceClaimNames
@@ -336,7 +338,8 @@ workflowAndConcurrencyManifestPayload =
       ]
     missing =
       map ("workflow: " ++) (missingItems workflowSemanticsEvidenceClaimNames requiredWorkflowClaims)
-        ++ map ("runtime concurrency: " ++) (missingItems runtimeConcurrencyEvidenceClaimNames requiredConcurrencyClaims)
+        ++ map ("runtime concurrency: " ++) (missingItems runtimeConcurrencyCoreClaimNames requiredConcurrencyClaims)
+        ++ map ("runtime concurrency: " ++) (missingItems runtimeConcurrencyEvidenceClaimNames ["runtime-concurrency-claim-manifest"])
 
 runtimeConcurrencyEvidencePayload :: ArchitectureConcernEvidencePayload
 runtimeConcurrencyEvidencePayload =
@@ -360,12 +363,14 @@ runtimeConcurrencyEvidencePayload =
       , ("TrustBase required CoreSurface module: Framework.Runtime.Concurrency", "Framework.Runtime.Concurrency" `elem` trustBaseManifestRequiredCoreSurfaceModules)
       , ("Framework.Runtime.Concurrency RuntimeConcurrencyEvidencePayload type", coreSurfaceTypeCapabilityPresent "Framework.Runtime.Concurrency" "RuntimeConcurrencyEvidencePayload")
       , ("Framework.Runtime.Concurrency RuntimeConcurrencyEvidenceStatus type", coreSurfaceTypeCapabilityPresent "Framework.Runtime.Concurrency" "RuntimeConcurrencyEvidenceStatus")
+      , ("Framework.Runtime.Concurrency runtimeConcurrencyCoreClaimNames value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Concurrency" "runtimeConcurrencyCoreClaimNames")
       , ("Framework.Runtime.Concurrency runtimeConcurrencyEvidenceClaimNames value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Concurrency" "runtimeConcurrencyEvidenceClaimNames")
       , ("Framework.Runtime.Concurrency runtimeConcurrencyEvidencePayloads value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Concurrency" "runtimeConcurrencyEvidencePayloads")
       , ("Framework.Runtime.Concurrency runtimeConcurrencyEvidencePayloadPassed value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Concurrency" "runtimeConcurrencyEvidencePayloadPassed")
       , ("Framework.Runtime.Concurrency renderRuntimeConcurrencyEvidencePayloadsJson value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Concurrency" "renderRuntimeConcurrencyEvidencePayloadsJson")
+      , ("runtime concurrency claim manifest", "runtime-concurrency-claim-manifest" `elem` runtimeConcurrencyEvidenceClaimNames)
       ]
-        ++ [ ("runtime concurrency claim: " ++ claim, claim `elem` runtimeConcurrencyEvidenceClaimNames)
+        ++ [ ("runtime concurrency claim: " ++ claim, claim `elem` runtimeConcurrencyCoreClaimNames)
            | claim <- expectedClaims
            ]
     missing =

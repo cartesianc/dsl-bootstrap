@@ -5,6 +5,7 @@ module Framework.Runtime.Concurrency
   , renderRuntimeConcurrencyEvidencePayloadsJson
   , renderRuntimeConcurrencyEvidenceStatus
   , runtimeConcurrencyEvidenceArtifactSummary
+  , runtimeConcurrencyCoreClaimNames
   , runtimeConcurrencyEvidenceClaimNames
   , runtimeConcurrencyEvidencePayloadPassed
   , runtimeConcurrencyEvidencePayloads
@@ -38,7 +39,10 @@ data RuntimeConcurrencyClaimLink = RuntimeConcurrencyClaimLink
 
 runtimeConcurrencyEvidencePayloads :: [WorkflowSemanticsEvidencePayload] -> [RuntimeConcurrencyEvidencePayload]
 runtimeConcurrencyEvidencePayloads workflowPayloads =
-  map (runtimeConcurrencyEvidencePayload workflowPayloads) runtimeConcurrencyClaimLinks
+  corePayloads ++ [runtimeConcurrencyClaimManifestPayload corePayloads]
+  where
+    corePayloads =
+      map (runtimeConcurrencyEvidencePayload workflowPayloads) runtimeConcurrencyClaimLinks
 
 runtimeConcurrencyEvidencePayloadPassed :: RuntimeConcurrencyEvidencePayload -> Bool
 runtimeConcurrencyEvidencePayloadPassed payload =
@@ -77,9 +81,13 @@ runtimeConcurrencyEvidenceArtifactSummary =
   "runtime concurrency evidence payload claims: "
     ++ joinWith ", " runtimeConcurrencyEvidenceClaimNames
 
+runtimeConcurrencyCoreClaimNames :: [String]
+runtimeConcurrencyCoreClaimNames =
+  map runtimeConcurrencyClaimName runtimeConcurrencyClaimLinks
+
 runtimeConcurrencyEvidenceClaimNames :: [String]
 runtimeConcurrencyEvidenceClaimNames =
-  map runtimeConcurrencyClaimName runtimeConcurrencyClaimLinks
+  runtimeConcurrencyCoreClaimNames ++ ["runtime-concurrency-claim-manifest"]
 
 runtimeConcurrencyClaimLinks :: [RuntimeConcurrencyClaimLink]
 runtimeConcurrencyClaimLinks =
@@ -131,6 +139,31 @@ runtimeConcurrencyEvidencePayload workflowPayloads claimLink =
             "missing workflow semantics payload: " ++ runtimeConcurrencyClaimWorkflowClaim claimLink
         , runtimeConcurrencyEvidenceArtifact = runtimeConcurrencyClaimArtifact claimLink
         }
+
+runtimeConcurrencyClaimManifestPayload :: [RuntimeConcurrencyEvidencePayload] -> RuntimeConcurrencyEvidencePayload
+runtimeConcurrencyClaimManifestPayload payloads =
+  RuntimeConcurrencyEvidencePayload
+    { runtimeConcurrencyEvidenceClaim = "runtime-concurrency-claim-manifest"
+    , runtimeConcurrencyEvidenceStatus =
+        if manifestSynced
+          then RuntimeConcurrencyEvidencePassed
+          else RuntimeConcurrencyEvidenceFailed
+    , runtimeConcurrencyEvidenceExpected =
+        "runtime concurrency payload claims match exported claim manifest"
+    , runtimeConcurrencyEvidenceObserved =
+        if manifestSynced
+          then "claim manifest synced: " ++ show (length actualCoreClaimNames) ++ " core claims"
+          else "expected " ++ show runtimeConcurrencyEvidenceClaimNames ++ "; actual " ++ show actualEvidenceClaimNames
+    , runtimeConcurrencyEvidenceArtifact = "RuntimeConcurrencyClaimManifestArtifact"
+    }
+  where
+    actualCoreClaimNames =
+      map runtimeConcurrencyEvidenceClaim payloads
+    actualEvidenceClaimNames =
+      actualCoreClaimNames ++ ["runtime-concurrency-claim-manifest"]
+    manifestSynced =
+      actualCoreClaimNames == runtimeConcurrencyCoreClaimNames
+        && actualEvidenceClaimNames == runtimeConcurrencyEvidenceClaimNames
 
 workflowPayloadFor :: String -> [WorkflowSemanticsEvidencePayload] -> Maybe WorkflowSemanticsEvidencePayload
 workflowPayloadFor _ [] =

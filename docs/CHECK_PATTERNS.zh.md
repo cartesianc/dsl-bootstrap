@@ -239,13 +239,14 @@ runtime-diagnosis-evidence
 runtime-backend-parity-evidence
 ```
 
-`RunRuntimeConcurrencyEvidence` 现在对应 4 条 `RuntimeConcurrencyEvidencePayload`：
+`RunRuntimeConcurrencyEvidence` 现在对应 5 条 `RuntimeConcurrencyEvidencePayload`：
 
 ```text
 runtime-concurrency-parallel-branches
 runtime-concurrency-parallel-merge-conflict
 runtime-concurrency-race-cancellation
 runtime-concurrency-race-exhausted
+runtime-concurrency-claim-manifest
 ```
 
 `RunRuntimeDiagnosisEvidence` 现在对应 4 条 `RuntimeDiagnosisEvidencePayload`：
