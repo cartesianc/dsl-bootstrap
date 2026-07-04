@@ -18,6 +18,8 @@ import Framework.Runtime.Concurrency
   ( runtimeConcurrencyEvidenceClaimNames )
 import Framework.Runtime.Diagnosis
   ( runtimeDiagnosisEvidenceClaimNames )
+import Framework.Runtime.HotPath
+  ( runtimeHotPathEvidenceClaimNames )
 import Framework.TrustBase.Manifest
   ( TrustBaseGatePolicy (..)
   , TrustBaseManifest (..)
@@ -73,7 +75,6 @@ architectureConcernEvidencePayloads = do
   cabalText <- readFile "new-framework-core/new-framework-core.cabal"
   businessWitnessSource <- readFile "domain-app/app/BusinessSyntaxWitness.hs"
   runtimeDiagnosisSource <- readFile "new-framework-core/src/Framework/Runtime/Diagnosis.hs"
-  runtimeHotPathSource <- readFile "new-framework-core/src/Framework/Runtime/HotPath.hs"
   domainBusinessSource <- readFile "domain-app/src/Domain/Business.hs"
   effectVocabularySource <- readFile "domain-app/src/Domain/EffectVocabulary.hs"
   pure
@@ -87,7 +88,7 @@ architectureConcernEvidencePayloads = do
     , capabilityPrivateFactPayload businessWitnessSource
     , businessFacadeBoundaryPayload domainBusinessSource effectVocabularySource
     , trustBaseMachineReadableGatesPayload cabalText
-    , runtimeHotPathGuardPayload runtimeHotPathSource
+    , runtimeHotPathGuardPayload
     , schemaCatalogCoveragePayload
     , semanticRiskReviewPayload
     ]
@@ -323,12 +324,12 @@ trustBaseMachineReadableGatesPayload cabalText =
     missing =
       [ name | (name, present) <- required, not present ]
 
-runtimeHotPathGuardPayload :: String -> ArchitectureConcernEvidencePayload
-runtimeHotPathGuardPayload runtimeHotPathSource =
+runtimeHotPathGuardPayload :: ArchitectureConcernEvidencePayload
+runtimeHotPathGuardPayload =
   concernEvidence
     "session3-runtime-hot-path-guard"
     (null missing)
-    "runtime hot path has import and behavior guard payloads, with JSON schema in TrustBase catalog"
+    "runtime hot path exposes import and behavior guard claims through the stable claim manifest, with JSON schema in TrustBase catalog"
     (observedList missing)
     "RuntimeHotPathGuardCoverageArtifact"
     "medium:runtime-hot-path"
@@ -336,8 +337,8 @@ runtimeHotPathGuardPayload runtimeHotPathSource =
   where
     required =
       [ ("runtime-hot-path-evidence schema", schemaPresent "runtime-hot-path-evidence.v1")
-      , ("hot-path import boundary payload", "runtime-hot-path-import-boundary" `isInfixOf` runtimeHotPathSource)
-      , ("hot-path behavior payload", "runtime-hot-path-executes-minimal-workflow" `isInfixOf` runtimeHotPathSource)
+      , ("hot-path import boundary claim", "runtime-hot-path-import-boundary" `elem` runtimeHotPathEvidenceClaimNames)
+      , ("hot-path behavior claim", "runtime-hot-path-executes-minimal-workflow" `elem` runtimeHotPathEvidenceClaimNames)
       ]
     missing =
       [ name | (name, present) <- required, not present ]
