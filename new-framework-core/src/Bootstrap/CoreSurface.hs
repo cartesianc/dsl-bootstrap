@@ -83,6 +83,8 @@ explicitCoreSurfaceModules =
   , businessFacade
   , businessEvidenceFacade
   , handlerFacade
+  , bootstrapReportFacade
+  , domainReportFacade
   , trustBaseFacade
   , trustBaseManifestFacade
   , fixedPointFacade
@@ -838,6 +840,66 @@ handlerFacade =
           , "typedValueFor"
           , "typedValueFromSome"
           , "valueTagTypeName"
+          ]
+    )
+
+bootstrapReportFacade :: CoreSurfaceModule
+bootstrapReportFacade =
+  moduleSurface
+    "Bootstrap.Report"
+    "framework-core report model and machine-readable JSON renderer"
+    ( map typeCapability
+        [ "ConstraintReport"
+        , "FactClosureReport"
+        , "FrameworkCoreReport"
+        , "FrameworkCoreReportStatus"
+        , "HandlerCoverage"
+        ]
+        ++ map valueCapability
+          [ "buildFrameworkCoreReport"
+          , "frameworkCoreReportPassed"
+          , "printFrameworkCoreReport"
+          , "renderConstraintReport"
+          , "renderFactClosureReport"
+          , "renderFrameworkCoreReport"
+          , "renderFrameworkCoreReportJson"
+          , "renderHandlerCoverage"
+          ]
+    )
+
+domainReportFacade :: CoreSurfaceModule
+domainReportFacade =
+  moduleSurface
+    "Framework.Domain"
+    "domain runtime backend selection, report model, and machine-readable JSON renderer"
+    ( map typeCapability
+        [ "DomainEffectHandlerRegistration"
+        , "DomainHandlerCoverage"
+        , "DomainReport"
+        , "DomainReportStatus"
+        , "DomainRegistration"
+        , "DomainRuntimeBackend"
+        , "DomainSemanticCheck"
+        , "DomainSemanticEvidence"
+        , "DomainSemanticEvidencePayload"
+        , "DomainSemanticEvidenceStatus"
+        ]
+        ++ map valueCapability
+          [ "buildDomainReport"
+          , "domain"
+          , "domainEvidenceFailed"
+          , "domainEvidenceFailedWithPayload"
+          , "domainEvidencePassed"
+          , "domainEvidencePassedWithPayload"
+          , "domainReportSemanticEvidencePassed"
+          , "domainSemanticEvidencePassed"
+          , "domainWithRuntime"
+          , "domainWithRuntimeAndEvidence"
+          , "frameworkCoreDomain"
+          , "frameworkCoreFacadeDomain"
+          , "renderDomainReport"
+          , "renderDomainReportJson"
+          , "runDomain"
           ]
     )
 
