@@ -210,6 +210,12 @@ businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPasse
       (observedBool effectSystemBoundaryMetadataPassed)
       "EffectSystemBoundaryMetadataArtifact"
   , businessEvidence
+      "effect-system-scope-metadata"
+      effectSystemScopeMetadataPassed
+      "private facts stay internal while exports define the public system boundary"
+      (observedBool effectSystemScopeMetadataPassed)
+      "EffectSystemScopeMetadataArtifact"
+  , businessEvidence
       "business-syntax-capability-system-boundary"
       capabilitySystemBoundaryPassed
       "capability lowers to EffectSystemBoundary with send, handler, transform, policy, and pipeline contracts"
@@ -402,6 +408,37 @@ effectSystemBoundaryMetadataPassed =
             Workflow.requirementItems requirement == [pipelineAdapterFact]
           _ ->
             False
+
+effectSystemScopeMetadataPassed :: Bool
+effectSystemScopeMetadataPassed =
+  privateFact `elem` Effect.effectUnitProducedFacts explicitEffectUnit
+    && privateFact `elem` effectUnitPrivateFacts explicitEffectUnit
+    && privateFact `notElem` effectUnitExports explicitEffectUnit
+    && exportedFact `elem` Effect.effectUnitProducedFacts explicitEffectUnit
+    && effectUnitExports explicitEffectUnit == [exportedFact]
+    && Workflow.effectSystemBoundaryPrivateFacts boundary == [privateFact]
+    && Workflow.effectSystemBoundaryExports boundary == [exportedFact]
+  where
+    privateFact =
+      WorkflowFact "ScopePrivateFact"
+    exportedFact =
+      WorkflowFact "ScopeExportedFact"
+    explicitEffectUnit =
+      Effect.effectSystem
+        (EffectName "ScopeProbe")
+        [ Effect.imports [pipelineSourceFact]
+        , Effect.privateFacts [privateFact]
+        , Effect.exports [exportedFact]
+        ]
+        [ Effect.fact privateFact
+            [ Effect.needs pipelineSourceFact
+            ]
+        , Effect.fact exportedFact
+            [ Effect.needs privateFact
+            ]
+        ]
+    boundary =
+      Effect.effectUnitBoundary explicitEffectUnit
 
 capabilitySystemBoundaryPassed :: Bool
 capabilitySystemBoundaryPassed =
