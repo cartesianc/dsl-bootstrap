@@ -20,6 +20,8 @@ emptyRuntime =
     , runtimeComponentEvents = []
     , runtimeCallbackEvents = []
     , runtimeSuspenseEvents = []
+    , runtimeActiveContexts = []
+    , runtimeContextEvents = []
     , runtimeMiddlewareStack = []
     , runtimeMiddlewareEvents = []
     , runtimeFailureDiagnoses = []
@@ -35,6 +37,8 @@ runtimeSnapshot runtime =
     , snapshotRuntimeFactClaims = runtimeFactClaims runtime
     , snapshotRuntimeActiveComponents = runtimeActiveComponents runtime
     , snapshotRuntimeCompletedComponents = runtimeCompletedComponents runtime
+    , snapshotRuntimeActiveContexts = runtimeActiveContexts runtime
+    , snapshotRuntimeContextEvents = runtimeContextEvents runtime
     , snapshotRuntimeTrace = runtimeTrace runtime
     }
 
@@ -48,5 +52,7 @@ renderRuntimeSnapshot snapshot =
   , "  fact claims: " ++ show (snapshotRuntimeFactClaims snapshot)
   , "  active components: " ++ show (snapshotRuntimeActiveComponents snapshot)
   , "  completed components: " ++ show (snapshotRuntimeCompletedComponents snapshot)
+  , "  active contexts: " ++ show (snapshotRuntimeActiveContexts snapshot)
+  , "  context events: " ++ show (length (snapshotRuntimeContextEvents snapshot))
   , "  trace lines: " ++ show (length (snapshotRuntimeTrace snapshot))
   ]

@@ -167,7 +167,7 @@ Framework.Runtime.State
   runtime state seed and snapshot projection helpers
 
 Framework.Runtime.Types
-  shared runtime records, RuntimeError, fact claims, typed values, events, and diagnosis data types
+  shared runtime records, RuntimeError, fact claims, typed values, context events, and diagnosis data types
 
 Framework.Runtime.Diagnosis
   diagnosis builder, RuntimeError attribution, probe completion, payload rendering, and failure diagnosis rendering
@@ -231,7 +231,29 @@ Bootstrap.Runtime.Policy
 
 每一步都应只搬移职责，不改变 `Workflow` 语义和 `EffectTheory` 闭包。
 
-## 5. Artifact gate
+## 5. AST context listener
+
+AST layout 和 live cursor 使用同一套 runtime 语义，不引入第三套运行时。
+
+```text
+hanging context
+  RecursionContextName
+  RecursionSchemeModel
+  RecursionContextAlgebra
+```
+
+`RecursionContextAlgebra` 中的 `EffectSystem` 进入 `NativeAppPlan` validation。带 `listen-during-run` mode 的 context 会让 typed runtime 记录：
+
+```text
+RuntimeContextStarted
+RuntimeContextCompleted
+RuntimeContextNodeEntered
+RuntimeContextNodeExited
+```
+
+`Framework.Ast.Layout` 把这些 event 投影成 `AstRuntimeCursor`，再用 path 对齐运行前生成的 `AstLayoutModel`。默认 framework-core AST 不自动挂 layout context。
+
+## 6. Artifact gate
 
 当前 artifact gate 会复制 framework/code artifact inputs 到：
 

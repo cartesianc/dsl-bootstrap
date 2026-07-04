@@ -286,6 +286,8 @@ collectHangingActionWaits currentAction =
       collectWorkflowWaits RootScope (loopBody currentLoop)
     HangingMiddleware _ body ->
       collectWorkflowWaits RootScope body
+    HangingContext _ body ->
+      collectWorkflowWaits RootScope body
 
 collectFactExpr :: FactExpr WorkflowFact -> [WorkflowFact]
 collectFactExpr (FactItems currentFacts) =

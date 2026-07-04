@@ -14,6 +14,7 @@ module Framework.Runtime.Interpreter
   , RuntimeCallbackEvent (..)
   , RuntimeComponentEvent (..)
   , RuntimeComponentStatus (..)
+  , RuntimeContextEvent (..)
   , RuntimeEffectEnvironment (..)
   , RuntimeEnv (..)
   , RuntimeError (..)
@@ -297,9 +298,10 @@ runBlueprintWithEffectEnvironmentRuntimeResult environment effects blueprint =
         then pure (RuntimeFailed (RuntimeWaitBlocked (renderNativePlanErrors plan)) emptyRuntime)
         else do
           let callbacks = runtimeCallbacksFromHanging (blueprintHanging blueprint)
+              contexts = runtimeContextsFromHanging (blueprintHanging blueprint)
               currentEnv =
                 withRuntimeCallbacks callbacks (runtimeEnv environment plan)
-          appResult <- runRuntimeM currentEnv emptyRuntime (runWorkflow (blueprintApp blueprint))
+          appResult <- runRuntimeM currentEnv emptyRuntime (runWorkflowWithContexts contexts (blueprintApp blueprint))
           case appResult of
             RuntimeFailed errorReport runtime ->
               pure (RuntimeFailed (traceFailure errorReport runtime) runtime)
@@ -373,25 +375,124 @@ withRuntimeMiddleware currentMiddleware body =
           RuntimeFailed errorReport (popRuntimeMiddleware currentMiddleware nextState)
 
 runWorkflow :: Workflow WorkflowFact Interceptor -> RuntimeM ()
-runWorkflow workflow =
+runWorkflow =
+  runWorkflowAt ["blueprint", "app", "root"]
+
+runWorkflowWithContexts :: [Workflow.RecursionContext WorkflowFact] -> Workflow WorkflowFact Interceptor -> RuntimeM ()
+runWorkflowWithContexts contexts workflow =
+  runWithContexts contexts (runWorkflow workflow)
+
+runWithContexts :: [Workflow.RecursionContext WorkflowFact] -> RuntimeM a -> RuntimeM a
+runWithContexts [] body =
+  body
+runWithContexts (currentContext : rest) body
+  | Workflow.recursionModelHasMode Workflow.listenDuringRunMode (Workflow.recursionContextModel currentContext) =
+      withRuntimeContext (Workflow.recursionContextName currentContext) (runWithContexts rest body)
+  | otherwise =
+      runWithContexts rest body
+
+runWorkflowAt :: [String] -> Workflow WorkflowFact Interceptor -> RuntimeM ()
+runWorkflowAt path workflow =
+  withWorkflowContextEvents path (workflowNodeKind workflow) (workflowNodeName workflow) $
   case workflow of
     RunWorkflow system ->
       runEffectSystem system
     ChainWorkflow steps -> do
       traceRuntimeM "chain"
-      mapM_ runWorkflow (chainItems steps)
+      mapM_ (uncurry (runWorkflowAt . childPath path "step")) (indexedItems (chainItems steps))
     ParallelWorkflow branches -> do
       traceRuntimeM "parallel"
-      runParallel (parallelItems branches)
+      runParallel path (parallelItems branches)
     FallbackWorkflow branches ->
-      runFallback (fallbackItems branches)
+      runFallback path (fallbackItems branches)
     RaceWorkflow branches ->
-      runRace (raceItems branches)
+      runRace path (raceItems branches)
     ChoiceWorkflow selectedKey branches ->
-      runChoice selectedKey (choiceItems branches)
+      runChoice path selectedKey (choiceItems branches)
     WaitWorkflow wait body -> do
       runFactExpr (Workflow.waitFacts wait)
-      runWorkflow body
+      runWorkflowAt (path ++ ["body"]) body
+
+workflowNodeKind :: Workflow WorkflowFact Interceptor -> String
+workflowNodeKind workflow =
+  case workflow of
+    RunWorkflow _ ->
+      "run"
+    ChainWorkflow _ ->
+      "chain"
+    ParallelWorkflow _ ->
+      "parallel"
+    FallbackWorkflow _ ->
+      "fallback"
+    RaceWorkflow _ ->
+      "race"
+    ChoiceWorkflow _ _ ->
+      "choice"
+    WaitWorkflow _ _ ->
+      "wait"
+
+workflowNodeName :: Workflow WorkflowFact Interceptor -> String
+workflowNodeName workflow =
+  case workflow of
+    RunWorkflow system ->
+      show (Workflow.effectSystemName system)
+    ChainWorkflow _ ->
+      "chain"
+    ParallelWorkflow _ ->
+      "parallel"
+    FallbackWorkflow _ ->
+      "fallback"
+    RaceWorkflow _ ->
+      "race"
+    ChoiceWorkflow selectedKey _ ->
+      choiceKeyText selectedKey
+    WaitWorkflow _ _ ->
+      "wait"
+
+withWorkflowContextEvents :: [String] -> String -> String -> RuntimeM a -> RuntimeM a
+withWorkflowContextEvents path kind name body = do
+  recordContextNodeEntered path kind name
+  result <- catchRuntime body
+  recordContextNodeExited path kind name
+  case result of
+    Right value ->
+      pure value
+    Left errorReport ->
+      throwRuntimeError errorReport
+
+recordContextNodeEntered :: [String] -> String -> String -> RuntimeM ()
+recordContextNodeEntered path kind name =
+  modifyRuntimeState
+    ( \runtime ->
+        runtime
+          { runtimeContextEvents =
+              runtimeContextEvents runtime
+                ++ [ RuntimeContextNodeEntered contextName path kind name
+                   | contextName <- reverse (runtimeActiveContexts runtime)
+                   ]
+          }
+    )
+
+recordContextNodeExited :: [String] -> String -> String -> RuntimeM ()
+recordContextNodeExited path kind name =
+  modifyRuntimeState
+    ( \runtime ->
+        runtime
+          { runtimeContextEvents =
+              runtimeContextEvents runtime
+                ++ [ RuntimeContextNodeExited contextName path kind name
+                   | contextName <- reverse (runtimeActiveContexts runtime)
+                   ]
+          }
+    )
+
+indexedItems :: [item] -> [(Int, item)]
+indexedItems =
+  zip [(0 :: Int) ..]
+
+childPath :: [String] -> String -> Int -> [String]
+childPath path prefix index =
+  path ++ [prefix ++ ":" ++ show index]
 
 runEffectSystem :: Workflow.EffectSystem WorkflowFact -> RuntimeM ()
 runEffectSystem system = do
@@ -431,31 +532,33 @@ runWorkflowCallback callback = do
       recordCallbackEvent (RuntimeCallbackCompleted (runtimeCallbackTarget callback))
       traceRuntimeM ("callback " ++ show (runtimeCallbackTarget callback) ++ " completed")
 
-runFallback :: [Workflow WorkflowFact Interceptor] -> RuntimeM ()
-runFallback branches = do
+runFallback :: [String] -> [Workflow WorkflowFact Interceptor] -> RuntimeM ()
+runFallback path branches = do
   runtime <- getRuntimeState
-  runFallbackFrom runtime branches
+  runFallbackFrom path runtime (zip [(0 :: Int) ..] branches)
 
-runFallbackFrom :: Runtime -> [Workflow WorkflowFact Interceptor] -> RuntimeM ()
-runFallbackFrom runtime [] = do
+runFallbackFrom :: [String] -> Runtime -> [(Int, Workflow WorkflowFact Interceptor)] -> RuntimeM ()
+runFallbackFrom _ runtime [] = do
   putRuntimeState runtime
   throwRuntimeError RuntimeFallbackExhausted
-runFallbackFrom runtime (branch : rest) = do
+runFallbackFrom path runtime ((index, branch) : rest) = do
   putRuntimeState runtime
-  result <- catchRuntime (runWorkflow branch)
+  let branchPath =
+        path ++ ["branch:" ++ show index]
+  result <- catchRuntime (runWorkflowAt branchPath branch)
   case result of
     Right _ ->
       pure ()
     Left _ ->
-      runFallbackFrom runtime rest
+      runFallbackFrom path runtime rest
 
-runRace :: [Workflow WorkflowFact Interceptor] -> RuntimeM ()
-runRace [] =
+runRace :: [String] -> [Workflow WorkflowFact Interceptor] -> RuntimeM ()
+runRace _ [] =
   throwRuntimeError RuntimeRaceEmpty
-runRace branches = do
+runRace path branches = do
   environment <- askRuntimeEnv
   runtime <- getRuntimeState
-  result <- liftRuntimeIO (runRaceBranches environment runtime (zip [0 ..] branches))
+  result <- liftRuntimeIO (runRaceBranches path environment runtime (zip [0 ..] branches))
   case result of
     Nothing -> do
       putRuntimeState runtime
@@ -463,25 +566,25 @@ runRace branches = do
     Just winnerRuntime ->
       putRuntimeState winnerRuntime
 
-runChoice :: ChoiceKey -> [(ChoiceKey, Workflow WorkflowFact Interceptor)] -> RuntimeM ()
-runChoice selectedKey branches =
+runChoice :: [String] -> ChoiceKey -> [(ChoiceKey, Workflow WorkflowFact Interceptor)] -> RuntimeM ()
+runChoice path selectedKey branches =
   case firstJust (map selectedBranch branches) of
-    Just branch ->
-      runWorkflow branch
+    Just (key, branch) ->
+      runWorkflowAt (path ++ ["branch:" ++ choiceKeyText key]) branch
     Nothing ->
       throwRuntimeError (RuntimeChoiceMissingBranch ("missing choice branch " ++ choiceKeyText selectedKey))
   where
     selectedBranch (currentKey, branch)
       | currentKey == selectedKey =
-          Just branch
+          Just (currentKey, branch)
       | otherwise =
           Nothing
 
-runParallel :: [Workflow WorkflowFact Interceptor] -> RuntimeM ()
-runParallel branches = do
+runParallel :: [String] -> [Workflow WorkflowFact Interceptor] -> RuntimeM ()
+runParallel path branches = do
   environment <- askRuntimeEnv
   runtime <- getRuntimeState
-  results <- liftRuntimeIO (runParallelBranches environment runtime (zip [0 ..] branches))
+  results <- liftRuntimeIO (runParallelBranches path environment runtime (zip [0 ..] branches))
   case firstBranchFailure results of
     Just (index, errorReport, failedRuntime) -> do
       putRuntimeState failedRuntime
@@ -520,53 +623,58 @@ runFactAnyFrom runtime (expression : rest) = do
       runFactAnyFrom runtime rest
 
 runParallelBranches ::
+  [String] ->
   RuntimeEnv ->
   Runtime ->
   [(Int, Workflow WorkflowFact Interceptor)] ->
   IO [WorkflowBranchResult]
-runParallelBranches environment runtime branches = do
-  resultVars <- mapM (forkWorkflowBranch environment runtime) branches
+runParallelBranches path environment runtime branches = do
+  resultVars <- mapM (forkWorkflowBranch path environment runtime) branches
   mapM takeMVar resultVars
 
 runRaceBranches ::
+  [String] ->
   RuntimeEnv ->
   Runtime ->
   [(Int, Workflow WorkflowFact Interceptor)] ->
   IO (Maybe Runtime)
-runRaceBranches environment runtime branches = do
+runRaceBranches path environment runtime branches = do
   resultVar <- newEmptyMVar
-  threadIds <- mapM (forkRaceWorkflowBranch environment runtime resultVar) branches
+  threadIds <- mapM (forkRaceWorkflowBranch path environment runtime resultVar) branches
   waitForRaceWinner (length branches) 0 threadIds resultVar
 
 forkWorkflowBranch ::
+  [String] ->
   RuntimeEnv ->
   Runtime ->
   (Int, Workflow WorkflowFact Interceptor) ->
   IO (MVar WorkflowBranchResult)
-forkWorkflowBranch environment runtime branch = do
+forkWorkflowBranch path environment runtime branch = do
   resultVar <- newEmptyMVar
-  _ <- forkWorkflowBranchInto environment runtime resultVar branch
+  _ <- forkWorkflowBranchInto path environment runtime resultVar branch
   pure resultVar
 
 forkRaceWorkflowBranch ::
+  [String] ->
   RuntimeEnv ->
   Runtime ->
   MVar WorkflowBranchResult ->
   (Int, Workflow WorkflowFact Interceptor) ->
   IO (Int, ThreadId)
-forkRaceWorkflowBranch environment runtime resultVar branch@(index, _) = do
-  threadId <- forkWorkflowBranchInto environment runtime resultVar branch
+forkRaceWorkflowBranch path environment runtime resultVar branch@(index, _) = do
+  threadId <- forkWorkflowBranchInto path environment runtime resultVar branch
   pure (index, threadId)
 
 forkWorkflowBranchInto ::
+  [String] ->
   RuntimeEnv ->
   Runtime ->
   MVar WorkflowBranchResult ->
   (Int, Workflow WorkflowFact Interceptor) ->
   IO ThreadId
-forkWorkflowBranchInto environment runtime resultVar (index, branch) =
+forkWorkflowBranchInto path environment runtime resultVar (index, branch) =
   forkIO $ do
-    result <- tryRuntimeBranch (runRuntimeM environment runtime (runWorkflow branch))
+    result <- tryRuntimeBranch (runRuntimeM environment runtime (runWorkflowAt (path ++ ["branch:" ++ show index]) branch))
     putMVar resultVar (branchResultFromRuntimeResult index runtime result)
 
 tryRuntimeBranch :: IO (RuntimeResult ()) -> IO (Either SomeException (RuntimeResult ()))
@@ -666,6 +774,8 @@ mergeParallelRuntime :: Runtime -> Runtime -> Runtime -> Either String Runtime
 mergeParallelRuntime baseRuntime mergedRuntime branchRuntime
   | runtimeActiveComponents branchRuntime /= runtimeActiveComponents baseRuntime =
       Left "branch left active components behind"
+  | runtimeActiveContexts branchRuntime /= runtimeActiveContexts baseRuntime =
+      Left "branch left active contexts behind"
   | runtimeMiddlewareStack branchRuntime /= runtimeMiddlewareStack baseRuntime =
       Left "branch left middleware stack behind"
   | otherwise = do
@@ -690,6 +800,9 @@ mergeParallelRuntime baseRuntime mergedRuntime branchRuntime
           , runtimeSuspenseEvents =
               runtimeSuspenseEvents mergedRuntime
                 ++ listDelta (runtimeSuspenseEvents baseRuntime) (runtimeSuspenseEvents branchRuntime)
+          , runtimeContextEvents =
+              runtimeContextEvents mergedRuntime
+                ++ listDelta (runtimeContextEvents baseRuntime) (runtimeContextEvents branchRuntime)
           , runtimeMiddlewareEvents =
               runtimeMiddlewareEvents mergedRuntime
                 ++ listDelta (runtimeMiddlewareEvents baseRuntime) (runtimeMiddlewareEvents branchRuntime)
@@ -1271,6 +1384,8 @@ runHangingAction action =
       runLoop loop
     HangingMiddleware middleware body ->
       runMiddleware middleware body
+    HangingContext currentContext body ->
+      registerRuntimeContext currentContext body
 
 runtimeCallbacksFromHanging :: Workflow.AppHanging -> [RuntimeCallback]
 runtimeCallbacksFromHanging hanging =
@@ -1281,6 +1396,12 @@ runtimeCallbacksFromHanging hanging =
   | HangingCallback callback <- hangingItems hanging
   ]
 
+runtimeContextsFromHanging :: Workflow.AppHanging -> [Workflow.RecursionContext WorkflowFact]
+runtimeContextsFromHanging hanging =
+  [ currentContext
+  | HangingContext currentContext _ <- hangingItems hanging
+  ]
+
 runtimeHangingAction :: HangingAction fact hook workflow -> Bool
 runtimeHangingAction action =
   case action of
@@ -1288,6 +1409,55 @@ runtimeHangingAction action =
       False
     _ ->
       True
+
+registerRuntimeContext :: Workflow.RecursionContext WorkflowFact -> Workflow WorkflowFact Interceptor -> RuntimeM ()
+registerRuntimeContext currentContext _ =
+  traceRuntimeM
+    ( "context "
+        ++ show contextName
+        ++ " model "
+        ++ Workflow.recursionSchemeModelName model
+        ++ " registered modes "
+        ++ show (map show (Workflow.recursionSchemeModelModes model))
+    )
+  where
+    contextName =
+      Workflow.recursionContextName currentContext
+    model =
+      Workflow.recursionContextModel currentContext
+
+withRuntimeContext :: Workflow.RecursionContextName -> RuntimeM a -> RuntimeM a
+withRuntimeContext contextName body = do
+  enterRuntimeContext contextName
+  result <- catchRuntime body
+  exitRuntimeContext contextName
+  case result of
+    Right value ->
+      pure value
+    Left errorReport ->
+      throwRuntimeError errorReport
+
+enterRuntimeContext :: Workflow.RecursionContextName -> RuntimeM ()
+enterRuntimeContext contextName =
+  modifyRuntimeState
+    ( \runtime ->
+        runtime
+          { runtimeActiveContexts = contextName : runtimeActiveContexts runtime
+          , runtimeContextEvents =
+              runtimeContextEvents runtime ++ [RuntimeContextStarted contextName]
+          }
+    )
+
+exitRuntimeContext :: Workflow.RecursionContextName -> RuntimeM ()
+exitRuntimeContext contextName =
+  modifyRuntimeState
+    ( \runtime ->
+        runtime
+          { runtimeActiveContexts = removeFirst contextName (runtimeActiveContexts runtime)
+          , runtimeContextEvents =
+              runtimeContextEvents runtime ++ [RuntimeContextCompleted contextName]
+          }
+    )
 
 requestSuspense :: EffectSystemName -> RuntimeM ()
 requestSuspense target = do

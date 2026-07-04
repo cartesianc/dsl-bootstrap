@@ -77,6 +77,7 @@ coreSurfaceModules =
 explicitCoreSurfaceModules :: [CoreSurfaceModule]
 explicitCoreSurfaceModules =
   [ astFacade
+  , astLayoutFacade
   , workflowFacade
   , workflowSemanticsFacade
   , effectFacade
@@ -258,6 +259,7 @@ coreSurfaceSlices =
       , coreSurfaceSlicePhase = "minimal-core-freeze"
       , coreSurfaceSliceModules =
           [ "Framework.Ast"
+          , "Framework.Ast.Layout"
           , "Framework.Workflow"
           , "Framework.Effect"
           , "Framework.Business"
@@ -556,6 +558,29 @@ astFacade =
     "frontend AST facade for app blueprints, workflow structure, hanging hooks, facts, and names"
     (surfaceModuleCapabilities workflowFacade)
 
+astLayoutFacade :: CoreSurfaceModule
+astLayoutFacade =
+  moduleSurface
+    "Framework.Ast.Layout"
+    "optional AST layout model and runtime cursor projection for explicit recursion contexts"
+    ( map typeCapability
+        [ "AstLayoutAxis"
+        , "AstLayoutEdge"
+        , "AstLayoutModel"
+        , "AstLayoutNode"
+        , "AstRuntimeCursor"
+        ]
+        ++ map valueCapability
+          [ "astLayoutContext"
+          , "astLiveLayoutContext"
+          , "astLayoutNodeByPath"
+          , "astRuntimeCursorFromEvent"
+          , "layoutAppBlueprint"
+          , "layoutAstTree"
+          , "renderAstLayoutModel"
+          ]
+    )
+
 workflowFacade :: CoreSurfaceModule
 workflowFacade =
   moduleSurface
@@ -581,6 +606,11 @@ workflowFacade =
         , "Middleware"
         , "Fallback"
         , "Race"
+        , "RecursionContext"
+        , "RecursionContextAlgebra"
+        , "RecursionContextName"
+        , "RecursionSchemeMode"
+        , "RecursionSchemeModel"
         , "Choice"
         , "Callback"
         , "Wait"
@@ -637,6 +667,7 @@ workflowFacade =
           , "chain"
           , "parallel"
           , "middleware"
+          , "context"
           , "fallback"
           , "race"
           , "choice"
@@ -650,6 +681,25 @@ workflowFacade =
           , "systemBoundaryWithPipelines"
           , "systemBoundaryWithPolicies"
           , "loop"
+          , "anaMode"
+          , "apoMode"
+          , "cataMode"
+          , "chronoMode"
+          , "futuMode"
+          , "generalizedMode"
+          , "histoMode"
+          , "hyloMode"
+          , "listenDuringRunMode"
+          , "paraMode"
+          , "preproMode"
+          , "recursionContext"
+          , "recursionContextAlgebra"
+          , "recursionMode"
+          , "recursionModel"
+          , "recursionModelHasMode"
+          , "renderBeforeRunMode"
+          , "withRecursionContext"
+          , "zygoMode"
           ]
     )
 
@@ -1540,6 +1590,7 @@ backgroundRuntime =
         , "RuntimeCallbackEvent"
         , "RuntimeComponentEvent"
         , "RuntimeComponentStatus"
+        , "RuntimeContextEvent"
         , "RuntimeEnv"
         , "RuntimeError"
         , "RuntimeEffectEnvironment"
@@ -1894,6 +1945,7 @@ runtimeTypesFacade =
         , "RuntimeDiagnosisProbeStatus"
         , "RuntimeDiagnosisRootCause"
         , "RuntimeDiagnosisStep"
+        , "RuntimeContextEvent"
         , "RuntimeValue"
         , "RuntimeTypedValue"
         , "SomeRuntimeValue"

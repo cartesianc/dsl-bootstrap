@@ -17,11 +17,14 @@ loop       运行到 facts/runtime values 固定点，最多 16 轮
 callback   目标 component 进入时触发；失败写入记录
 middleware 记录 body 前后的 entered/exited 事件，失败路径同样记录退出
 suspense   记录目标状态和轻量 RuntimeSnapshot
+context    在 hanging tree 上挂 recursion scheme model 和 algebra effect systems
 ```
 
 `parallel` 和 `race` 使用真实 runtime branch。每个 branch 都从同一份输入 runtime state 启动。`parallel` 按 blueprint 分支顺序合并结果。同一 `TypeName` 在多个成功分支中产生不同 value 时，`parallel` 返回 merge conflict。
 
 `suspense` 只捕获可渲染的 runtime snapshot。数据库 schema、resume queue、分布式恢复由 host 层设计。
+
+`context` 是可选 observer/projection handle。带 `listen-during-run` mode 的 context 会让 runtime 在 workflow 节点进入和退出时记录 `RuntimeContextEvent`。context algebra 的 `EffectSystem` 会进入 build validation；默认 core 不自动挂 AST layout context。
 
 ## 见证程序
 
@@ -52,6 +55,7 @@ EffectSystemBoundary imports / private facts / exports 执行语义
 EffectSystem scope validation 和显式 boundary rule closure
 EffectSystem send/handler/transform/policy contract validation
 EffectSystem pipeline artifact/edge validation
+recursion context listener 和 context algebra validation
 ```
 
 ## EffectSystem boundary
@@ -96,3 +100,5 @@ workflow-parallel-conflict
 workflow-race-cancellation
 workflow-race-exhausted
 ```
+
+AST layout 和 runtime cursor 见 [AST Layout 与 Recursion Context](AST_LAYOUT_CONTEXT.zh.md)。

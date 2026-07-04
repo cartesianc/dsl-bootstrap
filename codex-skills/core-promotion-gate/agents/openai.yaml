@@ -1,0 +1,4 @@
+interface:
+  display_name: "Core Promotion Gate"
+  short_description: "Validate and publish a promoted framework core"
+  default_prompt: "Use $core-promotion-gate to validate whether this self-iterating framework snapshot can become the new core."

@@ -14,12 +14,16 @@ module Blueprint
   , Race
   , Choice
   , Hanging
+  , RecursionContextComponent
+  , RecursionContextAlgebraComponent
+  , RecursionSchemeModelComponent
   , FactDsl (facts)
   , effectSystem
   , run
   , chain
   , parallel
   , middleware
+  , context
   , wait
   , callback
   , suspense
@@ -34,15 +38,41 @@ module Blueprint
   , EffectSystemName (..)
   , Interceptor (..)
   , LogEvent (..)
+  , RecursionContextName (..)
+  , RecursionSchemeMode (..)
   , WorkflowFact (..)
+  , listenDuringRunMode
+  , recursionContext
+  , recursionContextAlgebra
+  , recursionModel
+  , recursionMode
+  , renderBeforeRunMode
+  , withRecursionContext
+  , cataMode
+  , paraMode
+  , histoMode
+  , anaMode
+  , apoMode
+  , futuMode
+  , hyloMode
+  , chronoMode
+  , preproMode
+  , zygoMode
+  , generalizedMode
   ) where
 
 import Framework.Workflow
-  ( ChoiceKey (..)
+  ( AppBlueprint
+  , ChoiceKey (..)
   , EffectSystem
   , EffectSystemName (..)
   , Interceptor (..)
   , LogEvent (..)
+  , RecursionContext
+  , RecursionContextAlgebra
+  , RecursionContextName (..)
+  , RecursionSchemeMode (..)
+  , RecursionSchemeModel
   , Workflow
   , WorkflowFact (..)
   )
@@ -71,6 +101,12 @@ type Race = WorkflowComponent
 type Choice = WorkflowComponent
 
 type Hanging = Architecture.Hanging HangingComponent
+
+type RecursionContextComponent = RecursionContext WorkflowFact
+
+type RecursionContextAlgebraComponent = RecursionContextAlgebra WorkflowFact
+
+type RecursionSchemeModelComponent = RecursionSchemeModel WorkflowFact
 
 class FactDsl input where
   facts :: input -> FactComponent
@@ -106,6 +142,10 @@ parallel =
 middleware :: Interceptor -> WorkflowComponent -> Middleware
 middleware =
   Architecture.middleware
+
+context :: RecursionContextComponent -> WorkflowComponent -> HangingComponent
+context =
+  Architecture.context
 
 wait :: FactDsl currentFacts => currentFacts -> WorkflowComponent -> Wait
 wait currentFacts =
@@ -146,3 +186,75 @@ race =
 choice :: ChoiceKey -> [(ChoiceKey, WorkflowComponent)] -> Choice
 choice =
   Architecture.choice
+
+recursionContext :: RecursionContextName -> RecursionSchemeModelComponent -> RecursionContextComponent
+recursionContext =
+  Architecture.recursionContext
+
+recursionContextAlgebra :: String -> [EffectSystemComponent] -> RecursionContextAlgebraComponent
+recursionContextAlgebra =
+  Architecture.recursionContextAlgebra
+
+recursionModel :: String -> [RecursionSchemeMode] -> RecursionContextAlgebraComponent -> RecursionSchemeModelComponent
+recursionModel =
+  Architecture.recursionModel
+
+recursionMode :: String -> RecursionSchemeMode
+recursionMode =
+  Architecture.recursionMode
+
+renderBeforeRunMode :: RecursionSchemeMode
+renderBeforeRunMode =
+  Architecture.renderBeforeRunMode
+
+listenDuringRunMode :: RecursionSchemeMode
+listenDuringRunMode =
+  Architecture.listenDuringRunMode
+
+withRecursionContext :: RecursionContextComponent -> AppBlueprint -> AppBlueprint
+withRecursionContext =
+  Architecture.withRecursionContext
+
+cataMode :: RecursionSchemeMode
+cataMode =
+  Architecture.cataMode
+
+paraMode :: RecursionSchemeMode
+paraMode =
+  Architecture.paraMode
+
+histoMode :: RecursionSchemeMode
+histoMode =
+  Architecture.histoMode
+
+anaMode :: RecursionSchemeMode
+anaMode =
+  Architecture.anaMode
+
+apoMode :: RecursionSchemeMode
+apoMode =
+  Architecture.apoMode
+
+futuMode :: RecursionSchemeMode
+futuMode =
+  Architecture.futuMode
+
+hyloMode :: RecursionSchemeMode
+hyloMode =
+  Architecture.hyloMode
+
+chronoMode :: RecursionSchemeMode
+chronoMode =
+  Architecture.chronoMode
+
+preproMode :: RecursionSchemeMode
+preproMode =
+  Architecture.preproMode
+
+zygoMode :: RecursionSchemeMode
+zygoMode =
+  Architecture.zygoMode
+
+generalizedMode :: String -> RecursionSchemeMode
+generalizedMode =
+  Architecture.generalizedMode

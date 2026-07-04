@@ -49,6 +49,7 @@ buildNativeApp :: AppBlueprint -> EffectTheory -> Either String NativeAppPlan
 buildNativeApp blueprint effects =
   let systems =
         collectWorkflowSystems (blueprintApp blueprint)
+          ++ collectHangingContextSystems (blueprintHanging blueprint)
       rootFacts =
         collectWorkflowFacts (blueprintApp blueprint)
       factRules =
@@ -828,6 +829,21 @@ collectWorkflowSystems workflow =
       concatMap (collectWorkflowSystems . snd) (choiceItems branches)
     WaitWorkflow _ body ->
       collectWorkflowSystems body
+
+collectHangingContextSystems :: Workflow.AppHanging -> [Workflow.EffectSystem WorkflowFact]
+collectHangingContextSystems currentHanging =
+  concatMap collectHangingActionContextSystems (Workflow.hangingItems currentHanging)
+
+collectHangingActionContextSystems ::
+  Workflow.HangingAction WorkflowFact Workflow.Interceptor Workflow.App ->
+  [Workflow.EffectSystem WorkflowFact]
+collectHangingActionContextSystems currentAction =
+  case currentAction of
+    Workflow.HangingContext currentContext _ ->
+      Workflow.recursionContextAlgebraEffects
+        (Workflow.recursionSchemeModelAlgebra (Workflow.recursionContextModel currentContext))
+    _ ->
+      []
 
 collectFactExpr :: FactExpr WorkflowFact -> [WorkflowFact]
 collectFactExpr expression =

@@ -36,6 +36,7 @@ workflowSemanticsCoreClaimNames =
   , "workflow-middleware-failure"
   , "workflow-suspense-snapshot"
   , "workflow-callback-failure"
+  , "workflow-recursion-context"
   , "workflow-native-framework-alignment"
   , "workflow-effect-system-boundary"
   , "workflow-effect-system-scope"

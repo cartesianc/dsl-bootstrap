@@ -48,6 +48,8 @@ architectureConcernCoreClaimNames =
   , "session1-runtime-diagnosis-implementation-boundary"
   , "session1-runtime-implementation-module-coverage"
   , "session1-ast-core-cabal-claim-link"
+  , "session123-ast-tree-structured-projection"
+  , "session123-ast-layout-optional-projection"
   , "session1-runtime-backend-parity-payloads"
   , "session2-effect-system-scope-boundary"
   , "session2-workflow-concurrency-claim-manifest"

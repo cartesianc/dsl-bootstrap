@@ -21,6 +21,7 @@ import System.Timeout
   )
 
 import qualified Bootstrap.Runtime as Native
+import qualified Framework.Ast.Layout as L
 import qualified Framework.Effect as E
 import qualified Framework.Runtime as R
 import Framework.Runtime.Concurrency
@@ -157,6 +158,12 @@ workflowSemanticsClaims =
       "callback failed event is present for target flow"
       "WorkflowCallbackFailureArtifact"
       callbackFailureWitness
+  , WorkflowSemanticsClaim
+      "workflow-recursion-context"
+      "hanging context carries optional recursion scheme modes and algebra effects through AST semantics"
+      "listen mode records workflow node events and context algebra effect systems participate in plan validation"
+      "WorkflowRecursionContextArtifact"
+      recursionContextWitness
   , WorkflowSemanticsClaim
       "workflow-native-framework-alignment"
       "native bootstrap runtime and framework runtime agree on final facts"
@@ -493,6 +500,39 @@ callbackFailureWitness = do
       (theory [factPure targetFact, factUses failFact failSend, external failSend failType])
   require "callback failed event" (R.RuntimeCallbackFailed targetFlow `elem` R.runtimeCallbackEvents runtime)
 
+recursionContextWitness :: IO ()
+recursionContextWitness = do
+  runtime <-
+    runFrameworkSuccess
+      "recursion context listener"
+      (frameworkEnvironment [])
+      validContextBlueprint
+      validContextTheory
+  require "context app fact" (contextAppFact `elem` R.availableFacts runtime)
+  require "context started" (R.RuntimeContextStarted contextName `elem` R.runtimeContextEvents runtime)
+  require "context completed" (R.RuntimeContextCompleted contextName `elem` R.runtimeContextEvents runtime)
+  require "context run entered" (any (contextRunEntered contextName) (R.runtimeContextEvents runtime))
+  require "context run exited" (any (contextRunExited contextName) (R.runtimeContextEvents runtime))
+  let layout =
+        L.layoutAppBlueprint validContextBlueprint
+      contextRunCursors =
+        [ cursor
+        | event <- R.runtimeContextEvents runtime
+        , Just cursor <- [L.astRuntimeCursorFromEvent event]
+        , L.astRuntimeCursorContext cursor == contextName
+        , L.astRuntimeCursorKind cursor == "run"
+        ]
+      cursorPathInLayout cursor =
+        case L.astLayoutNodeByPath (L.astRuntimeCursorPath cursor) layout of
+          Just node ->
+            L.astLayoutNodeKind node == L.astRuntimeCursorKind cursor
+              && L.astLayoutNodeName node == L.astRuntimeCursorName cursor
+          Nothing ->
+            False
+  require "context cursor aligns with layout" (any cursorPathInLayout contextRunCursors)
+  requirePlanPasses "valid context algebra" validContextBlueprint validContextTheory
+  requirePlanFails "context algebra missing import" missingContextImportBlueprint missingContextImportTheory
+
 nativeFrameworkAlignmentWitness :: IO ()
 nativeFrameworkAlignmentWitness = do
   frameworkRuntime <-
@@ -721,6 +761,22 @@ require _ True =
 require label False =
   failWitness label "assertion failed"
 
+contextRunEntered :: W.RecursionContextName -> R.RuntimeContextEvent -> Bool
+contextRunEntered expectedContext event =
+  case event of
+    R.RuntimeContextNodeEntered currentContext _ "run" _ ->
+      currentContext == expectedContext
+    _ ->
+      False
+
+contextRunExited :: W.RecursionContextName -> R.RuntimeContextEvent -> Bool
+contextRunExited expectedContext event =
+  case event of
+    R.RuntimeContextNodeExited currentContext _ "run" _ ->
+      currentContext == expectedContext
+    _ ->
+      False
+
 parallelBlueprint :: W.AppBlueprint
 parallelBlueprint =
   blueprint (W.parallel [fact leftFact, fact rightFact])
@@ -743,6 +799,61 @@ alignmentTheory =
   theory
     [ factPure alignmentFirstFact
     , E.fact alignmentSecondFact [E.needs alignmentFirstFact]
+    ]
+
+validContextBlueprint :: W.AppBlueprint
+validContextBlueprint =
+  W.withRecursionContext contextDefinition (blueprint (fact contextAppFact))
+
+missingContextImportBlueprint :: W.AppBlueprint
+missingContextImportBlueprint =
+  W.withRecursionContext missingImportContextDefinition (blueprint (fact contextAppFact))
+
+contextDefinition :: W.RecursionContext W.WorkflowFact
+contextDefinition =
+  W.recursionContext
+    contextName
+    ( W.recursionModel
+        "workflow-semantics-optional-zygo"
+        [W.zygoMode, W.renderBeforeRunMode, W.listenDuringRunMode]
+        (W.recursionContextAlgebra "workflow-semantics-context-algebra" [contextAlgebraSystem contextAppFact])
+    )
+
+missingImportContextDefinition :: W.RecursionContext W.WorkflowFact
+missingImportContextDefinition =
+  W.recursionContext
+    contextName
+    ( W.recursionModel
+        "workflow-semantics-optional-zygo"
+        [W.zygoMode, W.listenDuringRunMode]
+        (W.recursionContextAlgebra "workflow-semantics-context-algebra" [contextAlgebraSystem contextMissingImportFact])
+    )
+
+contextAlgebraSystem :: W.WorkflowFact -> W.EffectSystem W.WorkflowFact
+contextAlgebraSystem importedFact =
+  W.effectSystemFromBoundary
+    ( W.systemBoundary
+        contextAlgebraFlow
+        [importedFact]
+        [contextAlgebraPrivateFact]
+        [contextAlgebraExportFact]
+    )
+
+validContextTheory :: E.EffectTheory
+validContextTheory =
+  theory
+    [ factPure contextAppFact
+    , E.fact contextAlgebraPrivateFact [E.needs contextAppFact]
+    , E.fact contextAlgebraExportFact [E.needs contextAlgebraPrivateFact]
+    ]
+
+missingContextImportTheory :: E.EffectTheory
+missingContextImportTheory =
+  theory
+    [ factPure contextAppFact
+    , factPure contextMissingImportFact
+    , E.fact contextAlgebraPrivateFact [E.needs contextMissingImportFact]
+    , E.fact contextAlgebraExportFact [E.needs contextAlgebraPrivateFact]
     ]
 
 boundaryTheory :: E.EffectTheory
@@ -1026,6 +1137,22 @@ alignmentSecondFact :: W.WorkflowFact
 alignmentSecondFact =
   W.WorkflowFact "WorkflowSemanticsAlignmentSecondFact"
 
+contextAppFact :: W.WorkflowFact
+contextAppFact =
+  W.WorkflowFact "WorkflowSemanticsContextAppFact"
+
+contextAlgebraPrivateFact :: W.WorkflowFact
+contextAlgebraPrivateFact =
+  W.WorkflowFact "WorkflowSemanticsContextAlgebraPrivateFact"
+
+contextAlgebraExportFact :: W.WorkflowFact
+contextAlgebraExportFact =
+  W.WorkflowFact "WorkflowSemanticsContextAlgebraExportFact"
+
+contextMissingImportFact :: W.WorkflowFact
+contextMissingImportFact =
+  W.WorkflowFact "WorkflowSemanticsContextMissingImportFact"
+
 leftSend :: E.SendName
 leftSend =
   E.SendName "WorkflowSemanticsLeftSend"
@@ -1094,6 +1221,10 @@ boundaryContractFlow :: W.EffectSystemName
 boundaryContractFlow =
   W.EffectSystemName "WorkflowSemanticsBoundaryContractFlow"
 
+contextAlgebraFlow :: W.EffectSystemName
+contextAlgebraFlow =
+  W.EffectSystemName "WorkflowSemanticsContextAlgebraFlow"
+
 selectedChoice :: W.ChoiceKey
 selectedChoice =
   W.ChoiceKey "selected"
@@ -1105,6 +1236,10 @@ unselectedChoice =
 middlewareName :: W.Interceptor
 middlewareName =
   W.Interceptor "WorkflowSemanticsMiddleware"
+
+contextName :: W.RecursionContextName
+contextName =
+  W.RecursionContextName "WorkflowSemanticsContext"
 
 boundaryImportFact :: W.WorkflowFact
 boundaryImportFact =

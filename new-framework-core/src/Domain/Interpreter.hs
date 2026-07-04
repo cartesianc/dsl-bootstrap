@@ -253,6 +253,15 @@ hangingActionTreeNode path index action =
         , astTreeNodeChildren =
             [workflowTreeNode (path ++ ["middleware:" ++ show index, "body"]) body]
         }
+    HangingContext currentContext body ->
+      AstTreeNode
+        { astTreeNodeKind = "context"
+        , astTreeNodeName = show (Bootstrap.Workflow.recursionContextName currentContext)
+        , astTreeNodePath = path ++ ["context:" ++ show index]
+        , astTreeNodeMetadata = recursionContextMetadata currentContext
+        , astTreeNodeChildren =
+            [workflowTreeNode (path ++ ["context:" ++ show index, "body"]) body]
+        }
 
 renderWorkflow :: (Show fact) => Workflow fact hook -> [String]
 renderWorkflow workflow =
@@ -325,6 +334,18 @@ renderHangingAction action =
     HangingMiddleware middleware body ->
       ("middleware " ++ show (Bootstrap.Workflow.middlewareHook middleware))
         : indentLines 2 (renderWorkflow body)
+    HangingContext currentContext body ->
+      ("context "
+        ++ show (Bootstrap.Workflow.recursionContextName currentContext)
+        ++ " model "
+        ++ Bootstrap.Workflow.recursionSchemeModelName model
+        ++ " modes "
+        ++ show (map show (Bootstrap.Workflow.recursionSchemeModelModes model))
+      )
+        : indentLines 2 (renderWorkflow body)
+      where
+        model =
+          Bootstrap.Workflow.recursionContextModel currentContext
 
 renderFactExpr :: (Show fact) => FactExpr fact -> String
 renderFactExpr expression =
@@ -339,6 +360,19 @@ renderFactExpr expression =
 indentLines :: Int -> [String] -> [String]
 indentLines count =
   map (replicate count ' ' ++)
+
+recursionContextMetadata :: Bootstrap.Workflow.RecursionContext fact -> [(String, [String])]
+recursionContextMetadata currentContext =
+  [ ("model", [Bootstrap.Workflow.recursionSchemeModelName model])
+  , ("modes", map show (Bootstrap.Workflow.recursionSchemeModelModes model))
+  , ("algebra", [Bootstrap.Workflow.recursionContextAlgebraName algebra])
+  , ("effects", map (show . Bootstrap.Workflow.effectSystemName) (Bootstrap.Workflow.recursionContextAlgebraEffects algebra))
+  ]
+  where
+    model =
+      Bootstrap.Workflow.recursionContextModel currentContext
+    algebra =
+      Bootstrap.Workflow.recursionSchemeModelAlgebra model
 
 indexedMap :: (Int -> item -> result) -> [item] -> [result]
 indexedMap mapper =

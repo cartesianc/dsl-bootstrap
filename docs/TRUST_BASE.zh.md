@@ -29,6 +29,8 @@ self-artifact-witness
 
 `self-artifact-witness` 是高危/重型 gate：同一轮大构建完成后最多运行一次；第二次不允许继续跑；README/docs-only 变更不触发它。
 
+domain framework 晋升 core framework 的完整 SOP 见 `docs/CORE_PROMOTION_SOP.zh.md`。该 SOP 把 facade conformance、semantic witness、fixed-point、TrustBase manifest 和 artifact gate 串成 replacement gate。
+
 本文定义当前自举系统的最小外部信任基。
 
 目标：缩小、命名、报告化 trust base，并让外围语义责任进入 AST / effect / fact / evidence。

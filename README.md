@@ -120,6 +120,7 @@ Repository purpose and layout
 Self-bootstrap and trust base
   docs/TRUST_BASE.zh.md
   docs/SELF_BOOTSTRAP_GATE.md
+  docs/CORE_PROMOTION_SOP.zh.md
   docs/CORE_BOOTSTRAP_DESIGN.zh.md
 
 Runtime, workflow, and diagnosis semantics
@@ -131,9 +132,15 @@ Frontend syntax and AST
   docs/CAPABILITY_FRONTEND.zh.md
   docs/EFFECT_FRONTEND_SYNTAX.zh.md
   docs/AST_SPEC.zh.md
+  docs/AST_LAYOUT_CONTEXT.zh.md
 
 Verification commands
   docs/CHECK_PATTERNS.zh.md
+
+Agent maintenance skills
+  docs/AGENT_SKILLS.zh.md
+  codex-skills/framework-self-iteration/SKILL.md
+  codex-skills/core-promotion-gate/SKILL.md
 
 Domain 侧验收应用
   domain-app/README.md
@@ -143,6 +150,7 @@ Domain 侧验收应用
 - [Package boundary](docs/PACKAGE_BOUNDARY.zh.md)
 - [Trust base](docs/TRUST_BASE.zh.md)
 - [Self-bootstrap gate](docs/SELF_BOOTSTRAP_GATE.md)
+- [Domain framework 晋升 core framework SOP](docs/CORE_PROMOTION_SOP.zh.md)
 - [Core bootstrap design](docs/CORE_BOOTSTRAP_DESIGN.zh.md)
 - [Runtime architecture](docs/RUNTIME_ARCHITECTURE.zh.md)
 - [Workflow semantics](docs/WORKFLOW_SEMANTICS.md)
@@ -150,7 +158,9 @@ Domain 侧验收应用
 - [Capability frontend](docs/CAPABILITY_FRONTEND.zh.md)
 - [Effect IR and capability lowering](docs/EFFECT_FRONTEND_SYNTAX.zh.md)
 - [AST specification](docs/AST_SPEC.zh.md)
+- [AST layout and recursion context](docs/AST_LAYOUT_CONTEXT.zh.md)
 - [Common check patterns and automated boundaries](docs/CHECK_PATTERNS.zh.md)
+- [Agent maintenance skills](docs/AGENT_SKILLS.zh.md)
 - [Domain app business flow](domain-app/README.md)
 
 期望结果：

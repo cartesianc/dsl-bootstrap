@@ -4,6 +4,8 @@
 
 每个新 framework 版本都要先完成自证，再参与替换或发布。
 
+`docs/CORE_PROMOTION_SOP.zh.md` 定义 domain framework 晋升 core framework 的完整 promotion 流程；本文只展开 self-bootstrap、artifact 物化和替换 gate。
+
 ## 当前状态
 
 当前实现已经达到 evidence fixed point：

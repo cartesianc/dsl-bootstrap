@@ -14,12 +14,14 @@ new-framework-core/src/FrameworkCore
   readable current core frontend。这里把当前 core 组织成 currentTrustBase / currentAst / currentEffects / currentInterpreter / currentApp。
 
 domain-app
-  domain-side acceptance app。它验证 facade、handler、semantic evidence、runtime diagnosis、registry codegen 在真实 domain 侧能闭合，定位高于普通示例。
+  domain-side acceptance app。它验证 facade、handler、semantic evidence、runtime diagnosis、registry codegen 在真实 domain 侧能闭合。
 ```
 
 这三者并存用于自举系统的多视角验证：core 要能解释自己，也要能像 domain 一样被使用，还要能通过 TrustBase 点火生成下一阶段。
 
 当前项目按“内核、facade、自表达 domain、外部 domain”分层。
+
+Domain framework 晋升 core framework 的操作流程见 `docs/CORE_PROMOTION_SOP.zh.md`。
 
 ## 1. 顶层包
 

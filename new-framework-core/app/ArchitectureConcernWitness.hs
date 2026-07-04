@@ -13,6 +13,23 @@ import Bootstrap.CoreSurface
   , CoreSurfaceModule (..)
   , coreSurfaceModules
   )
+import Domain.Ast
+  ( AstRegistration (..)
+  , frameworkCoreAstRegistration
+  )
+import Domain.Interpreter
+  ( AstTreeNode (..)
+  , astTreeStructure
+  )
+import Domain.Registry
+  ( renderDomainRegistryJson
+  , renderRegisteredAstTreesJson
+  )
+import Framework.Ast.Layout
+  ( AstLayoutModel (..)
+  , AstLayoutNode (..)
+  , layoutAppBlueprint
+  )
 import Framework.Architecture.Concern
   ( ArchitectureConcernEvidencePayload (..)
   , architectureConcernClaimManifestEvidenceClaimName
@@ -121,6 +138,8 @@ architectureConcernEvidencePayloads = do
       , runtimeDiagnosisImplementationPayload
       , runtimeImplementationModuleCoveragePayload
       , astCoreCabalClaimLinkPayload
+      , astTreeStructuredProjectionPayload
+      , astLayoutOptionalProjectionPayload
       , backendParityPayload
       , effectSystemScopePayload
       , workflowAndConcurrencyManifestPayload
@@ -259,6 +278,93 @@ astCoreCabalClaimLinkPayload =
       ]
     missing =
       [ name | (name, present) <- required, not present ]
+
+astTreeStructuredProjectionPayload :: ArchitectureConcernEvidencePayload
+astTreeStructuredProjectionPayload =
+  concernEvidence
+    "session123-ast-tree-structured-projection"
+    (null missing)
+    "ast-tree.v1 is a read-only structured projection with node paths, execution paths, and text compatibility"
+    observed
+    "AstTreeStructuredProjectionArtifact"
+    "low:projection-schema"
+    "keep AST tree rendering as a read-only projection; add runtime observer events separately for dynamic execution position"
+  where
+    tree =
+      astTreeStructure (astRegistrationBlueprint frameworkCoreAstRegistration)
+    nodes =
+      flattenAstTree tree
+    astJson =
+      renderRegisteredAstTreesJson
+    registryJson =
+      renderDomainRegistryJson
+    required =
+      [ ("ast-tree.v1 schema catalog entry", schemaPresent "ast-tree.v1")
+      , ("domain-registry.v1 schema catalog entry", schemaPresent "domain-registry.v1")
+      , ("AST projection root kind", astTreeNodeKind tree == "blueprint")
+      , ("AST projection app branch", anyNodeKind "app" (astTreeNodeChildren tree))
+      , ("AST projection hanging branch", anyNodeKind "hanging" (astTreeNodeChildren tree))
+      , ("AST projection includes run node", anyNodeKind "run" nodes)
+      , ("ast-tree JSON schema", "\"schema\":\"ast-tree.v1\"" `isInfixOf` astJson)
+      , ("ast-tree JSON structure tree", "\"tree\":{" `isInfixOf` astJson)
+      , ("ast-tree JSON execution paths", "\"executionPaths\":[" `isInfixOf` astJson)
+      , ("ast-tree JSON text tree compatibility", "\"textTree\":[" `isInfixOf` astJson)
+      , ("domain-registry JSON schema", "\"schema\":\"domain-registry.v1\"" `isInfixOf` registryJson)
+      , ("domain-registry JSON frameworkCore mapping", "\"frameworkCore\":{" `isInfixOf` registryJson)
+      ]
+    missing =
+      [ name | (name, present) <- required, not present ]
+    observed =
+      if null missing
+        then
+          "structured AST projection nodes: "
+            ++ show (length nodes)
+            ++ "; root path: "
+            ++ joinWith "/" (astTreeNodePath tree)
+        else observedList missing
+
+astLayoutOptionalProjectionPayload :: ArchitectureConcernEvidencePayload
+astLayoutOptionalProjectionPayload =
+  concernEvidence
+    "session123-ast-layout-optional-projection"
+    (null missing)
+    "AST layout is an optional read-only projection and explicit recursion context helper, not a default core fact"
+    observed
+    "AstLayoutOptionalProjectionArtifact"
+    "medium:projection-semantics"
+    "keep layout algorithms behind explicit context/algebra effects and out of the default framework-core app"
+  where
+    blueprint =
+      astRegistrationBlueprint frameworkCoreAstRegistration
+    tree =
+      astTreeStructure blueprint
+    nodes =
+      flattenAstTree tree
+    layout =
+      layoutAppBlueprint blueprint
+    layoutNodes =
+      astLayoutNodes layout
+    required =
+      [ ("Framework.Ast.Layout AstLayoutModel type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstLayoutModel")
+      , ("Framework.Ast.Layout AstLayoutNode type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstLayoutNode")
+      , ("Framework.Ast.Layout AstRuntimeCursor type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstRuntimeCursor")
+      , ("Framework.Ast.Layout layoutAppBlueprint value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "layoutAppBlueprint")
+      , ("Framework.Ast.Layout astLiveLayoutContext value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "astLiveLayoutContext")
+      , ("default framework-core AST has no context node", not (anyNodeKind "context" nodes))
+      , ("layout root path matches AST root", astLayoutRootPath layout == astTreeNodePath tree)
+      , ("layout node count matches AST projection", length layoutNodes == length nodes)
+      , ("layout includes run node coordinates", any ((== "run") . astLayoutNodeKind) layoutNodes)
+      ]
+    missing =
+      [ name | (name, present) <- required, not present ]
+    observed =
+      if null missing
+        then
+          "optional layout nodes: "
+            ++ show (length layoutNodes)
+            ++ "; root path: "
+            ++ joinWith "/" (astLayoutRootPath layout)
+        else observedList missing
 
 frontendClaimModuleLinkPresent :: String -> String -> Bool
 frontendClaimModuleLinkPresent factName moduleName =
@@ -871,6 +977,14 @@ highRiskGatePolicyPresent policyName =
 missingItems :: [String] -> [String] -> [String]
 missingItems actual expected =
   [ item | item <- expected, item `notElem` actual ]
+
+flattenAstTree :: AstTreeNode -> [AstTreeNode]
+flattenAstTree node =
+  node : concatMap flattenAstTree (astTreeNodeChildren node)
+
+anyNodeKind :: String -> [AstTreeNode] -> Bool
+anyNodeKind kind nodes =
+  any ((== kind) . astTreeNodeKind) nodes
 
 concernEvidence :: String -> Bool -> String -> String -> String -> String -> String -> ArchitectureConcernEvidencePayload
 concernEvidence =

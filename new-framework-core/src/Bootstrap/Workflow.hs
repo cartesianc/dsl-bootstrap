@@ -25,6 +25,11 @@ module Bootstrap.Workflow
   , Middleware (..)
   , Parallel (..)
   , Race (..)
+  , RecursionContext (..)
+  , RecursionContextAlgebra (..)
+  , RecursionContextName (..)
+  , RecursionSchemeMode (..)
+  , RecursionSchemeModel (..)
   , Requirement (..)
   , Suspense (..)
   , Wait (..)
@@ -42,6 +47,11 @@ module Bootstrap.Workflow
   , chainItems
   , choice
   , choiceItems
+  , anaMode
+  , apoMode
+  , cataMode
+  , context
+  , chronoMode
   , effectSystem
   , effectSystemFromBoundary
   , effectSystemRuntimeFacts
@@ -58,15 +68,28 @@ module Bootstrap.Workflow
   , freeRace
   , freeRequirement
   , freeWait
+  , futuMode
+  , generalizedMode
   , hanging
   , hangingItems
+  , histoMode
+  , hyloMode
   , loop
   , middleware
   , parallel
   , parallelItems
+  , paraMode
+  , preproMode
   , race
   , raceItems
+  , recursionContext
+  , recursionContextAlgebra
+  , recursionModel
+  , recursionMode
+  , recursionModelHasMode
   , requirementItems
+  , listenDuringRunMode
+  , renderBeforeRunMode
   , run
   , suspense
   , systemBoundary
@@ -74,7 +97,9 @@ module Bootstrap.Workflow
   , systemBoundaryWithHandlers
   , systemBoundaryWithPipelines
   , systemBoundaryWithPolicies
+  , withRecursionContext
   , wait
+  , zygoMode
   ) where
 
 newtype WorkflowFact = WorkflowFact
@@ -112,6 +137,40 @@ newtype LogEvent = LogEvent
 instance Show LogEvent where
   show =
     logEventText
+
+newtype RecursionContextName = RecursionContextName
+  { recursionContextNameText :: String
+  }
+  deriving (Eq)
+
+instance Show RecursionContextName where
+  show =
+    recursionContextNameText
+
+newtype RecursionSchemeMode = RecursionSchemeMode
+  { recursionSchemeModeText :: String
+  }
+  deriving (Eq)
+
+instance Show RecursionSchemeMode where
+  show =
+    recursionSchemeModeText
+
+data RecursionContextAlgebra fact = RecursionContextAlgebra
+  { recursionContextAlgebraName :: String
+  , recursionContextAlgebraEffects :: [EffectSystem fact]
+  }
+
+data RecursionSchemeModel fact = RecursionSchemeModel
+  { recursionSchemeModelName :: String
+  , recursionSchemeModelModes :: [RecursionSchemeMode]
+  , recursionSchemeModelAlgebra :: RecursionContextAlgebra fact
+  }
+
+data RecursionContext fact = RecursionContext
+  { recursionContextName :: RecursionContextName
+  , recursionContextModel :: RecursionSchemeModel fact
+  }
 
 data AppBlueprint = AppBlueprint
   { blueprintApp :: App
@@ -177,6 +236,7 @@ data HangingAction fact hook workflow
   | HangingSuspense (Suspense fact workflow)
   | HangingLoop (Loop workflow)
   | HangingMiddleware (Middleware hook) workflow
+  | HangingContext (RecursionContext fact) workflow
 
 newtype ChoiceKey = ChoiceKey String
   deriving (Eq)
@@ -452,6 +512,78 @@ boundaryHandler currentSend handlerName =
     , effectSystemBoundaryHandlerName = handlerName
     }
 
+recursionMode :: String -> RecursionSchemeMode
+recursionMode =
+  RecursionSchemeMode
+
+renderBeforeRunMode :: RecursionSchemeMode
+renderBeforeRunMode =
+  recursionMode "render-before-run"
+
+listenDuringRunMode :: RecursionSchemeMode
+listenDuringRunMode =
+  recursionMode "listen-during-run"
+
+cataMode :: RecursionSchemeMode
+cataMode =
+  recursionMode "cata"
+
+paraMode :: RecursionSchemeMode
+paraMode =
+  recursionMode "para"
+
+histoMode :: RecursionSchemeMode
+histoMode =
+  recursionMode "histo"
+
+anaMode :: RecursionSchemeMode
+anaMode =
+  recursionMode "ana"
+
+apoMode :: RecursionSchemeMode
+apoMode =
+  recursionMode "apo"
+
+futuMode :: RecursionSchemeMode
+futuMode =
+  recursionMode "futu"
+
+hyloMode :: RecursionSchemeMode
+hyloMode =
+  recursionMode "hylo"
+
+chronoMode :: RecursionSchemeMode
+chronoMode =
+  recursionMode "chrono"
+
+preproMode :: RecursionSchemeMode
+preproMode =
+  recursionMode "prepro"
+
+zygoMode :: RecursionSchemeMode
+zygoMode =
+  recursionMode "zygo"
+
+generalizedMode :: String -> RecursionSchemeMode
+generalizedMode name =
+  recursionMode ("g:" ++ name)
+
+recursionContextAlgebra :: String -> [EffectSystem fact] -> RecursionContextAlgebra fact
+recursionContextAlgebra =
+  RecursionContextAlgebra
+
+recursionModel :: String -> [RecursionSchemeMode] -> RecursionContextAlgebra fact -> RecursionSchemeModel fact
+recursionModel =
+  RecursionSchemeModel
+
+recursionContext :: RecursionContextName -> RecursionSchemeModel fact -> RecursionContext fact
+recursionContext =
+  RecursionContext
+
+recursionModelHasMode :: RecursionSchemeMode -> RecursionSchemeModel fact -> Bool
+recursionModelHasMode currentMode model =
+  currentMode `elem` recursionSchemeModelModes model
+
 effectSystemFromBoundary :: EffectSystemBoundary fact -> EffectSystem fact
 effectSystemFromBoundary boundary =
   EffectSystem
@@ -522,6 +654,18 @@ loop body =
 middleware :: hook -> workflow -> HangingAction fact hook workflow
 middleware currentMiddleware body =
   HangingMiddleware (Middleware currentMiddleware) body
+
+context :: RecursionContext fact -> workflow -> HangingAction fact hook workflow
+context currentContext body =
+  HangingContext currentContext body
+
+withRecursionContext :: RecursionContext WorkflowFact -> AppBlueprint -> AppBlueprint
+withRecursionContext currentContext blueprint =
+  blueprint
+    { blueprintHanging =
+        hanging
+          (hangingItems (blueprintHanging blueprint) ++ [context currentContext (blueprintApp blueprint)])
+    }
 
 factExprFacts :: FactExpr fact -> [fact]
 factExprFacts expr =

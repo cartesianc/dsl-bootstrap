@@ -74,6 +74,7 @@ library
                      , Framework.Background.ConstraintProof
                      , Framework.Background.RuntimeDiagnosis
                      , Framework.Ast
+                     , Framework.Ast.Layout
                      , Framework.Business
                      , Framework.Business.Evidence
                      , Framework.Domain

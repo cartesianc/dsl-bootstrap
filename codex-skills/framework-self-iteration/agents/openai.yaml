@@ -1,0 +1,4 @@
+interface:
+  display_name: "Framework Self Iteration"
+  short_description: "Locate and promote self-iterating framework changes"
+  default_prompt: "Use $framework-self-iteration to locate a framework semantic change and choose the right validation gates."

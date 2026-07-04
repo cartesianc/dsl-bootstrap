@@ -17,6 +17,7 @@ import Bootstrap.Workflow
   , Interceptor
   , Loop (..)
   , Middleware (..)
+  , RecursionContext (..)
   , Suspense (..)
   , Wait (..)
   , Workflow (..)
@@ -590,6 +591,15 @@ collectHangingAction path index currentAction =
         , astNodeClaimFacts = collectWorkflowFacts body
         }
         : collectWorkflowNodes (actionPath "middleware" (show hook)) body
+    HangingContext currentContext body ->
+      AstNode
+        { astNodeKind = "context"
+        , astNodeName = show (recursionContextName currentContext)
+        , astNodePath = actionPath "context" (show (recursionContextName currentContext))
+        , astNodeWaitFacts = collectWorkflowWaitFacts body
+        , astNodeClaimFacts = collectWorkflowFacts body
+        }
+        : collectWorkflowNodes (actionPath "context" (show (recursionContextName currentContext))) body
   where
     actionPath kind name =
       path ++ [kind ++ ":" ++ name]
@@ -615,6 +625,8 @@ collectHangingActionFacts currentAction =
     HangingLoop (Loop body) ->
       collectWorkflowFacts body
     HangingMiddleware _ body ->
+      collectWorkflowFacts body
+    HangingContext _ body ->
       collectWorkflowFacts body
 
 collectWorkflowFacts :: App -> [WorkflowFact]

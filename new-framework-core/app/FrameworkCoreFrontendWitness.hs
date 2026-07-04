@@ -351,6 +351,8 @@ hangingActionFacts action =
       appFacts (loopBody loop)
     HangingMiddleware _ app ->
       appFacts app
+    HangingContext _ app ->
+      appFacts app
 
 factExprFacts :: FactExpr WorkflowFact -> [WorkflowFact]
 factExprFacts expr =

@@ -7,6 +7,7 @@ module Framework.Runtime.Types
   , RuntimeCallbackEvent (..)
   , RuntimeComponentEvent (..)
   , RuntimeComponentStatus (..)
+  , RuntimeContextEvent (..)
   , RuntimeDiagnosisBlocker (..)
   , RuntimeDiagnosisNode (..)
   , RuntimeDiagnosisNodeKind (..)
@@ -47,6 +48,7 @@ import Bootstrap.Effect
 import Bootstrap.Workflow
   ( EffectSystemName
   , Interceptor
+  , RecursionContextName
   , WorkflowFact
   )
 
@@ -62,6 +64,8 @@ data Runtime = Runtime
   , runtimeComponentEvents :: [RuntimeComponentEvent]
   , runtimeCallbackEvents :: [RuntimeCallbackEvent]
   , runtimeSuspenseEvents :: [RuntimeSuspenseEvent]
+  , runtimeActiveContexts :: [RecursionContextName]
+  , runtimeContextEvents :: [RuntimeContextEvent]
   , runtimeMiddlewareStack :: [Interceptor]
   , runtimeMiddlewareEvents :: [RuntimeMiddlewareEvent]
   , runtimeFailureDiagnoses :: [RuntimeFailureDiagnosis]
@@ -78,6 +82,8 @@ data RuntimeSnapshot = RuntimeSnapshot
   , snapshotRuntimeFactClaims :: [RuntimeFactClaim]
   , snapshotRuntimeActiveComponents :: [EffectSystemName]
   , snapshotRuntimeCompletedComponents :: [EffectSystemName]
+  , snapshotRuntimeActiveContexts :: [RecursionContextName]
+  , snapshotRuntimeContextEvents :: [RuntimeContextEvent]
   , snapshotRuntimeTrace :: [String]
   }
   deriving (Eq, Show)
@@ -228,6 +234,13 @@ data RuntimeSuspenseEvent
 data RuntimeMiddlewareEvent
   = RuntimeMiddlewareEntered Interceptor
   | RuntimeMiddlewareExited Interceptor
+  deriving (Eq, Show)
+
+data RuntimeContextEvent
+  = RuntimeContextStarted RecursionContextName
+  | RuntimeContextCompleted RecursionContextName
+  | RuntimeContextNodeEntered RecursionContextName [String] String String
+  | RuntimeContextNodeExited RecursionContextName [String] String String
   deriving (Eq, Show)
 
 data RuntimeValue = RuntimeValue

@@ -43,7 +43,8 @@ hanging
 middleware
 callback
 suspense
-loop
+  loop
+  context
 ```
 
 ## 2. AST 只表达结构
@@ -145,6 +146,8 @@ Hanging 只表达附加控制结构。
 
 当前 production AST 不依赖复杂 scheduler。`middleware` 可以用于 trace/report 包装；`callback`、`suspense`、`loop` 保留为 DSL 能力，但不要把它们作为 framework core 主验证路径的必要条件。
 
+`context` 用于把 recursion scheme model 和 algebra effect systems 挂到 hanging tree。它是可选 observer/projection handle，不改变默认 core 的主 workflow。只有调用方显式挂载 context 时，对应 algebra effect systems 才进入 plan validation。
+
 ## 6. 渲染
 
 AST 渲染入口：
@@ -164,7 +167,9 @@ executionPaths  扁平路径表，用来索引每个可运行或控制节点
 textTree        兼容人工阅读的文本树
 ```
 
-动态运行位置不写入 AST 本体。后续如果要监听“当前运行到哪个节点”，应在 runtime interpreter 外侧挂 observer/trace event，并用 `executionPaths` 里的 path 对齐节点。
+动态运行位置不写入 AST 本体。监听“当前运行到哪个节点”时，应显式挂 `context`，让 runtime 输出 `RuntimeContextNodeEntered` / `RuntimeContextNodeExited` 事件，并用 path 对齐 `ast-tree.v1` 或 `AstLayoutModel` 节点。
+
+AST layout / live cursor 设计见 [AST layout and recursion context](AST_LAYOUT_CONTEXT.zh.md)。
 
 负向规则：
 
