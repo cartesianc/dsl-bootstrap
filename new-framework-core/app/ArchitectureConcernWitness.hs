@@ -554,8 +554,20 @@ effectSystemScopePayload =
       , ("Framework.Workflow EffectSystemBoundaryHandler type", coreSurfaceTypeCapabilityPresent "Framework.Workflow" "EffectSystemBoundaryHandler")
       , ("Framework.Workflow EffectSystemBoundaryPipeline type", coreSurfaceTypeCapabilityPresent "Framework.Workflow" "EffectSystemBoundaryPipeline")
       , ("Framework.Workflow EffectSystemBoundaryPolicy type", coreSurfaceTypeCapabilityPresent "Framework.Workflow" "EffectSystemBoundaryPolicy")
+      , ("Framework.Workflow EffectRow type", coreSurfaceTypeCapabilityPresent "Framework.Workflow" "EffectRow")
+      , ("Framework.Workflow EffectRowDiff type", coreSurfaceTypeCapabilityPresent "Framework.Workflow" "EffectRowDiff")
+      , ("Framework.Workflow effectRowDiff value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "effectRowDiff")
+      , ("Framework.Workflow effectRowExportsClean value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "effectRowExportsClean")
+      , ("Framework.Workflow effectRowFromBoundary value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "effectRowFromBoundary")
+      , ("Framework.Workflow effectRowHidePrivate value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "effectRowHidePrivate")
+      , ("Framework.Workflow effectRowImportsSatisfied value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "effectRowImportsSatisfied")
+      , ("Framework.Workflow effectRowPipelineArtifacts value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "effectRowPipelineArtifacts")
+      , ("Framework.Workflow effectRowPipelineEdges value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "effectRowPipelineEdges")
+      , ("Framework.Workflow effectRowSubset value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "effectRowSubset")
+      , ("Framework.Workflow effectRowUnion value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "effectRowUnion")
       , ("Framework.Workflow effectSystemFromBoundary value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "effectSystemFromBoundary")
       , ("Framework.Workflow effectSystemRuntimeFacts value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "effectSystemRuntimeFacts")
+      , ("Framework.Workflow renderEffectRowDiff value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "renderEffectRowDiff")
       , ("Framework.Workflow systemBoundary value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "systemBoundary")
       , ("Framework.Workflow systemBoundaryWithHandlers value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "systemBoundaryWithHandlers")
       , ("Framework.Workflow boundaryArtifact value", coreSurfaceValueCapabilityPresent "Framework.Workflow" "boundaryArtifact")
@@ -649,6 +661,7 @@ businessSyntaxClaimManifestPayload =
       , "business-syntax-transform-lowering"
       , "business-syntax-runtime-pipeline-adapter"
       , "business-syntax-capability-private-fact-boundary"
+      , "business-syntax-effect-row-algebra"
       , businessSyntaxClaimManifestEvidenceClaimName
       ]
     required =

@@ -108,6 +108,7 @@ generateReportCapability =
     , pipeline "GenerateReportPipeline" [UserName, ReportInput, ReportOutput]
     , transform (transformBinding UserNameToReportInput UserName ReportInput)
     , uses GenerateReport ReportInput ReportOutput
+    , policy (idempotentPolicy GenerateReport)
     , output ReportOutput
     , produces ReportGeneratedFact
     , handler

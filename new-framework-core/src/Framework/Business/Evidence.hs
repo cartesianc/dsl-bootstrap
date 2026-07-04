@@ -45,6 +45,7 @@ businessSyntaxCoreClaimNames =
   , "effect-system-scope-metadata"
   , "business-syntax-capability-system-boundary"
   , "business-syntax-capability-private-fact-boundary"
+  , "business-syntax-effect-row-algebra"
   ]
 
 businessSyntaxEvidenceClaimNames :: [String]
