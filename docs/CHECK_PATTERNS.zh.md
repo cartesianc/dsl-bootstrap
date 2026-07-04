@@ -36,6 +36,7 @@ check-fast
   build
   framework-core frontend witness
   business syntax witness
+  runtime policy payload
   runtime diagnosis payload
   trust-base-manifest evidence JSON
 
@@ -49,6 +50,7 @@ check-release
   semantic gates
   bootstrap-report JSON
   runtime-evidence JSON
+  runtime-policy JSON
   fixed-point summary JSON
   domain-app acceptance
   registry/codegen witness
