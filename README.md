@@ -354,7 +354,7 @@ appFlow =
 
 ### 3. 声明 Capability 并 Lower 到 Effect IR
 
-业务入口在 `Domain.Business` 中使用 `Framework.Business` 声明 capability、pipeline、handler binding 和 transform binding。`Domain.Business` 是业务声明来源。`Effects.*` 只负责调用 `capabilitiesEffect` lower 成 effect IR。
+业务入口在 `Domain.Business` 中使用 `Framework.Business` 声明 capability、pipeline、handler binding 和 transform binding。`Domain.Business` 是业务声明来源。`Effects.*` 调用 `capabilitiesEffect` lower 成 effect IR，并保留 capability group metadata。
 
 业务编写入口：
 

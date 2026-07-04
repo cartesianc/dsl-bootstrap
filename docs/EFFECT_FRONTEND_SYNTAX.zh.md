@@ -14,6 +14,7 @@ Domain.Business
 
 Effects.*
   lowering 薄层。调用 Framework.Business.capabilitiesEffect，把 capability group lower 成 EffectUnit。
+  lowering 后的 EffectUnit 保留 imports、exports、pipeline 和 handler metadata。
 
 Bootstrap.Business / Framework.Business
   业务编写入口。提供 capability DSL、pipeline DSL、lowering、handler/transform/business-shape checker。
@@ -231,6 +232,7 @@ stack exec business-syntax-witness -- --json
 GenerateReport capability lowering 生成 needs/take/make/uses/externalMake/transform
 GenerateReport pipeline 生成 UserName -> ReportInput 和 ReportInput -> ReportOutput candidate
 Effects.* 等于对应 Domain.Business capability group lowering
+Effects.* 的 EffectUnit metadata 保留 capability group 的 imports/exports/pipeline/handler
 Domain.Business 导入 Framework.Business 且不导入 Framework.Effect
 allDomainCapabilities 通过 business-shape checker
 runtime pipeline adapter 可以执行 transform 链

@@ -493,6 +493,11 @@ effectFacadeLoweringPassed =
 effectUnitMatches :: EffectUnit -> EffectUnit -> Bool
 effectUnitMatches actual expected =
   effectUnitName actual == effectUnitName expected
+    && effectUnitImports actual == effectUnitImports expected
+    && effectUnitPrivateFacts actual == effectUnitPrivateFacts expected
+    && effectUnitExports actual == effectUnitExports expected
+    && effectUnitPipelines actual == effectUnitPipelines expected
+    && effectUnitHandlers actual == effectUnitHandlers expected
     && effectSectionsMatch (effectUnitSections actual) (effectUnitSections expected)
 
 effectSectionsMatch :: [EffectSection] -> [EffectSection] -> Bool

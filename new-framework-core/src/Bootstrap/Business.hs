@@ -246,7 +246,39 @@ transform =
 
 capabilitiesEffect :: EffectName -> [Capability] -> EffectUnit
 capabilitiesEffect name capabilities =
-  Effect.effect name (concatMap capabilityEffectSections capabilities)
+  Effect.effectSystem
+    name
+    (capabilitiesEffectSystemClauses capabilities)
+    (concatMap capabilityEffectSections capabilities)
+
+capabilitiesEffectSystemClauses :: [Capability] -> [Effect.EffectSystemClause]
+capabilitiesEffectSystemClauses capabilities =
+  importsClause ++ exportsClause ++ pipelineClauses ++ handlerClauses
+  where
+    importedFacts =
+      unique (concatMap capabilityRequires capabilities)
+    exportedFacts =
+      unique (concatMap capabilityProduces capabilities)
+    importsClause =
+      [Effect.imports importedFacts | not (null importedFacts)]
+    exportsClause =
+      [Effect.exports exportedFacts | not (null exportedFacts)]
+    pipelineClauses =
+      map capabilityPipelineClause (unique (concatMap capabilityPipelines capabilities))
+    handlerClauses =
+      concatMap capabilityHandlerClauses capabilities
+
+capabilityPipelineClause :: Pipeline -> Effect.EffectSystemClause
+capabilityPipelineClause currentPipeline =
+  Effect.pipeline (pipelineName currentPipeline) (pipelineTypes currentPipeline)
+
+capabilityHandlerClauses :: Capability -> [Effect.EffectSystemClause]
+capabilityHandlerClauses current =
+  [ Effect.handler (capabilityUseSend currentUse) (handlerBindingSpecName binding)
+  | binding <- capabilityHandlers current
+  , currentUse <- capabilityUses current ++ capabilityErrors current
+  , handlerBindingMatchesUse binding currentUse
+  ]
 
 capabilityEffectSections :: Capability -> [EffectSection]
 capabilityEffectSections current =
