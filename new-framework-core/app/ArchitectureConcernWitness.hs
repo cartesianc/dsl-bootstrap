@@ -1055,11 +1055,11 @@ defaultBusinessFrontendContractPayload coreCabalText stableFrontendText =
   concernEvidence
     "session4-default-business-frontend-contract"
     (null missing)
-    "candidate default business frontend is documented and indexed without hiding bootstrap or TrustBase modules"
+    "default business frontend maturity is documented and indexed while bootstrap and TrustBase stay in maintenance docs"
     (observedList missing)
     "DefaultBusinessFrontendContractArtifact"
     "medium:public-facade"
-    "keep Framework.App thin and describe the frontend as candidate/default until another business acceptance round"
+    "keep Framework.App thin and describe the frontend as current/default until another business acceptance round"
   where
     required =
       [ ("Framework.App exposed module", moduleInCabal coreCabalText "Framework.App")
@@ -1071,10 +1071,21 @@ defaultBusinessFrontendContractPayload coreCabalText stableFrontendText =
       , ("Framework.App runApp value", coreSurfaceValueCapabilityPresent "Framework.App" "runApp")
       , ("Framework.App runAppResult value", coreSurfaceValueCapabilityPresent "Framework.App" "runAppResult")
       , ("Framework.App renderAppError value", coreSurfaceValueCapabilityPresent "Framework.App" "renderAppError")
-      , ("stable frontend doc says candidate/default", "candidate default business frontend" `isInfixOf` stableFrontendText)
+      , ("stable frontend doc states current/default maturity", docSaysDefaultMaturity)
       , ("stable frontend doc lists Framework.App", "Framework.App" `isInfixOf` stableFrontendText)
-      , ("stable frontend doc keeps Framework.TrustBase out of default business path", "not a default business import" `isInfixOf` stableFrontendText)
+      , ("stable frontend doc places Framework.TrustBase in maintenance path", docSeparatesTrustBase)
       ]
+    docSaysDefaultMaturity =
+      "candidate default business frontend" `isInfixOf` stableFrontendText
+        || ( "默认业务前台" `isInfixOf` stableFrontendText
+               && "更多业务验收" `isInfixOf` stableFrontendText
+           )
+    docSeparatesTrustBase =
+      "not a default business import" `isInfixOf` stableFrontendText
+        || ( "Framework.TrustBase" `isInfixOf` stableFrontendText
+               && "维护入口" `isInfixOf` stableFrontendText
+               && "业务 authoring 文件保持在推荐导入列表上" `isInfixOf` stableFrontendText
+           )
     missing =
       [ name | (name, present) <- required, not present ]
 

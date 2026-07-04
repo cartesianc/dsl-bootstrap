@@ -2,7 +2,7 @@
 
 ## 0. 仓库定位
 
-本仓库当前面向框架自我迭代。面向业务用户裁剪后的 SDK 不从这里发布。Git 发布物是 trustbase-gated self-iteration snapshot：源码本身必须能描述当前 core、验证当前 core，并物化下一阶段 framework artifact。
+本仓库当前服务框架维护和自举验证。面向业务用户的 SDK 包装会单独设计。Git 发布物是 trustbase-gated self-iteration snapshot：源码本身必须能描述当前 core、验证当前 core，并物化下一阶段 framework artifact。
 
 三种“框架自身”的写法会同时存在：
 
@@ -106,7 +106,7 @@ domain-app/src/SelfDomainApp.hs
 ```text
 AppBlueprint 和 Plugins.* 应该像配置文件。
 Domain.Business 和 Effects.* 也应该像配置文件。
-不要在前台写算法、搜索、格式化、计算、IO。
+前台保持声明式；算法、搜索、格式化、计算和 IO 放在 handler 或 runtime 层。
 算法进入 Domain.Runtime handler/transform。
 业务能力进入 Domain.Business，底层 effect IR 由 Framework.Business 自动生成。
 可验证结论进入 Domain.SemanticEvidence。
@@ -114,7 +114,7 @@ Domain.Business 和 Effects.* 也应该像配置文件。
 
 ## 4. Runtime 命名
 
-不要把当前结构描述成“两套运行时”。准确说法是：
+推荐说法：
 
 ```text
 one runtime semantics
@@ -195,7 +195,7 @@ Framework.Handler
 
 算法、IO、typed value conversion、具体 handler/transform 实现放在 `Domain.Runtime` 或等价 handler 模块中。
 
-框架自我迭代、证据、diagnosis、fixed point、artifact gate 最多再碰：
+框架维护、证据、diagnosis、fixed point 和 artifact gate 使用：
 
 ```text
 Framework.TrustBase

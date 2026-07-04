@@ -1,39 +1,41 @@
-# Candidate Default Business Frontend
+# 默认业务前台
 
-本文定义当前仓库的 candidate default business frontend。这里的 stable 是“默认前台契约正在收口”，不是已经承诺永久兼容。
+本文说明普通业务开发者的推荐入口。长期 SDK 兼容承诺会在更多业务验收后单独发布。
 
-## 默认业务入口
+## 推荐导入
 
-普通业务作者默认使用：
+业务代码从这四个模块开始：
+
+```haskell
+import Framework.Ast
+import Framework.Business
+import Framework.Handler
+import Framework.App
+```
+
+职责划分：
 
 ```text
 Framework.Ast
-Framework.Business
-Framework.Handler
-Framework.App
-```
-
-职责：
-
-```text
-Framework.Ast
-  AppBlueprint and workflow AST
+  AppBlueprint、workflow AST、fact、name、hanging hook。
 
 Framework.Business
-  capability authoring and capability-to-effect lowering
+  capability 声明，以及 capability 到 effect theory 的 lowering。
 
 Framework.Handler
-  handler / transform implementation and RuntimeEffectEnvironment
+  handler、transform、typed runtime value、RuntimeEffectEnvironment。
 
 Framework.App
-  thin app runner facade
+  AppBlueprint + EffectTheory + RuntimeEffectEnvironment 的运行入口。
 ```
 
-`Framework.App` 只解决业务运行代码从 `Framework.TrustBase` 拿 runner 的尴尬。它不承接 report、diagnosis、domain registration、manifest、self-artifact 或 promotion gate。
+`Framework.App` 的范围很小：`runApp`、`runAppResult`、`runAppRuntimeResult`
+和错误渲染。报告、domain registration、manifest、self-artifact、promotion
+gate 保持在维护层模块中。
 
-## 非默认业务入口
+## 维护入口
 
-以下模块仍然存在并继续服务框架维护者，但 they are not a default business import：
+下面这些模块服务框架维护、报告、验收和发布流程：
 
 ```text
 Framework.TrustBase
@@ -45,20 +47,14 @@ witness executables
 manifest and promotion gate code
 ```
 
-`Framework.Effect` 继续 exposed，定位是：
+业务 authoring 文件保持在推荐导入列表上。维护工具、witness 和报告程序可以使用维护入口。
 
-```text
-normalized IR
-compatibility surface
-framework-internal source
-witness / test IR
-```
+`Framework.Effect` 继续作为 normalized IR、兼容代码、框架内部实现和 witness
+检查使用。新业务代码通常通过 `Framework.Business` 描述 capability。
 
-普通业务文档不再推荐从 `Framework.Effect` 开始。
+## 普通业务文件
 
-## Authoring 与 Acceptance
-
-普通 authoring 区域：
+`business-syntax-witness` 检查这些 authoring 区域：
 
 ```text
 Domain.Business
@@ -70,9 +66,11 @@ Effects.*
 Plugins.*
 ```
 
-这些区域由 `business-syntax-witness` 约束，只使用默认业务前台模块。
+这些文件使用默认业务前台模块。
 
-验收/报告层不同：
+## 验收和报告文件
+
+验收和报告文件负责读取证据、生成报告、检查运行结果：
 
 ```text
 SelfDomainApp
@@ -82,7 +80,7 @@ runtime diagnosis witness
 business-syntax-witness
 ```
 
-这些可以使用 evidence/reporting API，因为它们负责验收结果，而不是普通业务声明。
+这些文件可以使用 reporting/evidence API。
 
 ## Gate
 
@@ -95,22 +93,15 @@ check-semantic
   + trust-base-manifest-witness + architecture-concern-witness
 
 check-release
-  non-promotion release gate; self-artifact is still excluded by default
+  release pre-check without the self-artifact promotion gate
 
 check-release -IncludeSelfArtifact
   explicit promotion artifact gate
 ```
 
-## Current Contract
+## 当前范围
 
-本轮只做边界标注、前台 API 收口、业务 import 护栏、错误文案映射、文档默认路径、门禁分层和复杂度护栏。
+本页描述当前仓库内的默认业务前台。它建立入口、import 边界、错误文案、
+文档路径、gate 分层和复杂度护栏。
 
-本轮不做：
-
-```text
-split into a separate SDK package
-hide or remove Bootstrap.*
-hide or remove Framework.TrustBase
-remove self-bootstrap business
-change promotion gate semantics
-```
+包拆分、隐藏内部模块、删除自举业务和 promotion gate 语义调整属于后续设计。

@@ -67,7 +67,7 @@ astLiveLayoutContext
   modes: zygo + render-before-run + listen-during-run
 ```
 
-选择 `zygo` 的原因是 AST layout 需要一边保留节点自身身份，一边计算坐标辅助结果。后续如果需要 subtree 原貌、历史 cache 或 unfold 方向，可以继续挂 `para`、`histo`、`hylo`、`chrono` 等模式，不需要改默认 core。
+选择 `zygo` 的原因是 AST layout 需要同时保留节点身份并计算坐标辅助结果。后续如果需要 subtree 原貌、历史 cache 或 unfold 方向，可以继续挂 `para`、`histo`、`hylo`、`chrono` 等模式；默认 core 保持现状。
 
 ## 3. 运行前 Layout
 
@@ -123,7 +123,7 @@ imposed 节点放在 parent 上方
 坐标冲突时沿当前展开轴继续延展
 ```
 
-这一步只产出 layout model，不负责具体画法。SVG、Canvas、TUI、Graphviz 或自定义 renderer 都可以消费同一个 model。
+这一步只产出 layout model。SVG、Canvas、TUI、Graphviz 或自定义 renderer 都可以消费同一个 model 来完成具体画法。
 
 ## 4. 运行时 Listener
 

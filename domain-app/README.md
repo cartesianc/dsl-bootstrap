@@ -1,10 +1,10 @@
 # domain-app
 
-`domain-app` is the external acceptance app for the framework business frontend.
-It is not a self-bootstrap artifact and it is not a TrustBase app.
+`domain-app` is the external acceptance app for the business frontend. It shows
+how ordinary business modules use `Framework.Ast`, `Framework.Business`,
+`Framework.Handler`, and `Framework.App`.
 
-The app stays in this repository to prove that ordinary business code can use
-the candidate default business frontend without importing the maintenance layer.
+Maintenance and self-bootstrap artifacts live in the framework layer.
 
 ## Business Flow
 
@@ -22,10 +22,10 @@ configure app
 
 ```text
 Domain.Vocabulary
-  stable workflow fact names
+  workflow fact names
 
 Domain.EffectVocabulary
-  stable send/type/handler/transform names
+  send/type/handler/transform names
 
 Domain.AppBlueprint
   AppBlueprint and workflow composition through Framework.Ast
@@ -46,13 +46,12 @@ Domain.SemanticEvidence / SelfDomainApp
   acceptance and reporting layer
 ```
 
-`Domain.SemanticEvidence` and `SelfDomainApp` are allowed to use evidence and
-reporting APIs because they are acceptance/reporting code, not ordinary business
-authoring.
+`Domain.SemanticEvidence` and `SelfDomainApp` can use evidence and reporting APIs
+because they produce acceptance reports.
 
-## Boundary
+## Import Boundary
 
-Ordinary authoring files should stay on:
+Ordinary authoring files stay on:
 
 ```text
 Framework.Ast
@@ -61,7 +60,7 @@ Framework.Handler
 Framework.App
 ```
 
-They should not import:
+Avoid these imports in ordinary authoring files:
 
 ```text
 Bootstrap.*
@@ -73,8 +72,7 @@ Framework.Runtime
 Framework.Effect
 ```
 
-`Framework.Effect` may still appear in witnesses or acceptance code when the
-test needs to inspect normalized IR.
+Witnesses and acceptance code may inspect normalized IR through `Framework.Effect`.
 
 ## Verification
 
@@ -85,5 +83,5 @@ stack --work-dir .stack-work-codex exec business-syntax-witness -- --json
 ```
 
 `business-syntax-witness` checks capability lowering, authoring imports,
-`Framework.App` runner usage, handler/transform shape, friendly diagnostics, and
-the typed runtime pipeline adapter.
+`Framework.App` runner usage, handler/transform shape, friendly diagnostics,
+EffectRow algebra, and the typed runtime pipeline adapter.

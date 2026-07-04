@@ -286,6 +286,6 @@ stack --work-dir .stack-work-codex build
 stack --work-dir .stack-work-codex exec core-self-interpret -- --json
 ```
 
-artifact gate 仍然使用 artifact 内部自己的默认 `.stack-work`，不会依赖当前工作树的 `.stack-work-codex`。
+artifact gate 使用 artifact 内部自己的默认 `.stack-work`。当前工作树的 `.stack-work-codex` 只服务本地验证。
 
 说明性文档和维护笔记保留在 repo 中，不进入 Stage 1 framework artifact；artifact gate 不应该因为 README/docs 变更而反复运行。

@@ -1,6 +1,6 @@
 # TrustBase
 
-TrustBase 是本轮验证使用的上一代 compiled core。
+TrustBase 是当前验证轮次使用的上一代 compiled core。
 
 ```text
 round N:

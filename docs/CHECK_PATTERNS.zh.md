@@ -1,12 +1,12 @@
 # Check Patterns
 
-本文记录当前 gate 分层。工业化的目标不是每次都跑最重的东西，而是让 fast、semantic、release、promotion 的职责清楚。
+本文说明常用检查命令。目标是让开发者按场景选择合适的 gate。
 
 ## 证明层级
 
 ```text
 host build
-  Haskell/Stack 可编译当前工作树。
+  Haskell/Stack 编译当前工作树。
 
 self-interpret proof
   compiled core_0 运行候选 core_1；core_1 以 domain 前台表达自身。
@@ -18,12 +18,12 @@ manifest/schema guardrail
   evidence、schema catalog、cabal executable、TrustBase manifest 和 check script 清单同步。
 
 artifact proof
-  只有 promotion 轮次才物化 self artifact，并在 artifact 内重跑 release proof。
+  promotion 轮次物化 self artifact，并在 artifact 内重跑 release proof。
 ```
 
 ## check-fast
 
-用途：本地快速信心。
+用途：本地快速检查。
 
 ```powershell
 .\scripts\check-fast.cmd
@@ -35,8 +35,6 @@ artifact proof
 stack --work-dir .stack-work-codex build
 stack --work-dir .stack-work-codex exec core-self-interpret -- --json
 ```
-
-`check-fast` 不跑业务边界 witness，不跑 domain acceptance report，不跑 self-artifact。
 
 ## check-semantic
 
@@ -57,7 +55,7 @@ stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidenc
 stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json
 ```
 
-它覆盖：
+覆盖范围：
 
 ```text
 candidate core self-interpretation
@@ -73,17 +71,13 @@ architecture concern risk guardrails
 
 ## check-release
 
-用途：默认 release confidence，不包含 promotion artifact gate。
+用途：发布前检查。
 
 ```powershell
 .\scripts\check-release.cmd
 ```
 
-当前默认命令与 semantic gate 的非 promotion 部分保持一致。它仍然不跑 `self-artifact-witness`。
-
-## Promotion Gate
-
-只有明确 promotion 时才跑：
+默认 release gate 复用 semantic gate 的命令列表。Promotion artifact gate 通过显式参数运行：
 
 ```powershell
 .\scripts\check-release.cmd -IncludeSelfArtifact
@@ -115,7 +109,7 @@ core_0 ~= core_1 normalized fixed-point evidence
 
 ## Focused Witnesses
 
-调试具体边界时可以单独跑：
+调试具体边界时可以单独运行：
 
 ```powershell
 stack --work-dir .stack-work-codex exec business-syntax-witness -- --json
@@ -178,7 +172,7 @@ self-interpret-live
 
 ## List Mode
 
-所有脚本都支持只列命令：
+脚本支持只列命令：
 
 ```powershell
 .\scripts\check-fast.cmd -List
@@ -187,4 +181,4 @@ self-interpret-live
 .\scripts\check-release.cmd -IncludeSelfArtifact -List
 ```
 
-TrustBase manifest witness 会用这些输出检查 gate policy 是否漂移。
+TrustBase manifest witness 用这些输出检查 gate policy 漂移。

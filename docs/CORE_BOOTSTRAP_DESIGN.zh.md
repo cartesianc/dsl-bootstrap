@@ -111,7 +111,7 @@ Stage 1 framework
 如果修改 compiler kernel 自身，例如 AST 语义、effect DSL 语法、fact closure 规则：
 
 ```text
-Stage 0 不需要理解新语义
+Stage 0 承载现有语义
 Stage 0 只需要按旧约束构建新 kernel artifact
 Stage 1 产生后负责解释和验证新语义
 ```

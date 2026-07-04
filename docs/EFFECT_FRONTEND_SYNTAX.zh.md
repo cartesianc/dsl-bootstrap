@@ -61,7 +61,7 @@ generateReportCapability =
     ]
 ```
 
-业务作者不需要在这里手写 `needs/take/make/externalMake`。这些仍然存在，只是进入 normalized IR。
+业务作者在 capability 层声明业务意图。`needs/take/make/externalMake` 由 lowering 进入 normalized IR。
 
 ## 3. Lowering
 
@@ -84,7 +84,7 @@ pipeline GenerateReportPipeline
   UserName -> ReportInput -> ReportOutput
 ```
 
-Pipeline 会生成相邻 transform candidate，但不会自动生成业务 fact。`ReportOutput` 是 runtime data，`ReportGeneratedFact` 是业务状态，二者必须显式区分。
+Pipeline 会生成相邻 transform candidate。业务 fact 通过 `requires`、`privateFact` 和 `produces` 显式声明。`ReportOutput` 是 runtime data，`ReportGeneratedFact` 是业务状态。
 
 ## 4. Normalized IR
 
@@ -165,7 +165,7 @@ handler 输入或输出
 transform 输入或输出
 下一个 handler 的参数
 包含 payload/value
-业务人员不需要直接关心这个状态名
+业务人员通常只使用公开的 capability 名和 fact 名
 ```
 
 Internal 留在 handler/transform 内：
@@ -251,4 +251,4 @@ effectSystem privateFacts 保持内部 scope，exports 定义 public boundary
 [witness] ok business syntax evidence 18 payload claims
 ```
 
-日常 capability/lowering 语法改动只需要跑 `business-syntax-witness`。高危 `self-artifact-witness` artifact gate 内部也会包含这项检查，但不会因为语法文档或 README/docs-only 变更单独触发。
+日常 capability/lowering 语法改动使用 `business-syntax-witness`。高危 `self-artifact-witness` artifact gate 内部也包含这项检查；语法文档和 README/docs-only 变更走轻量文档检查。

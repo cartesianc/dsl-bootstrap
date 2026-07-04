@@ -1,24 +1,20 @@
 # dsl-bootstrap
 
-`dsl-bootstrap` is a self-expressing Haskell framework experiment. The current
-repository deliberately keeps two layers in one place:
+`dsl-bootstrap` is a Haskell framework experiment with two audiences in one
+repository.
 
 ```text
-default business frontend
-  ordinary business authoring and the external domain acceptance app
+Business developers
+  Write workflows, capabilities, handlers, and a small app runner.
 
-framework maintenance / self-bootstrap layer
-  Bootstrap.*, Domain.* framework-core self-expression, TrustBase, witnesses,
-  manifests, self-artifact checks, and promotion gates
+Framework maintainers
+  Work on Bootstrap.*, framework-core self-expression, TrustBase, witnesses,
+  manifests, self-artifact checks, and promotion gates.
 ```
 
-This branch treats the business frontend as a **candidate default business
-frontend**. It is the recommended path for ordinary business code, but it is not
-yet a strong long-term SDK compatibility promise.
+## Business Developer Path
 
-## Default Business Path
-
-Business authors should normally start from these modules:
+Start business code from these modules:
 
 ```haskell
 import Framework.Ast
@@ -27,48 +23,51 @@ import Framework.Handler
 import Framework.App
 ```
 
-Use them as follows:
+Use them like this:
 
 ```text
 Framework.Ast
-  AppBlueprint, workflow AST, facts, names, and hanging hooks
+  AppBlueprint, workflow AST, facts, names, and hanging hooks.
 
 Framework.Business
   capability, pipeline, policy, handler binding, transform binding, and
-  capability-to-effect lowering
+  capability-to-effect lowering.
 
 Framework.Handler
-  typed values, handlers, transforms, registries, and RuntimeEffectEnvironment
+  typed values, handlers, transforms, registries, and RuntimeEffectEnvironment.
 
 Framework.App
-  thin runner facade for AppBlueprint + EffectTheory + RuntimeEffectEnvironment
+  thin runner for AppBlueprint + EffectTheory + RuntimeEffectEnvironment.
 ```
 
-`Framework.Effect` remains exposed as normalized IR / compatibility /
-framework-internal surface. It is not the default starting point for ordinary
-business authoring.
+Compatibility note: this is the current recommended business path. A stronger
+SDK compatibility promise should come after more real business acceptance apps.
 
-`Framework.TrustBase`, `Framework.SelfArtifact`, `Framework.FixedPoint`,
-`Framework.Runtime.Evidence*`, `Bootstrap.*`, and witness executables remain in
-the repository, but they are maintenance and acceptance surfaces rather than
-ordinary business imports.
+`Framework.Effect` remains available for normalized IR, compatibility code,
+framework internals, and witnesses. New business code usually starts with
+`Framework.Business`.
+
+Maintenance modules such as `Framework.TrustBase`, `Framework.SelfArtifact`,
+`Framework.FixedPoint`, `Framework.Runtime.Evidence*`, `Bootstrap.*`, and
+witness executables stay in the repository. Business authoring code should keep
+its imports on the four modules listed above.
 
 Start here:
 
-- [Candidate default business frontend](docs/STABLE_FRONTEND.zh.md)
+- [Default business frontend](docs/STABLE_FRONTEND.zh.md)
 - [Capability frontend](docs/CAPABILITY_FRONTEND.zh.md)
 - [Migrate from Effect IR to capabilities](docs/SDK_MIGRATION_FROM_EFFECT_IR.zh.md)
 - [Domain app acceptance flow](domain-app/README.md)
 
-## Maintenance Path
+## Framework Maintainer Path
 
-Framework maintainers continue to use the self-interpretation line:
+Maintainers use the self-interpretation line:
 
 ```text
 core_0 -> new_core -> empty_business
 ```
 
-The core maintenance layer keeps:
+The maintenance layer contains:
 
 ```text
 Bootstrap.*
@@ -91,39 +90,38 @@ Start here:
 
 ## Common Commands
 
-Fast local confidence stays intentionally light:
+Fast local check:
 
 ```powershell
 .\scripts\check-fast.cmd
 ```
 
-It expands to:
+Command list:
 
 ```text
 stack --work-dir .stack-work-codex build
 stack --work-dir .stack-work-codex exec core-self-interpret -- --json
 ```
 
-Semantic checks include the business boundary and external domain acceptance
-app:
+Semantic check:
 
 ```powershell
 .\scripts\check-semantic.cmd
 ```
 
-Release checks do not run `self-artifact-witness` by default:
+Release pre-check:
 
 ```powershell
 .\scripts\check-release.cmd
 ```
 
-Promotion runs the artifact gate only when requested explicitly:
+Promotion artifact check:
 
 ```powershell
 .\scripts\check-release.cmd -IncludeSelfArtifact
 ```
 
-To inspect command lists without running them:
+Print script command lists:
 
 ```powershell
 .\scripts\check-fast.cmd -List
@@ -131,7 +129,7 @@ To inspect command lists without running them:
 .\scripts\check-release.cmd -List
 ```
 
-Useful focused witnesses:
+Focused checks:
 
 ```powershell
 stack --work-dir .stack-work-codex exec business-syntax-witness -- --json
@@ -141,12 +139,18 @@ stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json
 stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json
 ```
 
-## Boundary Rule
+## Import Boundary
 
-Ordinary business authoring files are guarded by `business-syntax-witness`.
-They should use only the default business frontend modules listed above.
+`business-syntax-witness` checks ordinary business authoring files. Those files
+stay on:
 
-Acceptance/reporting code is different. `SelfDomainApp`,
-`Domain.SemanticEvidence`, diagnosis witnesses, reports, and maintenance tools
-may use framework evidence and reporting APIs because they are not ordinary
-business authoring surfaces.
+```text
+Framework.Ast
+Framework.Business
+Framework.Handler
+Framework.App
+```
+
+Acceptance and reporting code, including `SelfDomainApp`,
+`Domain.SemanticEvidence`, diagnosis witnesses, reports, and maintenance tools,
+may use evidence and reporting APIs.

@@ -100,7 +100,7 @@ FrameworkCoreReportPublishedFact
 fact [AstStructureExpressedFact]
 ```
 
-不要把这些中间过程写成 AST leaf：
+这些中间过程保持在 handler、runtime 或 policy 层：
 
 ```text
 PackageModulesDiscoveredFact
@@ -144,7 +144,7 @@ ValidateRuntimeFlow
 
 Hanging 只表达附加控制结构。
 
-当前 production AST 不依赖复杂 scheduler。`middleware` 可以用于 trace/report 包装；`callback`、`suspense`、`loop` 保留为 DSL 能力，但不要把它们作为 framework core 主验证路径的必要条件。
+当前 production AST 依赖基础 workflow。`middleware` 可以用于 trace/report 包装；`callback`、`suspense`、`loop` 保留为 DSL 能力，framework core 主验证路径继续使用基础 workflow。
 
 `context` 用于把 recursion scheme model 和 algebra effect systems 挂到 hanging tree。它是可选 observer/projection handle，不改变默认 core 的主 workflow。只有调用方显式挂载 context 时，对应 algebra effect systems 才进入 plan validation。
 

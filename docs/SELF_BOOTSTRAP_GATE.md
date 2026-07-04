@@ -55,7 +55,7 @@ self-artifact-witness skipped
 
 ```text
 release pre-gate passed
-same HEAD has not run self-artifact-witness in this round
+same HEAD has no recorded self-artifact-witness run in this round
 promotion/replacement round
 ```
 
