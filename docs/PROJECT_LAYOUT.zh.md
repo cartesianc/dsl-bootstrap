@@ -130,9 +130,10 @@ Framework.Runtime.Interpreter
   typed RuntimeM interpreter implementation。
 
 Framework.Runtime.Types
+Framework.Runtime.State
 Framework.Runtime.Values
 Framework.Runtime.Handlers
-  typed runtime 的数据、value conversion、handler/transform registry implementation。
+  typed runtime 的数据、state/snapshot、value conversion、handler/transform registry implementation。
 ```
 
 `Framework.Domain` 里的主构造器是：

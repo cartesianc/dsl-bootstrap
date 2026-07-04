@@ -161,6 +161,9 @@ SelfArtifactManifestExpressedFact -> Framework.SelfArtifact
 Framework.Runtime.Interpreter
   typed RuntimeM interpreter implementation and app execution entrypoints
 
+Framework.Runtime.State
+  runtime state seed and snapshot projection helpers
+
 Framework.Runtime.Types
   shared runtime records, RuntimeError, fact claims, typed values, events, and diagnosis data types
 

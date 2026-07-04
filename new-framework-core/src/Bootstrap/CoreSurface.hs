@@ -102,6 +102,7 @@ explicitCoreSurfaceModules =
   , runtimeEvidenceFacade
   , runtimeHotPathFacade
   , runtimePolicyFacade
+  , runtimeStateFacade
   , runtimeTypesFacade
   , backgroundRuntimeDiagnosis
   , registryCodegenFacade
@@ -288,6 +289,7 @@ coreSurfaceSlices =
           , "Framework.Runtime.Handlers"
           , "Framework.Runtime.HotPath"
           , "Framework.Runtime.Policy"
+          , "Framework.Runtime.State"
           , "Framework.Runtime.Values"
           , "Framework.TrustBase"
           , "Framework.Background.RuntimeDiagnosis"
@@ -1596,6 +1598,18 @@ runtimePolicyFacade =
           , "runtimePolicyEvidencePayloadPassed"
           , "runtimePolicyEvidencePayloads"
           ]
+    )
+
+runtimeStateFacade :: CoreSurfaceModule
+runtimeStateFacade =
+  moduleSurface
+    "Framework.Runtime.State"
+    "runtime state seed and snapshot projection helpers"
+    ( map valueCapability
+        [ "emptyRuntime"
+        , "runtimeSnapshot"
+        , "renderRuntimeSnapshot"
+        ]
     )
 
 runtimeTypesFacade :: CoreSurfaceModule

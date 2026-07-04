@@ -87,6 +87,7 @@ library
                      , Framework.Runtime.HotPath
                      , Framework.Runtime.Interpreter
                      , Framework.Runtime.Policy
+                     , Framework.Runtime.State
                      , Framework.Runtime.Types
                      , Framework.Runtime.Values
                      , Framework.SelfArtifact
