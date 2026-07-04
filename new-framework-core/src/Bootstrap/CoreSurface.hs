@@ -81,6 +81,7 @@ explicitCoreSurfaceModules =
   , workflowSemanticsFacade
   , effectFacade
   , businessFacade
+  , businessEvidenceFacade
   , handlerFacade
   , trustBaseFacade
   , trustBaseManifestFacade
@@ -767,6 +768,19 @@ businessFacade =
           , "transformBinding"
           , "uses"
           ]
+    )
+
+businessEvidenceFacade :: CoreSurfaceModule
+businessEvidenceFacade =
+  moduleSurface
+    "Framework.Business.Evidence"
+    "business capability frontend evidence claim manifest"
+    ( map valueCapability
+        [ "businessSyntaxClaimManifestEvidenceClaimName"
+        , "businessSyntaxCoreClaimNames"
+        , "businessSyntaxEvidenceArtifactSummary"
+        , "businessSyntaxEvidenceClaimNames"
+        ]
     )
 
 handlerFacade :: CoreSurfaceModule

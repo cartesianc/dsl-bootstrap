@@ -7,6 +7,16 @@ import Data.List
 import System.Environment
   ( getArgs )
 
+import Bootstrap.CoreSurface
+  ( CoreCapability (..)
+  , CoreSurfaceModule (..)
+  , coreSurfaceModules
+  )
+import Framework.Business.Evidence
+  ( businessSyntaxClaimManifestEvidenceClaimName
+  , businessSyntaxCoreClaimNames
+  , businessSyntaxEvidenceClaimNames
+  )
 import Framework.FixedPoint
   ( runtimeBackendParityEvidenceClaimNames )
 import Framework.Frontend.Evidence
@@ -73,7 +83,6 @@ main = do
 architectureConcernEvidencePayloads :: IO [ArchitectureConcernEvidencePayload]
 architectureConcernEvidencePayloads = do
   cabalText <- readFile "new-framework-core/new-framework-core.cabal"
-  businessWitnessSource <- readFile "domain-app/app/BusinessSyntaxWitness.hs"
   runtimeDiagnosisSource <- readFile "new-framework-core/src/Framework/Runtime/Diagnosis.hs"
   domainBusinessSource <- readFile "domain-app/src/Domain/Business.hs"
   effectVocabularySource <- readFile "domain-app/src/Domain/EffectVocabulary.hs"
@@ -84,8 +93,8 @@ architectureConcernEvidencePayloads = do
     , backendParityPayload
     , effectSystemScopePayload
     , workflowAndConcurrencyManifestPayload
-    , businessSyntaxClaimManifestPayload businessWitnessSource
-    , capabilityPrivateFactPayload businessWitnessSource
+    , businessSyntaxClaimManifestPayload
+    , capabilityPrivateFactPayload
     , businessFacadeBoundaryPayload domainBusinessSource effectVocabularySource
     , trustBaseMachineReadableGatesPayload cabalText
     , runtimeHotPathGuardPayload
@@ -240,28 +249,38 @@ workflowAndConcurrencyManifestPayload =
       map ("workflow: " ++) (missingItems workflowSemanticsEvidenceClaimNames requiredWorkflowClaims)
         ++ map ("runtime concurrency: " ++) (missingItems runtimeConcurrencyEvidenceClaimNames requiredConcurrencyClaims)
 
-businessSyntaxClaimManifestPayload :: String -> ArchitectureConcernEvidencePayload
-businessSyntaxClaimManifestPayload businessWitnessSource =
+businessSyntaxClaimManifestPayload :: ArchitectureConcernEvidencePayload
+businessSyntaxClaimManifestPayload =
   concernEvidence
     "session1-business-syntax-claim-manifest"
     (null missing)
-    "business syntax evidence exposes a stable claim manifest with self-check payload"
+    "business syntax evidence exposes a stable core claim manifest with self-check payload"
     (observedList missing)
     "BusinessSyntaxClaimManifestCoverageArtifact"
     "low:evidence-manifest"
     "update business syntax claim manifest before adding or removing capability frontend evidence payloads"
   where
-    required =
-      [ ("businessSyntaxCoreClaimNames", "businessSyntaxCoreClaimNames ::" `isInfixOf` businessWitnessSource)
-      , ("businessSyntaxEvidenceClaimNames", "businessSyntaxEvidenceClaimNames ::" `isInfixOf` businessWitnessSource)
-      , ("business-syntax-claim-manifest payload", "business-syntax-claim-manifest" `isInfixOf` businessWitnessSource)
-      , ("capability private fact claim", "business-syntax-capability-private-fact-boundary" `isInfixOf` businessWitnessSource)
+    requiredClaims =
+      [ "business-syntax-needs-lowering"
+      , "business-syntax-external-make-lowering"
+      , "business-syntax-transform-lowering"
+      , "business-syntax-runtime-pipeline-adapter"
+      , "business-syntax-capability-private-fact-boundary"
+      , businessSyntaxClaimManifestEvidenceClaimName
       ]
+    required =
+      [ ("business-syntax schema", schemaPresent "business-syntax-evidence.v1")
+      , ("business syntax core claim manifest non-empty", not (null businessSyntaxCoreClaimNames))
+      , ("business syntax evidence claim manifest self-check", businessSyntaxClaimManifestEvidenceClaimName `elem` businessSyntaxEvidenceClaimNames)
+      ]
+        ++ [ ("business syntax claim: " ++ claim, claim `elem` businessSyntaxEvidenceClaimNames)
+           | claim <- requiredClaims
+           ]
     missing =
       [ name | (name, present) <- required, not present ]
 
-capabilityPrivateFactPayload :: String -> ArchitectureConcernEvidencePayload
-capabilityPrivateFactPayload businessWitnessSource =
+capabilityPrivateFactPayload :: ArchitectureConcernEvidencePayload
+capabilityPrivateFactPayload =
   concernEvidence
     "session2-capability-private-fact-authoring"
     (null missing)
@@ -272,12 +291,20 @@ capabilityPrivateFactPayload businessWitnessSource =
     "review before changing capability lowering or privateFact export behavior"
   where
     required =
-      [ ("privateFact import", "privateFact" `isInfixOf` businessWitnessSource)
-      , ("privateFact boundary payload", "business-syntax-capability-private-fact-boundary" `isInfixOf` businessWitnessSource)
+      [ ("Framework.Business privateFact surface", coreSurfaceValueCapabilityPresent "Framework.Business" "privateFact")
+      , ("privateFact boundary claim", "business-syntax-capability-private-fact-boundary" `elem` businessSyntaxCoreClaimNames)
       , ("business-syntax schema", schemaPresent "business-syntax-evidence.v1")
       ]
     missing =
       [ name | (name, present) <- required, not present ]
+
+coreSurfaceValueCapabilityPresent :: String -> String -> Bool
+coreSurfaceValueCapabilityPresent moduleName capability =
+  any moduleMatches coreSurfaceModules
+  where
+    moduleMatches currentModule =
+      surfaceModuleName currentModule == moduleName
+        && any ((== capability) . capabilityName) (surfaceModuleCapabilities currentModule)
 
 businessFacadeBoundaryPayload :: String -> String -> ArchitectureConcernEvidencePayload
 businessFacadeBoundaryPayload domainBusinessSource effectVocabularySource =

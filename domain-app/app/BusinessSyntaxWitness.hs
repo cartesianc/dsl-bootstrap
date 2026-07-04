@@ -48,6 +48,11 @@ import "new-framework-core" Framework.Business
   , produces
   , uses
   )
+import "new-framework-core" Framework.Business.Evidence
+  ( businessSyntaxClaimManifestEvidenceClaimName
+  , businessSyntaxCoreClaimNames
+  , businessSyntaxEvidenceClaimNames
+  )
 import qualified "new-framework-core" Framework.Effect as Effect
 import "new-framework-core" Framework.Effect
   ( EffectSection (..)
@@ -135,31 +140,6 @@ businessSyntaxEvidencePayloadsWithManifest runtimePipelinePassed domainBusinessB
         domainBusinessBoundaryPassed
         domainVocabularyBoundaryPassed
         effectFacadeBoundaryPassed
-
-businessSyntaxCoreClaimNames :: [String]
-businessSyntaxCoreClaimNames =
-  [ "business-syntax-needs-lowering"
-  , "business-syntax-take-lowering"
-  , "business-syntax-make-lowering"
-  , "business-syntax-uses-lowering"
-  , "business-syntax-external-make-lowering"
-  , "business-syntax-transform-lowering"
-  , "business-syntax-effects-facade-lowering"
-  , "business-syntax-domain-business-boundary"
-  , "business-syntax-domain-effect-vocabulary-boundary"
-  , "business-syntax-effects-facade-boundary"
-  , "business-syntax-handler-binding-alignment"
-  , "business-syntax-pipeline-adjacent-transform"
-  , "business-syntax-runtime-pipeline-adapter"
-  , "effect-system-boundary-metadata"
-  , "effect-system-scope-metadata"
-  , "business-syntax-capability-system-boundary"
-  , "business-syntax-capability-private-fact-boundary"
-  ]
-
-businessSyntaxEvidenceClaimNames :: [String]
-businessSyntaxEvidenceClaimNames =
-  businessSyntaxCoreClaimNames ++ ["business-syntax-claim-manifest"]
 
 businessSyntaxEvidencePayloads :: Bool -> Bool -> Bool -> Bool -> [BusinessSyntaxEvidencePayload]
 businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed effectFacadeBoundaryPassed =
@@ -270,7 +250,7 @@ businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPasse
 businessSyntaxClaimManifestPayload :: [BusinessSyntaxEvidencePayload] -> BusinessSyntaxEvidencePayload
 businessSyntaxClaimManifestPayload payloads =
   BusinessSyntaxEvidencePayload
-    { businessSyntaxEvidenceClaim = "business-syntax-claim-manifest"
+    { businessSyntaxEvidenceClaim = businessSyntaxClaimManifestEvidenceClaimName
     , businessSyntaxEvidenceStatus =
         if manifestSynced
           then BusinessSyntaxEvidencePassed
@@ -287,7 +267,7 @@ businessSyntaxClaimManifestPayload payloads =
     actualClaimNames =
       map businessSyntaxEvidenceClaim payloads
     actualEvidenceClaimNames =
-      actualClaimNames ++ ["business-syntax-claim-manifest"]
+      actualClaimNames ++ [businessSyntaxClaimManifestEvidenceClaimName]
     manifestSynced =
       actualClaimNames == businessSyntaxCoreClaimNames
         && actualEvidenceClaimNames == businessSyntaxEvidenceClaimNames
