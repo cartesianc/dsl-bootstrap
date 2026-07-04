@@ -164,6 +164,8 @@ runtime-diagnosis-witness
 domain-app-report
 ```
 
+`bootstrap-report -- --json` 和 `domain-app-report -- --json` 属于 gate-bearing report：输出 JSON 后检查 `status`，失败 report 会返回非零退出码。
+
 编译期、报告和 gate 可以重复验证。业务执行只运行当前 workflow/effect plan。
 
 ## 5. Machine-readable manifest

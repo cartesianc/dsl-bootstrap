@@ -133,6 +133,8 @@ fixed-point-smoke --json: fixed-point-report.v1
 fixed-point-smoke --summary-json: fixed-point-summary.v1
 ```
 
+`bootstrap-report -- --json` 和 `domain-app-report -- --json` 输出 report 后会检查 `status`；`failed` 会让命令返回非零退出码。
+
 ## 2. Runtime 语义闭包
 
 runtime 相关改动优先跑：

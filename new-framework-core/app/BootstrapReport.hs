@@ -4,7 +4,8 @@ module Main
 
 import Bootstrap.Report
   ( buildFrameworkCoreReport
-  , printFrameworkCoreReport
+  , frameworkCoreReportPassed
+  , renderFrameworkCoreReport
   , renderFrameworkCoreReportJson
   )
 import System.Environment
@@ -13,9 +14,12 @@ import System.Environment
 main :: IO ()
 main = do
   args <- getArgs
+  report <- buildFrameworkCoreReport
   case args of
-    ["--json"] -> do
-      report <- buildFrameworkCoreReport
+    ["--json"] ->
       putStrLn (renderFrameworkCoreReportJson report)
     _ ->
-      printFrameworkCoreReport
+      mapM_ putStrLn (renderFrameworkCoreReport report)
+  if frameworkCoreReportPassed report
+    then pure ()
+    else ioError (userError "[report] framework-core report failed")

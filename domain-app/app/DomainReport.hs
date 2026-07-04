@@ -4,6 +4,8 @@ module Main
 
 import Framework.Domain
   ( buildDomainReport
+  , DomainReport (..)
+  , DomainReportStatus (..)
   , renderDomainReport
   , renderDomainReportJson
   )
@@ -21,3 +23,14 @@ main = do
       putStrLn (renderDomainReportJson report)
     _ ->
       mapM_ putStrLn (renderDomainReport report)
+  if domainReportPassed report
+    then pure ()
+    else ioError (userError "[report] domain report failed")
+
+domainReportPassed :: DomainReport -> Bool
+domainReportPassed report =
+  case domainReportStatus report of
+    DomainReportPassed ->
+      True
+    DomainReportFailed _ ->
+      False
