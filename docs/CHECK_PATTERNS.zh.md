@@ -128,6 +128,7 @@ business-syntax-witness -- --json: business-syntax-evidence.v1
 trust-base-manifest-witness: trust-base-manifest.v2
 trust-base-manifest-witness -- --evidence-json: trust-base-manifest-evidence.v1
 schema-catalog-witness -- --json: schema-catalog-evidence.v1
+registry-codegen-witness -- --json: registry-codegen-evidence.v1
 fixed-point-smoke: fixed-point diff evidence 14 payload claims
 fixed-point-smoke: diffs: 0
 fixed-point-smoke --json: fixed-point-report.v1
@@ -220,6 +221,7 @@ runtime-policy-evidence.v1
 framework-core-frontend-evidence.v1
 schema-catalog-evidence.v1
 runtime-diagnosis-evidence.v1
+registry-codegen-evidence.v1
 workflow-semantics-evidence.v1
 runtime-concurrency-evidence.v1
 ```
@@ -287,7 +289,7 @@ framework-core facade/codegen 改动优先跑：
 
 ```powershell
 stack exec framework-core-frontend-witness -- --json
-stack exec registry-codegen-witness
+stack exec registry-codegen-witness -- --json
 ```
 
 `framework-core-frontend-witness` 同时检查：
@@ -435,7 +437,7 @@ stack exec workflow-semantics-witness
 stack exec runtime-diagnosis-witness
 stack exec framework-core-frontend-witness -- --json
 stack exec domain-app-report
-stack exec registry-codegen-witness
+stack exec registry-codegen-witness -- --json
 stack exec business-syntax-witness
 ```
 

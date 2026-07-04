@@ -190,6 +190,7 @@ trustBaseManifestRequiredJsonSchemas =
   , "runtime-hot-path-evidence.v1 <- runtime-hot-path-witness -- --json"
   , "runtime-policy-evidence.v1 <- runtime-policy-witness -- --json"
   , "runtime-diagnosis-evidence.v1 <- runtime-diagnosis-witness -- --json"
+  , "registry-codegen-evidence.v1 <- registry-codegen-witness -- --json"
   , "workflow-semantics-evidence.v1 <- workflow-semantics-witness -- --json"
   , "runtime-concurrency-evidence.v1 <- workflow-semantics-witness -- --runtime-concurrency-json"
   ]
@@ -266,7 +267,7 @@ releaseGateBaseCommands =
   , "stack --work-dir .stack-work-codex exec framework-core-frontend-witness -- --json"
   , "stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json"
   , "stack --work-dir .stack-work-codex exec schema-catalog-witness -- --json"
-  , "stack --work-dir .stack-work-codex exec registry-codegen-witness"
+  , "stack --work-dir .stack-work-codex exec registry-codegen-witness -- --json"
   ]
 
 renderTrustBaseManifest :: TrustBaseManifest -> [String]

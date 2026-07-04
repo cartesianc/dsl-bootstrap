@@ -249,7 +249,7 @@ stack exec runtime-policy-witness
 stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
 stack exec domain-app-report
-stack exec registry-codegen-witness
+stack exec registry-codegen-witness -- --json
 stack exec business-syntax-witness
 ```
 

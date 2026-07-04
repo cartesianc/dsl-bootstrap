@@ -553,7 +553,7 @@ domain-app/src/Effects/Theory.hs
 运行：
 
 ```powershell
-stack exec registry-codegen-witness
+stack exec registry-codegen-witness -- --json
 ```
 
 ## 自举
@@ -594,6 +594,7 @@ runtime-evidence.v1
 runtime-hot-path-evidence.v1
 runtime-policy-evidence.v1
 runtime-diagnosis-evidence.v1
+registry-codegen-evidence.v1
 workflow-semantics-evidence.v1
 runtime-concurrency-evidence.v1
 ```
@@ -651,7 +652,7 @@ stack exec workflow-semantics-witness
 stack exec runtime-diagnosis-witness
 stack exec framework-core-frontend-witness -- --json
 stack exec domain-app-report
-stack exec registry-codegen-witness
+stack exec registry-codegen-witness -- --json
 stack exec business-syntax-witness
 ```
 
@@ -693,7 +694,7 @@ stack exec runtime-evidence-witness
 stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
-stack exec registry-codegen-witness
+stack exec registry-codegen-witness -- --json
 stack exec business-syntax-witness
 ```
 
@@ -714,7 +715,7 @@ stack exec runtime-evidence-witness
 stack exec workflow-semantics-witness
 stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness -- --smt=auto
-stack exec registry-codegen-witness
+stack exec registry-codegen-witness -- --json
 ```
 
 高危 artifact gate（大构建完成后最多一次）：
