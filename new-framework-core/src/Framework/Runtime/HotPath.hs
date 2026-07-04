@@ -138,13 +138,18 @@ importBoundaryPayload source =
   where
     forbidden =
       [ "Bootstrap.Report"
+      , "Framework.Architecture.Concern"
+      , "Framework.Business.Evidence"
       , "Framework.FixedPoint"
+      , "Framework.Frontend.Evidence"
       , "Framework.RegistryCodegen"
       , "Framework.Runtime.Evidence"
       , "Framework.Runtime.HotPath"
       , "Framework.Runtime.Policy"
       , "Framework.SelfArtifact"
       , "Framework.TrustBase"
+      , "Framework.TrustBase.Manifest"
+      , "Framework.TrustBase.SelfInterpret"
       ]
     present =
       [ item
@@ -178,10 +183,14 @@ behaviorPayload result =
     observed =
       case result of
         RuntimeSucceeded runtime _ ->
-          "facts="
-            ++ show (map show (availableFacts runtime))
-            ++ "; values="
-            ++ show (map runtimeValueText (runtimeValues runtime))
+          "workflow="
+            ++ show
+              [ ("fact", show hotPathFact)
+              , ("artifactType", show hotPathOutput)
+              , ("artifactValue", "hot-path-ok")
+              , ("facts", show (map show (availableFacts runtime)))
+              , ("values", show (map runtimeValueText (runtimeValues runtime)))
+              ]
         RuntimeFailed errorReport _ ->
           "runtime failed: " ++ show errorReport
 

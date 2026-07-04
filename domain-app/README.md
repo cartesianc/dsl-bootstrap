@@ -1,60 +1,89 @@
 # domain-app
 
-`domain-app` 用来验证业务侧如何通过 framework facade 编写声明式 domain。
+`domain-app` is the external acceptance app for the framework business frontend.
+It is not a self-bootstrap artifact and it is not a TrustBase app.
 
-它当前保持小型、声明式，重点验证 facade 边界、capability lowering、handler/transform 和 evidence 是否能在 domain 侧闭合。
+The app stays in this repository to prove that ordinary business code can use
+the candidate default business frontend without importing the maintenance layer.
 
-当前业务流程：
+## Business Flow
 
 ```text
 configure app
   -> start app and prepare runtime
-  -> ask / recognize / remember user
-  -> open calculation report
-  -> calculate add / factorial / squares facts
+  -> ask / greet / remember user
+  -> open calculation section
+  -> calculate add / factorial / squares
   -> generate report
   -> finish app
 ```
 
-业务链路：
+## Source Layers
 
 ```text
-Domain.Business capability
-  -> Effects.* lowering
-  -> effect IR
-  -> Domain.Runtime handler/transform
-  -> domain-app-report / business-syntax-witness
-```
+Domain.Vocabulary
+  stable workflow fact names
 
-前台源码应该像配置文件：
+Domain.EffectVocabulary
+  stable send/type/handler/transform names
 
-```text
 Domain.AppBlueprint
-  只组合 app flow 和 hanging hook
-
-Plugins.*
-  只放命名 workflow fragment
-
-Effects.*
-  只做 lowering 薄层
-
-Domain.Vocabulary / Domain.EffectVocabulary
-  只放稳定命名，通过 Framework.Business 获取 capability authoring name
+  AppBlueprint and workflow composition through Framework.Ast
 
 Domain.Business
-  业务声明入口：capability、pipeline、policy、handler binding、transform binding
+  capability declarations through Framework.Business
+
+Effects.*
+  capability groups lowered to EffectTheory through Framework.Business
 
 Domain.Runtime
-  执行、IO、typed value conversion、handler 和 transform 实现
+  typed values, handlers, transforms, and RuntimeEffectEnvironment through Framework.Handler
 
-Domain.SemanticEvidence
-  evidence probe 和 generated-source check
+app/InterpretConfig.hs
+  business runner through Framework.App
+
+Domain.SemanticEvidence / SelfDomainApp
+  acceptance and reporting layer
 ```
 
-算法、IO、retry 行为和 typed value conversion 放进 `Domain.Runtime`。`Domain.AppBlueprint`、`Plugins.*`、`Domain.Business` 和 `Effects.*` 只保留声明和 lowering。
+`Domain.SemanticEvidence` and `SelfDomainApp` are allowed to use evidence and
+reporting APIs because they are acceptance/reporting code, not ordinary business
+authoring.
 
-`Effects.*` 每个模块只把一组 capability 通过 `Framework.Business.capabilitiesEffect` lower 成 effect IR，并从 `Framework.Business` 取得 `EffectUnit` 类型。
+## Boundary
 
-业务编写从 `Framework.Business` capability 开始。`Framework.Effect` 用在 lowering 后的规范化语义 IR。
+Ordinary authoring files should stay on:
 
-`business-syntax-witness` 检查这条 vertical slice：capability lowering、`Effects.*` 与 `Domain.Business` lowering 一致、`Domain.Business` / `Domain.EffectVocabulary` / `Effects.*` 不导入 `Framework.Effect`、business-shape 对齐，以及 typed runtime pipeline adapter。
+```text
+Framework.Ast
+Framework.Business
+Framework.Handler
+Framework.App
+```
+
+They should not import:
+
+```text
+Bootstrap.*
+Framework.TrustBase
+Framework.SelfArtifact
+Framework.FixedPoint
+Framework.Runtime.Evidence*
+Framework.Runtime
+Framework.Effect
+```
+
+`Framework.Effect` may still appear in witnesses or acceptance code when the
+test needs to inspect normalized IR.
+
+## Verification
+
+```powershell
+stack --work-dir .stack-work-codex exec mytest
+stack --work-dir .stack-work-codex exec domain-app-report -- --json
+stack --work-dir .stack-work-codex exec business-syntax-witness -- --json
+```
+
+`business-syntax-witness` checks capability lowering, authoring imports,
+`Framework.App` runner usage, handler/transform shape, friendly diagnostics, and
+the typed runtime pipeline adapter.

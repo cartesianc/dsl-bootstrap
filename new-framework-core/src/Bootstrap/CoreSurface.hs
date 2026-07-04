@@ -78,10 +78,12 @@ explicitCoreSurfaceModules :: [CoreSurfaceModule]
 explicitCoreSurfaceModules =
   [ astFacade
   , astLayoutFacade
+  , appFacade
   , workflowFacade
   , workflowSemanticsFacade
   , effectFacade
   , businessFacade
+  , businessDiagnosticsFacade
   , businessEvidenceFacade
   , handlerFacade
   , bootstrapReportFacade
@@ -292,6 +294,8 @@ coreSurfaceSlices =
           , "Bootstrap.Runtime.Interpreter"
           , "Bootstrap.Runtime.SourceGraph"
           , "Bootstrap.Runtime.Types"
+          , "Framework.App"
+          , "Framework.Business.Diagnostics"
           , "Framework.Handler"
           , "Framework.Runtime"
           , "Framework.Runtime.Interpreter"
@@ -305,7 +309,7 @@ coreSurfaceSlices =
           , "Framework.Background.RuntimeDiagnosis"
           ]
       , coreSurfaceSliceDependsOn = ["CoreRecursion", "CoreEffectTheory", "CoreAppBuild"]
-      , coreSurfaceSlicePurpose = "single runtime semantics exposed through bootstrap, handler, trust-base, and typed backend adapters"
+      , coreSurfaceSlicePurpose = "single runtime semantics exposed through bootstrap, app runner, handler, diagnostics, trust-base, and typed backend adapters"
       }
   ]
 
@@ -596,6 +600,24 @@ astLayoutFacade =
           ]
     )
 
+appFacade :: CoreSurfaceModule
+appFacade =
+  moduleSurface
+    "Framework.App"
+    "thin business app runner facade over AppBlueprint, EffectTheory, and RuntimeEffectEnvironment"
+    ( map typeCapability
+        [ "Runtime"
+        , "RuntimeError"
+        , "RuntimeResult"
+        ]
+        ++ map valueCapability
+          [ "renderAppError"
+          , "runApp"
+          , "runAppResult"
+          , "runAppRuntimeResult"
+          ]
+    )
+
 workflowFacade :: CoreSurfaceModule
 workflowFacade =
   moduleSurface
@@ -840,6 +862,18 @@ businessFacade =
           , "theory"
           , "uses"
           ]
+    )
+
+businessDiagnosticsFacade :: CoreSurfaceModule
+businessDiagnosticsFacade =
+  moduleSurface
+    "Framework.Business.Diagnostics"
+    "business-friendly rendering for existing runtime errors and business shape issues"
+    ( map valueCapability
+        [ "renderBusinessShapeDiagnostic"
+        , "renderBusinessShapeDiagnostics"
+        , "renderRuntimeErrorDiagnostic"
+        ]
     )
 
 businessEvidenceFacade :: CoreSurfaceModule

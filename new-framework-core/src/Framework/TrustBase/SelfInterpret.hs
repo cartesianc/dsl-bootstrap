@@ -340,7 +340,7 @@ coreSelfInterpretEvidencePayloads previousCoreReport newCoreReport emptyBusiness
   , coreSelfInterpretEvidence
       "core-self-interpret-focused-witnesses-demoted"
       (focusedWitnessesDemoted gateConsolidationEvidence)
-      "focused reports and witnesses remain cataloged but are absent from default gate commands"
+      "heavy focused reports and witnesses remain cataloged but absent from default gate commands; business boundary witnesses may run in semantic/release gates"
       (focusedWitnessesObserved gateConsolidationEvidence)
       "CoreSelfInterpretFocusedWitnessDemotionArtifact"
   , coreSelfInterpretEvidence
@@ -831,6 +831,7 @@ focusedWitnessesDemoted :: CoreSelfInterpretGateConsolidationEvidence -> Bool
 focusedWitnessesDemoted evidence =
   null (coreSelfInterpretDefaultGateDuplicateCommands evidence)
     && all demotedExecutableHasSchema demotedSchemaExecutables
+    && all demotedExecutableHasSchema businessDefaultGateExecutables
   where
     demotedExecutableHasSchema executable =
       any (schemaEntryMentionsExecutable executable) trustBaseManifestRequiredJsonSchemas
@@ -839,6 +840,8 @@ focusedWitnessesObserved :: CoreSelfInterpretGateConsolidationEvidence -> String
 focusedWitnessesObserved evidence =
   "demotedExecutables="
     ++ intercalate "," demotedSchemaExecutables
+    ++ ", businessDefaultGateExecutables="
+    ++ intercalate "," businessDefaultGateExecutables
     ++ ", catalogedSchemaEntries="
     ++ show (length (coreSelfInterpretDemotedSchemaEntries evidence))
     ++ ", defaultDuplicateCommands="
@@ -907,10 +910,8 @@ retiredDefaultGateExecutables =
 demotedSchemaExecutables :: [String]
 demotedSchemaExecutables =
   [ "bootstrap-report"
-  , "domain-app-report"
   , "fixed-point-smoke"
   , "framework-core-frontend-witness"
-  , "business-syntax-witness"
   , "runtime-evidence-witness"
   , "runtime-hot-path-witness"
   , "runtime-policy-witness"
@@ -919,6 +920,12 @@ demotedSchemaExecutables =
   , "workflow-semantics-witness"
   , "constraint-proof-witness"
   , "schema-catalog-witness"
+  ]
+
+businessDefaultGateExecutables :: [String]
+businessDefaultGateExecutables =
+  [ "business-syntax-witness"
+  , "domain-app-report"
   ]
 
 commandMentionsExecutable :: String -> String -> Bool

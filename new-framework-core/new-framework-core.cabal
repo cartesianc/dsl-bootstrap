@@ -70,12 +70,14 @@ library
                      , Domain.Registry
                      , Domain.Vocabulary
                      , Framework.Architecture.Concern
+                     , Framework.App
                      , Framework.Background
                      , Framework.Background.ConstraintProof
                      , Framework.Background.RuntimeDiagnosis
                      , Framework.Ast
                      , Framework.Ast.Layout
                      , Framework.Business
+                     , Framework.Business.Diagnostics
                      , Framework.Business.Evidence
                      , Framework.Domain
                      , Framework.Effect

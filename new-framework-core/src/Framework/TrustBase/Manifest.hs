@@ -85,7 +85,9 @@ defaultTrustBaseManifest =
         [ "Framework.TrustBase"
         , "Framework.TrustBase.Manifest"
         , "Framework.TrustBase.SelfInterpret"
+        , "Framework.App"
         , "Framework.Background.ConstraintProof"
+        , "Framework.Business.Diagnostics"
         , "Framework.FixedPoint"
         , "Framework.RegistryCodegen"
         , "Framework.Runtime.Concurrency"
@@ -245,7 +247,9 @@ trustBaseManifestRequiredCoreSurfaceModules =
   , "Bootstrap.Runtime.Contract"
   , "Bootstrap.Runtime.Interpreter"
   , "Bootstrap.Runtime.Types"
+  , "Framework.App"
   , "Framework.Background.ConstraintProof"
+  , "Framework.Business.Diagnostics"
   , "Framework.FixedPoint"
   , "Framework.RegistryCodegen"
   , "Framework.Runtime.Concurrency"
@@ -306,6 +310,8 @@ trustBaseManifestRequiredGatePolicies =
       False
       [ "stack --work-dir .stack-work-codex build"
       , "stack --work-dir .stack-work-codex exec core-self-interpret -- --json"
+      , "stack --work-dir .stack-work-codex exec business-syntax-witness -- --json"
+      , "stack --work-dir .stack-work-codex exec domain-app-report -- --json"
       , "stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json"
       , "stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json"
       ]
@@ -333,6 +339,8 @@ releaseGateBaseCommands :: [String]
 releaseGateBaseCommands =
   [ "stack --work-dir .stack-work-codex build"
   , "stack --work-dir .stack-work-codex exec core-self-interpret -- --json"
+  , "stack --work-dir .stack-work-codex exec business-syntax-witness -- --json"
+  , "stack --work-dir .stack-work-codex exec domain-app-report -- --json"
   , "stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json"
   , "stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json"
   ]

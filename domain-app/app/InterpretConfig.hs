@@ -11,10 +11,10 @@ import Framework.Ast
 import Framework.Business
   ( EffectTheory
   )
-import Framework.TrustBase
-  ( runBlueprintWithEffectEnvironment
+import Framework.App
+  ( runApp
   )
 
 currentInterpreter :: AppBlueprint -> EffectTheory -> IO ()
 currentInterpreter ast effects =
-  runBlueprintWithEffectEnvironment domainRuntimeEffectEnvironment effects ast
+  runApp domainRuntimeEffectEnvironment effects ast

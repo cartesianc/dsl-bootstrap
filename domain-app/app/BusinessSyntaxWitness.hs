@@ -31,7 +31,7 @@ import qualified "domain-app" Effects.Report as ReportEffects
 import qualified "domain-app" Effects.System as SystemEffects
 import qualified "domain-app" Effects.User as UserEffects
 import "new-framework-core" Framework.Business
-  ( BusinessShapeIssue
+  ( BusinessShapeIssue (..)
   , Capability (..)
   , capabilitiesEffect
   , capabilityEffectSections
@@ -82,10 +82,16 @@ import "new-framework-core" Framework.Handler
   , someRuntimeValueType
   )
 import qualified "new-framework-core" Framework.Ast as Workflow
-import "new-framework-core" Framework.TrustBase
-  ( Runtime (..)
-  , runBlueprintWithEffectEnvironmentResult
+import "new-framework-core" Framework.App
+  ( RuntimeError (..)
+  , runAppResult
   )
+import "new-framework-core" Framework.Business.Diagnostics
+  ( renderBusinessShapeDiagnostic
+  , renderRuntimeErrorDiagnostic
+  )
+import "new-framework-core" Framework.Runtime.Types
+  ( Runtime (..) )
 import Data.List
   ( isInfixOf )
 import System.Environment
@@ -99,6 +105,8 @@ main = do
   domainVocabularyBoundaryPassed <- domainEffectVocabularyBoundaryPassed
   effectFacadeBoundaryPassed <- effectsFacadeBoundaryPassed
   domainRuntimeBoundaryPassed <- domainRuntimeHandlerBoundaryPassed
+  authoringIssues <- stableAuthoringBoundaryIssues
+  appRunnerBoundaryIssues <- appRunnerFrontdoorBoundaryIssues
   let payloads =
         businessSyntaxEvidencePayloadsWithManifest
           runtimePipelinePassed
@@ -106,6 +114,8 @@ main = do
           domainVocabularyBoundaryPassed
           effectFacadeBoundaryPassed
           domainRuntimeBoundaryPassed
+          authoringIssues
+          appRunnerBoundaryIssues
       failures =
         evidenceFailures payloads
   case args of
@@ -119,8 +129,8 @@ main = do
         currentFailures ->
           ioError (userError (unlines currentFailures))
 
-businessSyntaxEvidencePayloadsWithManifest :: Bool -> Bool -> Bool -> Bool -> Bool -> [BusinessSyntaxEvidencePayload]
-businessSyntaxEvidencePayloadsWithManifest runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed effectFacadeBoundaryPassed domainRuntimeBoundaryPassed =
+businessSyntaxEvidencePayloadsWithManifest :: Bool -> Bool -> Bool -> Bool -> Bool -> [String] -> [String] -> [BusinessSyntaxEvidencePayload]
+businessSyntaxEvidencePayloadsWithManifest runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed effectFacadeBoundaryPassed domainRuntimeBoundaryPassed authoringIssues appRunnerBoundaryIssues =
   corePayloads ++ [businessSyntaxClaimManifestPayload corePayloads]
   where
     corePayloads =
@@ -130,9 +140,11 @@ businessSyntaxEvidencePayloadsWithManifest runtimePipelinePassed domainBusinessB
         domainVocabularyBoundaryPassed
         effectFacadeBoundaryPassed
         domainRuntimeBoundaryPassed
+        authoringIssues
+        appRunnerBoundaryIssues
 
-businessSyntaxEvidencePayloads :: Bool -> Bool -> Bool -> Bool -> Bool -> [BusinessSyntaxEvidencePayload]
-businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed effectFacadeBoundaryPassed domainRuntimeBoundaryPassed =
+businessSyntaxEvidencePayloads :: Bool -> Bool -> Bool -> Bool -> Bool -> [String] -> [String] -> [BusinessSyntaxEvidencePayload]
+businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed effectFacadeBoundaryPassed domainRuntimeBoundaryPassed authoringIssues appRunnerBoundaryIssues =
   [ businessEvidence
       "business-syntax-needs-lowering"
       needsLoweringPassed
@@ -241,6 +253,24 @@ businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPasse
       "capability privateFact lowers to private EffectSystemBoundary fact without becoming an export"
       (observedBool capabilityPrivateFactBoundaryPassed)
       "BusinessCapabilityPrivateFactBoundaryArtifact"
+  , businessEvidence
+      "business-syntax-authoring-default-frontend-boundary"
+      (null authoringIssues)
+      "ordinary business authoring files import only the default business frontend modules"
+      (observedIssues authoringIssues)
+      "BusinessAuthoringDefaultFrontendBoundaryArtifact"
+  , businessEvidence
+      "business-syntax-app-runner-frontdoor"
+      (null appRunnerBoundaryIssues)
+      "business app runner imports Framework.App instead of Framework.TrustBase"
+      (observedIssues appRunnerBoundaryIssues)
+      "BusinessAppRunnerFrontdoorArtifact"
+  , businessEvidence
+      "business-syntax-friendly-diagnostics"
+      friendlyDiagnosticsPassed
+      "business diagnostics map existing runtime and shape errors to author fix actions"
+      (observedBool friendlyDiagnosticsPassed)
+      "BusinessFriendlyDiagnosticsArtifact"
   ]
 
 businessSyntaxClaimManifestPayload :: [BusinessSyntaxEvidencePayload] -> BusinessSyntaxEvidencePayload
@@ -277,6 +307,12 @@ observedBool True =
   "passed"
 observedBool False =
   "failed"
+
+observedIssues :: [String] -> String
+observedIssues [] =
+  "passed"
+observedIssues issues =
+  joinWith "; " issues
 
 observedBusinessShapeIssues :: [BusinessShapeIssue] -> String
 observedBusinessShapeIssues [] =
@@ -556,6 +592,22 @@ capabilityPrivateFactBoundaryPassed =
     probeSystem =
       capabilityEffectSystem "CapabilityPrivateProbeSystem" probeCapability
 
+friendlyDiagnosticsPassed :: Bool
+friendlyDiagnosticsPassed =
+  all
+    id
+    [ "Add a HandlerBinding" `isInfixOf` renderRuntimeErrorDiagnostic (RuntimeMissingHandler GenerateReport)
+    , "Register the transform" `isInfixOf` renderRuntimeErrorDiagnostic (RuntimeMissingTransform UserNameToReportInput)
+    , "matching send boundary" `isInfixOf` renderRuntimeErrorDiagnostic (RuntimeMissingSendBoundary GenerateReport)
+    , "pipeline edge" `isInfixOf` renderRuntimeErrorDiagnostic (RuntimeWaitBlocked "effect system rule uses transform outside pipeline edge")
+    , "exactly one capability produce" `isInfixOf` renderRuntimeErrorDiagnostic (RuntimeWaitBlocked "missing or duplicate pipe maker")
+    , "wrong output shape" `isInfixOf` renderRuntimeErrorDiagnostic (RuntimeHandlerOutputMismatch GenerateReport ReportOutput [UserName])
+    , "input artifact" `isInfixOf` renderRuntimeErrorDiagnostic (RuntimeMissingHandlerInput GenerateReport ReportInput)
+    , "Add produces/uses/onError" `isInfixOf` renderBusinessShapeDiagnostic (CapabilityHasNoProducer "EmptyCapability")
+    , "Align handlerBinding inputs" `isInfixOf` renderBusinessShapeDiagnostic (HandlerConsumesMismatch RuntimeGenerateReport "GenerateReport" [ReportInput] [UserName])
+    , "adjacent pipeline edge" `isInfixOf` renderBusinessShapeDiagnostic (TransformBindingOutsidePipeline UserNameToReportInput UserName ReportInput)
+    ]
+
 boundaryPipelineArtifacts :: Workflow.EffectSystemBoundary Workflow.WorkflowFact -> [String]
 boundaryPipelineArtifacts boundary =
   concatMap
@@ -608,6 +660,148 @@ domainRuntimeHandlerBoundaryPassed = do
         && not ("import Framework.Runtime" `isInfixOf` source)
         && not ("import Bootstrap." `isInfixOf` source)
     )
+
+data AuthoringBoundary = AuthoringBoundary
+  { authoringBoundaryPath :: FilePath
+  , authoringBoundaryRequiredImports :: [String]
+  }
+
+stableAuthoringBoundaryIssues :: IO [String]
+stableAuthoringBoundaryIssues =
+  concat <$> mapM authoringBoundaryIssues ordinaryAuthoringBoundaries
+
+ordinaryAuthoringBoundaries :: [AuthoringBoundary]
+ordinaryAuthoringBoundaries =
+  [ AuthoringBoundary "domain-app/src/Domain/Business.hs" ["Framework.Business"]
+  , AuthoringBoundary "domain-app/src/Domain/AppBlueprint.hs" ["Framework.Ast"]
+  , AuthoringBoundary "domain-app/src/Domain/Runtime.hs" ["Framework.Handler"]
+  , AuthoringBoundary "domain-app/src/Domain/Vocabulary.hs" ["Framework.Ast"]
+  , AuthoringBoundary "domain-app/src/Domain/EffectVocabulary.hs" ["Framework.Business"]
+  , AuthoringBoundary "domain-app/src/Effects/System.hs" ["Framework.Business"]
+  , AuthoringBoundary "domain-app/src/Effects/User.hs" ["Framework.Business"]
+  , AuthoringBoundary "domain-app/src/Effects/Report.hs" ["Framework.Business"]
+  , AuthoringBoundary "domain-app/src/Effects/Logging.hs" ["Framework.Business"]
+  , AuthoringBoundary "domain-app/src/Effects/Theory.hs" ["Framework.Business"]
+  , AuthoringBoundary "domain-app/src/Plugins/Boot.hs" []
+  , AuthoringBoundary "domain-app/src/Plugins/Configuration.hs" []
+  , AuthoringBoundary "domain-app/src/Plugins/Handle.hs" []
+  , AuthoringBoundary "domain-app/src/Plugins/Lifecycle.hs" []
+  , AuthoringBoundary "domain-app/src/Plugins/Logging.hs" []
+  , AuthoringBoundary "domain-app/src/Plugins/Report.hs" []
+  , AuthoringBoundary "domain-app/src/Plugins/Shutdown.hs" []
+  ]
+
+authoringBoundaryIssues :: AuthoringBoundary -> IO [String]
+authoringBoundaryIssues boundary = do
+  source <- readFile (authoringBoundaryPath boundary)
+  let imports =
+        importedModules source
+      missingRequired =
+        [ requiredModule
+        | requiredModule <- authoringBoundaryRequiredImports boundary
+        , requiredModule `notElem` imports
+        ]
+      unstableImports =
+        [ importedModule
+        | importedModule <- imports
+        , authoringImportForbidden importedModule
+        ]
+  pure
+    ( [ authoringBoundaryPath boundary ++ " is missing " ++ requiredModule
+      | requiredModule <- missingRequired
+      ]
+        ++
+      [ authoringBoundaryPath boundary ++ " imports non-default frontend module " ++ importedModule
+      | importedModule <- unstableImports
+      ]
+    )
+
+authoringImportForbidden :: String -> Bool
+authoringImportForbidden importedModule
+  | "Bootstrap." `startsWith` importedModule =
+      True
+  | "Framework." `startsWith` importedModule =
+      importedModule `notElem` defaultBusinessFrontendModules
+  | otherwise =
+      False
+
+defaultBusinessFrontendModules :: [String]
+defaultBusinessFrontendModules =
+  [ "Framework.Ast"
+  , "Framework.Business"
+  , "Framework.Handler"
+  , "Framework.App"
+  ]
+
+appRunnerFrontdoorBoundaryIssues :: IO [String]
+appRunnerFrontdoorBoundaryIssues = do
+  source <- readFile "domain-app/app/InterpretConfig.hs"
+  let imports =
+        importedModules source
+      required =
+        "Framework.App" `elem` imports
+      forbidden =
+        [ importedModule
+        | importedModule <- imports
+        , importedModule == "Framework.TrustBase"
+            || importedModule == "Framework.Runtime"
+            || "Framework.Runtime." `startsWith` importedModule
+            || "Bootstrap." `startsWith` importedModule
+        ]
+  pure
+    ( [ "domain-app/app/InterpretConfig.hs is missing Framework.App"
+      | not required
+      ]
+        ++
+      [ "domain-app/app/InterpretConfig.hs imports runner from non-business frontend module " ++ importedModule
+      | importedModule <- forbidden
+      ]
+    )
+
+importedModules :: String -> [String]
+importedModules =
+  mapMaybeImportedModule . lines
+
+mapMaybeImportedModule :: [String] -> [String]
+mapMaybeImportedModule [] =
+  []
+mapMaybeImportedModule (line : rest) =
+  case importedModuleName line of
+    Just importedModule ->
+      importedModule : mapMaybeImportedModule rest
+    Nothing ->
+      mapMaybeImportedModule rest
+
+importedModuleName :: String -> Maybe String
+importedModuleName line =
+  case words (trimImportLine line) of
+    "import" : rest ->
+      moduleTokenAfterImport rest
+    _ ->
+      Nothing
+
+moduleTokenAfterImport :: [String] -> Maybe String
+moduleTokenAfterImport [] =
+  Nothing
+moduleTokenAfterImport (current : rest)
+  | quotedPackageImport current =
+      moduleTokenAfterImport rest
+  | current == "qualified" =
+      moduleTokenAfterImport rest
+  | otherwise =
+      Just (takeWhile (/= '(') current)
+
+quotedPackageImport :: String -> Bool
+quotedPackageImport text =
+  case text of
+    '"' : _ ->
+      True
+    _ ->
+      False
+
+trimImportLine :: String -> String
+trimImportLine =
+  dropWhile (== ' ') . dropWhile (== '\t')
 
 effectFacadeSourcePassed :: String -> Bool
 effectFacadeSourcePassed source =
@@ -731,7 +925,7 @@ reportSections =
 pipelineRuntimeAdapterPassed :: IO Bool
 pipelineRuntimeAdapterPassed = do
   result <-
-    runBlueprintWithEffectEnvironmentResult
+    runAppResult
       pipelineRuntimeEnvironment
       pipelineRuntimeEffects
       pipelineRuntimeAst
@@ -835,3 +1029,14 @@ joinWith _ [item] =
   item
 joinWith separator (item : rest) =
   item ++ separator ++ joinWith separator rest
+
+startsWith :: String -> String -> Bool
+startsWith [] _ =
+  True
+startsWith _ [] =
+  False
+startsWith (left : leftRest) (right : rightRest)
+  | left == right =
+      startsWith leftRest rightRest
+  | otherwise =
+      False

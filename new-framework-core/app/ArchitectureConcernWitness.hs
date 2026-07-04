@@ -145,11 +145,22 @@ main = do
 architectureConcernEvidencePayloads :: IO [ArchitectureConcernEvidencePayload]
 architectureConcernEvidencePayloads = do
   checkLibText <- readFile "scripts/check-lib.ps1"
+  coreCabalText <- readFile "new-framework-core/new-framework-core.cabal"
+  readmeText <- readFile "README.md"
+  stableFrontendText <- readFile "docs/STABLE_FRONTEND.zh.md"
+  capabilityFrontendText <- readFile "docs/CAPABILITY_FRONTEND.zh.md"
+  checkPatternsText <- readFile "docs/CHECK_PATTERNS.zh.md"
   let payloads =
-        corePayloads checkLibText
+        corePayloads
+          checkLibText
+          coreCabalText
+          readmeText
+          stableFrontendText
+          capabilityFrontendText
+          checkPatternsText
   pure (payloads ++ [architectureConcernClaimManifestPayload payloads])
   where
-    corePayloads checkLibText =
+    corePayloads checkLibText coreCabalText readmeText stableFrontendText capabilityFrontendText checkPatternsText =
       [ runtimeDiagnosisPayloadIrPayload
       , runtimeDiagnosisImplementationPayload
       , runtimeImplementationModuleCoveragePayload
@@ -170,6 +181,10 @@ architectureConcernEvidencePayloads = do
       , runtimePolicyEvidencePayload
       , schemaCatalogCoveragePayload
       , reportJsonRendererCoveragePayload
+      , defaultBusinessFrontendContractPayload coreCabalText stableFrontendText
+      , businessImportBoundaryPayload
+      , documentationEncodingPayload readmeText stableFrontendText capabilityFrontendText checkPatternsText
+      , evidenceSystemBloatGuardPayload
       , semanticRiskReviewPayload
       ]
 
@@ -986,6 +1001,107 @@ reportJsonRendererCoveragePayload =
     missing =
       [ name | (name, present) <- required, not present ]
 
+defaultBusinessFrontendContractPayload :: String -> String -> ArchitectureConcernEvidencePayload
+defaultBusinessFrontendContractPayload coreCabalText stableFrontendText =
+  concernEvidence
+    "session4-default-business-frontend-contract"
+    (null missing)
+    "candidate default business frontend is documented and indexed without hiding bootstrap or TrustBase modules"
+    (observedList missing)
+    "DefaultBusinessFrontendContractArtifact"
+    "medium:public-facade"
+    "keep Framework.App thin and describe the frontend as candidate/default until another business acceptance round"
+  where
+    required =
+      [ ("Framework.App exposed module", moduleInCabal coreCabalText "Framework.App")
+      , ("Framework.Business.Diagnostics exposed module", moduleInCabal coreCabalText "Framework.Business.Diagnostics")
+      , ("Framework.App CoreSurface module", coreSurfaceModulePresent "Framework.App")
+      , ("Framework.Business.Diagnostics CoreSurface module", coreSurfaceModulePresent "Framework.Business.Diagnostics")
+      , ("Framework.App manifest facade module", "Framework.App" `elem` trustBaseManifestFacadeModules defaultTrustBaseManifest)
+      , ("Framework.Business.Diagnostics manifest facade module", "Framework.Business.Diagnostics" `elem` trustBaseManifestFacadeModules defaultTrustBaseManifest)
+      , ("Framework.App runApp value", coreSurfaceValueCapabilityPresent "Framework.App" "runApp")
+      , ("Framework.App runAppResult value", coreSurfaceValueCapabilityPresent "Framework.App" "runAppResult")
+      , ("Framework.App renderAppError value", coreSurfaceValueCapabilityPresent "Framework.App" "renderAppError")
+      , ("stable frontend doc says candidate/default", "candidate default business frontend" `isInfixOf` stableFrontendText)
+      , ("stable frontend doc lists Framework.App", "Framework.App" `isInfixOf` stableFrontendText)
+      , ("stable frontend doc keeps Framework.TrustBase out of default business path", "not a default business import" `isInfixOf` stableFrontendText)
+      ]
+    missing =
+      [ name | (name, present) <- required, not present ]
+
+businessImportBoundaryPayload :: ArchitectureConcernEvidencePayload
+businessImportBoundaryPayload =
+  concernEvidence
+    "session4-business-import-boundary"
+    (null missing)
+    "business-syntax-witness separates ordinary authoring imports from acceptance/reporting imports"
+    (observedList missing)
+    "BusinessImportBoundaryCoverageArtifact"
+    "medium:authoring-boundary"
+    "extend business-syntax-witness before broadening ordinary business authoring imports"
+  where
+    requiredClaims =
+      [ "business-syntax-authoring-default-frontend-boundary"
+      , "business-syntax-app-runner-frontdoor"
+      , "business-syntax-friendly-diagnostics"
+      ]
+    required =
+      [ ("business syntax claim: " ++ claim, claim `elem` businessSyntaxEvidenceClaimNames)
+      | claim <- requiredClaims
+      ]
+        ++
+      [ ("business syntax manifest includes new claims", all (`elem` businessSyntaxCoreClaimNames) requiredClaims)
+      , ("check-semantic runs business-syntax-witness", gatePolicyCommandPresent "check-semantic" "stack --work-dir .stack-work-codex exec business-syntax-witness -- --json")
+      , ("check-semantic runs domain-app-report", gatePolicyCommandPresent "check-semantic" "stack --work-dir .stack-work-codex exec domain-app-report -- --json")
+      ]
+    missing =
+      [ name | (name, present) <- required, not present ]
+
+documentationEncodingPayload :: String -> String -> String -> String -> ArchitectureConcernEvidencePayload
+documentationEncodingPayload readmeText stableFrontendText capabilityFrontendText checkPatternsText =
+  concernEvidence
+    "session4-documentation-encoding-boundary"
+    (null missing)
+    "README and default-path docs are readable UTF-8 and avoid known mojibake tokens"
+    (observedList missing)
+    "DocumentationEncodingBoundaryArtifact"
+    "low:documentation"
+    "repair focused entry docs before rewriting broader documentation"
+  where
+    documents =
+      [ ("README.md", readmeText)
+      , ("docs/STABLE_FRONTEND.zh.md", stableFrontendText)
+      , ("docs/CAPABILITY_FRONTEND.zh.md", capabilityFrontendText)
+      , ("docs/CHECK_PATTERNS.zh.md", checkPatternsText)
+      ]
+    required =
+      concatMap documentChecks documents
+    missing =
+      [ name | (name, present) <- required, not present ]
+
+evidenceSystemBloatGuardPayload :: ArchitectureConcernEvidencePayload
+evidenceSystemBloatGuardPayload =
+  concernEvidence
+    "session4-evidence-system-bloat-guard"
+    (null missing)
+    "gate layering and runtime hot-path guards keep evidence systems out of default business execution"
+    (observedList missing)
+    "EvidenceSystemBloatGuardArtifact"
+    "medium:gate-policy"
+    "add new evidence checks to semantic/release gates deliberately and keep check-fast lightweight"
+  where
+    required =
+      [ ("check-fast has exactly build and core self interpret", gatePolicyCommands "check-fast" == [ "stack --work-dir .stack-work-codex build", "stack --work-dir .stack-work-codex exec core-self-interpret -- --json" ])
+      , ("check-semantic includes business boundary", gatePolicyCommandPresent "check-semantic" "stack --work-dir .stack-work-codex exec business-syntax-witness -- --json")
+      , ("check-semantic includes domain acceptance", gatePolicyCommandPresent "check-semantic" "stack --work-dir .stack-work-codex exec domain-app-report -- --json")
+      , ("check-release still omits self artifact by default", not (gatePolicyCommandMentions "check-release" "self-artifact-witness"))
+      , ("self artifact remains explicit high risk gate", highRiskGatePolicyPresent "check-release-with-self-artifact")
+      , ("hot-path import guard claim present", "runtime-hot-path-import-boundary" `elem` runtimeHotPathCoreClaimNames)
+      , ("hot-path behavior claim present", "runtime-hot-path-executes-minimal-workflow" `elem` runtimeHotPathCoreClaimNames)
+      ]
+    missing =
+      [ name | (name, present) <- required, not present ]
+
 semanticRiskReviewPayload :: ArchitectureConcernEvidencePayload
 semanticRiskReviewPayload =
   concernEvidence
@@ -1003,6 +1119,10 @@ semanticRiskReviewPayload =
       , "runtime-diagnosis-root-cause-semantics"
       , "runtime-policy-algebra"
       , "typed-runtime-hot-path-dependencies"
+      , "default-business-frontend-contract"
+      , "business-import-boundary"
+      , "documentation-encoding-drift"
+      , "evidence-system-bloat"
       ]
     missing =
       missingItems architectureSemanticRiskItemNames requiredRiskItems
@@ -1074,6 +1194,17 @@ gatePolicyCommandMentions policyName text =
       trustBaseGatePolicyName policy == policyName
         && any (text `isInfixOf`) (trustBaseGatePolicyCommands policy)
 
+gatePolicyCommands :: String -> [String]
+gatePolicyCommands policyName =
+  case [ trustBaseGatePolicyCommands policy
+       | policy <- trustBaseManifestRequiredGatePolicies
+       , trustBaseGatePolicyName policy == policyName
+       ] of
+    commands : _ ->
+      commands
+    [] ->
+      []
+
 highRiskGatePolicyPresent :: String -> Bool
 highRiskGatePolicyPresent policyName =
   any matches trustBaseManifestRequiredGatePolicies
@@ -1081,6 +1212,50 @@ highRiskGatePolicyPresent policyName =
     matches policy =
       trustBaseGatePolicyName policy == policyName
         && trustBaseGatePolicyHighRisk policy
+
+coreSurfaceModulePresent :: String -> Bool
+coreSurfaceModulePresent moduleName =
+  any ((== moduleName) . surfaceModuleName) coreSurfaceModules
+
+moduleInCabal :: String -> String -> Bool
+moduleInCabal cabalText moduleName =
+  moduleName `isInfixOf` cabalText
+
+documentChecks :: (String, String) -> [(String, Bool)]
+documentChecks (path, text) =
+  [ (path ++ " has no known mojibake tokens", null (documentMojibakeHits text))
+  ]
+
+documentMojibakeHits :: String -> [String]
+documentMojibakeHits text =
+  [ token
+  | token <- documentMojibakeTokens
+  , token `isInfixOf` text
+  ]
+
+documentMojibakeTokens :: [String]
+documentMojibakeTokens =
+  [ "鍓"
+  , "鏈"
+  , "榛"
+  , "褰"
+  , "涓"
+  , "璇"
+  , "妗"
+  , "浠"
+  , "楠"
+  , "绋"
+  , "乧"
+  , "乺"
+  , "乻"
+  , "乸"
+  , "俙"
+  , "銆"
+  , "锛"
+  , "紝"
+  , "€滀"
+  , "€"
+  ]
 
 missingItems :: [String] -> [String] -> [String]
 missingItems actual expected =

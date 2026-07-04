@@ -1,47 +1,41 @@
-# Capability 前台
+# Capability Frontend
 
-本文定义当前业务作者的 authoring surface。
+本文描述当前业务作者的默认写法。这个前台仍处在 candidate default business frontend 阶段；它是推荐入口，但还不是强兼容 SDK 承诺。
 
-在本仓库中，业务侧默认通过 `Framework.Business` 写 capability 前台。`Framework.Effect` 用于 lowering 后的 normalized semantic IR、compatibility layer、framework/internal 表达和 witness/test IR。
+## 默认模块
 
-这条规则服务当前自迭代框架快照：先冻结业务写法，再让 report、proof、diagnosis、fixed-point 和 artifact gate 围绕稳定入口继续自证。
-
-## 1. Authoring Surface
-
-业务作者默认接触：
+普通业务作者默认只接触：
 
 ```text
 Framework.Ast
-  workflow / AppBlueprint 前台
+Framework.Business
+Framework.Handler
+Framework.App
+```
+
+职责划分：
+
+```text
+Framework.Ast
+  workflow / AppBlueprint / facts / names
 
 Framework.Business
-  capability / pipeline / policy / handler binding / transform binding 前台
+  capability / pipeline / policy / handler binding / transform binding
 
 Framework.Handler
-  handler / transform 实现前台
+  handler / transform implementation API
+
+Framework.App
+  thin app runner: AppBlueprint + EffectTheory + RuntimeEffectEnvironment
 ```
 
-业务自举、证据和架构迭代再接触：
+`Framework.Effect` 仍然 exposed，但它是 lowering 后的 normalized IR / compatibility / framework-internal surface，不是普通业务默认写法。
 
-```text
-Framework.TrustBase
-  report / proof / diagnosis / fixed point / artifact gate
-```
+`Framework.TrustBase`、`Framework.SelfArtifact`、`Framework.FixedPoint`、`Framework.Runtime.Evidence*`、`Bootstrap.*` 和 witness executables 属于框架维护、自举、验收、报告或 promotion gate，不属于普通业务 authoring surface。
 
-`Framework.Effect` 的定位是：
+## Capability 词汇
 
-```text
-normalized semantic IR
-compatibility layer
-framework/internal source
-witness / test IR
-```
-
-业务作者从 `Framework.Business` 开始；`Framework.Effect` 承接 lowering 后的语义层。
-
-## 2. Capability 词汇
-
-业务能力使用这些词：
+业务能力用 `Framework.Business` 里的词汇声明：
 
 ```text
 capability
@@ -49,17 +43,18 @@ requires
 input
 output
 uses
+onError
 privateFact
 produces
 policy
+retryOnce
+idempotentPolicy
 pipeline
 handler
+handlerBinding
 transform
+transformBinding
 ```
-
-这些词描述业务能力、业务事实、artifact 数据流、外部 send boundary、handler binding 和 transform binding。业务作者不需要手写 `needs`、`take`、`make`、`externalMake`。
-
-`NoInput`、`Unit`、`ErrorInput` 和 `SendName` / `TypeName` / `HandlerName` / `TransformName` / `EffectName` 这类 authoring name 也从 `Framework.Business` 暴露。业务前台不需要为了 send boundary sentinel values 或命名类型直接导入 `Framework.Effect`。
 
 示例：
 
@@ -87,120 +82,90 @@ generateReportCapability =
     ]
 ```
 
-这段源码的业务来源在 `Domain.Business`。`Effects.*` 只负责调用 `capabilitiesEffect` lower 成 effect IR，并保留 capability group 的 imports、exports、pipeline 和 handler metadata。
+业务作者不需要手写 `needs`、`take`、`make`、`externalMake`。这些由 capability lowering 生成。
 
-## 3. Lowering Contract
+## Lowering Contract
 
-Capability 前台 lower 到 effect IR：
+Capability 前台 lower 到 effect IR 的关系：
 
 ```text
 requires F        -> needs F
 input T           -> take T
 output T          -> make T
 uses S I O        -> uses S + externalMake S I O
-privateFact F     -> private FactProducer F + EffectSystemBoundary private fact
+onError S I O     -> error S + externalMake S I O
+privateFact F     -> private FactProducer F + private boundary fact
 produces F        -> FactProducer F
-policy retry      -> retry S
-policy idempotent -> idempotent S
+retryOnce S       -> retry S
+idempotentPolicy S -> idempotent S
 transform A B N   -> transform A B N
 ```
 
-`pipeline` 只表达 artifact 数据流：
+`pipeline` 只描述 artifact 数据流，例如：
 
 ```text
 UserName -> ReportInput -> ReportOutput
 ```
 
-它生成相邻 transform candidate，但不会自动生成业务 fact。业务 fact 必须通过 `requires` 和 `produces` 显式写出。
+相邻节点会形成 transform candidate。业务 fact 仍然必须通过 `requires`、`privateFact`、`produces` 明确声明。
 
-## 4. Fact 与 Artifact
+## Import Boundary
 
-Fact 是业务世界的可观察状态：
-
-```text
-workflow wait/fact 会读取
-capability requires/produces 会声明
-report、proof、diagnosis、semantic evidence 会追踪
-跨 capability 或跨流程需要稳定命名
-```
-
-Artifact 是 runtime 数据：
-
-```text
-handler 输入或输出
-transform 输入或输出
-pipeline 相邻节点
-typed runtime value
-```
-
-Internal 留在 handler/transform 内：
-
-```text
-临时变量
-字段清洗
-格式化细节
-单个算法步骤
-不需要跨 capability 引用的中间状态
-```
-
-## 5. domain-app 样板
-
-`domain-app` 用来验证 facade 边界和业务侧声明链路：
-
-```text
-Domain.Business capability
-  -> Effects.* lowering
-  -> EffectSystemBoundary
-  -> effect IR
-  -> Domain.Runtime handler/transform
-  -> domain-app-report / business-syntax-witness
-```
-
-边界规则：
+严格 authoring 区域：
 
 ```text
 Domain.Business
-  只写 capability / pipeline / policy / binding
-
-Effects.*
-  只做 lowering 薄层
-
+Domain.AppBlueprint
 Domain.Runtime
-  放执行、IO、typed value conversion、handler 和 transform 实现
-
-Domain.SemanticEvidence
-  放可验证 evidence 和 generated-source checks
+Domain.Vocabulary
+Domain.EffectVocabulary
+Effects.*
+Plugins.*
 ```
 
-## 6. Witness
+这些文件应只使用默认业务前台模块。`business-syntax-witness` 会检查：
 
-Capability 前台的最小验收：
+```text
+ordinary authoring imports stay on Framework.Ast / Framework.Business / Framework.Handler / Framework.App
+Domain.Runtime uses Framework.Handler rather than Framework.Runtime
+app runner imports Framework.App rather than Framework.TrustBase
+Effects.* and Domain.Business do not import Framework.Effect directly
+Bootstrap.* is absent from ordinary business authoring
+```
+
+验收和报告层不是普通 authoring：
+
+```text
+SelfDomainApp
+Domain.SemanticEvidence
+runtime diagnosis witness
+domain-app-report
+business-syntax-witness itself
+```
+
+这些可以接触 reporting/evidence API，因为它们负责验收和证据输出。
+
+## Diagnostics
+
+友好错误不重新实现校验规则。`Framework.Business.Diagnostics` 只把已有的 `RuntimeError` 和 `BusinessShapeIssue` 映射成业务修复动作，例如：
+
+```text
+declared uses but no handler registered
+declared transform but no TransformBinding registered
+send boundary missing
+pipeline edge not adjacent
+handler binding shape does not match capability uses/input/output
+```
+
+底层 runtime、constraint、business-shape 结果仍然是事实源。
+
+## Witness
+
+最小业务前台验证：
 
 ```powershell
-stack exec business-syntax-witness
-stack exec business-syntax-witness -- --json
+stack --work-dir .stack-work-codex exec business-syntax-witness -- --json
+stack --work-dir .stack-work-codex exec domain-app-report -- --json
 ```
 
-当前 witness 检查：
-
-```text
-GenerateReport capability lowering 生成 needs/take/make/uses/externalMake/transform
-GenerateReport pipeline 生成 UserName -> ReportInput 和 ReportInput -> ReportOutput candidate
-Effects.* 等于对应 Domain.Business capability group lowering
-capability 可以 lower 成带 send/handler/transform/policy/pipeline contract 的 EffectSystemBoundary
-Effects.* facade 的 EffectUnit metadata 与 Domain.Business capability lowering 一致
-Effects.* facade 导入 Framework.Business 且不导入 Framework.Effect
-EffectSystem privateFacts 保持内部 scope，exports 定义 public boundary
-Domain.Business 导入 Framework.Business 且不导入 Framework.Effect
-Domain.EffectVocabulary 导入 Framework.Business 且不导入 Framework.Effect
-allDomainCapabilities 通过 business-shape checker
-runtime pipeline adapter 可以执行 transform 链
-```
-
-期望输出：
-
-```text
-[witness] ok business syntax evidence 18 payload claims
-```
-
-`--json` 输出 `business-syntax-evidence.v1`，用于记录 capability lowering、facade boundary、pipeline adapter 和 `EffectSystemBoundary` 元数据。
+这些命令进入 `check-semantic`，但不进入 `check-fast`。

@@ -64,6 +64,10 @@ architectureConcernCoreClaimNames =
   , "session3-runtime-policy-evidence-payloads"
   , "session123-schema-catalog-coverage"
   , "session123-report-json-renderer-coverage"
+  , "session4-default-business-frontend-contract"
+  , "session4-business-import-boundary"
+  , "session4-documentation-encoding-boundary"
+  , "session4-evidence-system-bloat-guard"
   , architectureSemanticRiskReviewClaimName
   ]
 
@@ -180,6 +184,26 @@ architectureSemanticRiskItems =
       "typed runtime hot-path dependency boundary and execution weight"
       "high:semantic-review-required"
       "review before adding report, evidence, fixed-point, TrustBase, registry, or artifact gate dependencies to runtime hot path"
+  , ArchitectureSemanticRisk
+      "default-business-frontend-contract"
+      "candidate stable frontend and default business import path"
+      "medium:public-facade"
+      "review before adding modules to the default business frontend or promising strong compatibility"
+  , ArchitectureSemanticRisk
+      "business-import-boundary"
+      "ordinary business authoring imports versus acceptance/reporting layer imports"
+      "medium:authoring-boundary"
+      "review business-syntax-witness before relaxing authoring imports; keep SelfDomainApp and Domain.SemanticEvidence as acceptance/reporting"
+  , ArchitectureSemanticRisk
+      "documentation-encoding-drift"
+      "README and default path documentation readability"
+      "low:documentation"
+      "repair UTF-8 text in focused entry docs before changing broader documentation"
+  , ArchitectureSemanticRisk
+      "evidence-system-bloat"
+      "gate layering, hot-path dependency growth, and default witness weight"
+      "medium:gate-policy"
+      "keep check-fast light, keep self-artifact explicit, and route evidence-heavy checks through semantic/release gates"
   ]
 
 architectureSemanticRiskItemNames :: [String]
