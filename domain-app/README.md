@@ -53,8 +53,8 @@ Domain.SemanticEvidence
 
 算法、IO、retry 行为和 typed value conversion 放进 `Domain.Runtime`。`Domain.AppBlueprint`、`Plugins.*`、`Domain.Business` 和 `Effects.*` 只保留声明和 lowering。
 
-`Effects.*` 每个模块只把一组 capability 通过 `Framework.Business.capabilitiesEffect` lower 成 effect IR。
+`Effects.*` 每个模块只把一组 capability 通过 `Framework.Business.capabilitiesEffect` lower 成 effect IR，并从 `Framework.Business` 取得 `EffectUnit` 类型。
 
 业务编写从 `Framework.Business` capability 开始。`Framework.Effect` 用在 lowering 后的规范化语义 IR。
 
-`business-syntax-witness` 检查这条 vertical slice：capability lowering、`Effects.*` 与 `Domain.Business` lowering 一致、`Domain.Business` / `Domain.EffectVocabulary` 不导入 `Framework.Effect`、business-shape 对齐，以及 typed runtime pipeline adapter。
+`business-syntax-witness` 检查这条 vertical slice：capability lowering、`Effects.*` 与 `Domain.Business` lowering 一致、`Domain.Business` / `Domain.EffectVocabulary` / `Effects.*` 不导入 `Framework.Effect`、business-shape 对齐，以及 typed runtime pipeline adapter。

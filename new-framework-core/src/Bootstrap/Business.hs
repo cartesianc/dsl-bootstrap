@@ -7,6 +7,7 @@ module Bootstrap.Business
   , CapabilityPolicy (..)
   , CapabilityUse (..)
   , EffectName (..)
+  , EffectUnit (..)
   , HandlerBindingSpec (..)
   , HandlerName (..)
   , Pipeline (..)

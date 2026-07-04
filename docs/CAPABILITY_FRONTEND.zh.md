@@ -187,6 +187,7 @@ GenerateReport pipeline 生成 UserName -> ReportInput 和 ReportInput -> Report
 Effects.* 等于对应 Domain.Business capability group lowering
 capability 可以 lower 成带 send/handler/transform/policy/pipeline contract 的 EffectSystemBoundary
 Effects.* facade 的 EffectUnit metadata 与 Domain.Business capability lowering 一致
+Effects.* facade 导入 Framework.Business 且不导入 Framework.Effect
 Domain.Business 导入 Framework.Business 且不导入 Framework.Effect
 Domain.EffectVocabulary 导入 Framework.Business 且不导入 Framework.Effect
 allDomainCapabilities 通过 business-shape checker
@@ -196,7 +197,7 @@ runtime pipeline adapter 可以执行 transform 链
 期望输出：
 
 ```text
-[witness] ok business syntax evidence 14 payload claims
+[witness] ok business syntax evidence 15 payload claims
 ```
 
 `--json` 输出 `business-syntax-evidence.v1`，用于记录 capability lowering、facade boundary、pipeline adapter 和 `EffectSystemBoundary` 元数据。

@@ -183,7 +183,7 @@ Framework.Ast
 Framework.Business
 ```
 
-其中 `Framework.Business` 是 primary capability authoring surface，负责 capability / pipeline / policy / handler binding / transform binding 的声明，并 re-export `NoInput` / `Unit` / `ErrorInput` 这类 authoring token 以及 `SendName` / `TypeName` / `HandlerName` / `TransformName` / `EffectName` 这类 authoring name；`Framework.Effect` 是 normalized effect/fact IR / compatibility API；`Framework.Ast` 是 AppBlueprint / workflow AST 的前台名字。业务前台不导入 `Framework.Effect`、`Framework.Runtime`、`Framework.Background`、`Bootstrap.*`。
+其中 `Framework.Business` 是 primary capability authoring surface，负责 capability / pipeline / policy / handler binding / transform binding 的声明，并 re-export `NoInput` / `Unit` / `ErrorInput` 这类 authoring token、`EffectUnit` lowering result type，以及 `SendName` / `TypeName` / `HandlerName` / `TransformName` / `EffectName` 这类 authoring name；`Framework.Effect` 是 normalized effect/fact IR / compatibility API；`Framework.Ast` 是 AppBlueprint / workflow AST 的前台名字。业务前台不导入 `Framework.Effect`、`Framework.Runtime`、`Framework.Background`、`Bootstrap.*`。
 
 handler implementation 只碰：
 

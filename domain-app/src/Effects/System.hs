@@ -9,9 +9,9 @@ import Domain.EffectVocabulary
 import Domain.Business
   ( systemCapabilities )
 import Framework.Business
-  ( capabilitiesEffect )
-import Framework.Effect
-  ( EffectUnit )
+  ( EffectUnit
+  , capabilitiesEffect
+  )
 
 -- lowering facade: Domain.Business.systemCapabilities -> EffectUnit
 systemEffect :: EffectUnit

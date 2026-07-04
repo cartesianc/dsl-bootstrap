@@ -371,7 +371,7 @@ handler binding
 transform binding
 ```
 
-`NoInput`、`Unit`、`ErrorInput` 和业务命名类型由 `Framework.Business` 暴露，业务 capability source 不需要为了 send boundary sentinel values 或 `SendName` / `TypeName` 这类 authoring name 直接导入 `Framework.Effect`。
+`NoInput`、`Unit`、`ErrorInput`、`EffectUnit` 和业务命名类型由 `Framework.Business` 暴露，业务 capability source 和 `Effects.*` lowering facade 不需要为了 send boundary sentinel values、lowering result type 或 `SendName` / `TypeName` 这类 authoring name 直接导入 `Framework.Effect`。
 
 normalized semantic IR 仍然保留：
 

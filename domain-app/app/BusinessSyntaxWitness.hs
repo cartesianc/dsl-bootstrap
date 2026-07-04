@@ -85,11 +85,13 @@ main = do
   runtimePipelinePassed <- pipelineRuntimeAdapterPassed
   domainBusinessBoundaryPassed <- domainBusinessAuthoringBoundaryPassed
   domainVocabularyBoundaryPassed <- domainEffectVocabularyBoundaryPassed
+  effectFacadeBoundaryPassed <- effectsFacadeBoundaryPassed
   let payloads =
         businessSyntaxEvidencePayloads
           runtimePipelinePassed
           domainBusinessBoundaryPassed
           domainVocabularyBoundaryPassed
+          effectFacadeBoundaryPassed
       failures =
         evidenceFailures payloads
   case args of
@@ -121,8 +123,8 @@ businessSyntaxEvidencePayloadPassed :: BusinessSyntaxEvidencePayload -> Bool
 businessSyntaxEvidencePayloadPassed payload =
   businessSyntaxEvidenceStatus payload == BusinessSyntaxEvidencePassed
 
-businessSyntaxEvidencePayloads :: Bool -> Bool -> Bool -> [BusinessSyntaxEvidencePayload]
-businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed =
+businessSyntaxEvidencePayloads :: Bool -> Bool -> Bool -> Bool -> [BusinessSyntaxEvidencePayload]
+businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed effectFacadeBoundaryPassed =
   [ businessEvidence
       "business-syntax-needs-lowering"
       needsLoweringPassed
@@ -177,6 +179,12 @@ businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPasse
       "Domain.EffectVocabulary imports Framework.Business without Framework.Effect, Framework.Runtime, or Bootstrap.*"
       (observedBool domainVocabularyBoundaryPassed)
       "DomainEffectVocabularyBoundaryArtifact"
+  , businessEvidence
+      "business-syntax-effects-facade-boundary"
+      effectFacadeBoundaryPassed
+      "Effects.* lowering facade imports Framework.Business without Framework.Effect"
+      (observedBool effectFacadeBoundaryPassed)
+      "BusinessEffectsFacadeBoundaryArtifact"
   , businessEvidence
       "business-syntax-handler-binding-alignment"
       (null businessShapeIssues)
@@ -471,6 +479,25 @@ domainEffectVocabularyBoundaryPassed = do
         && not ("import Framework.Runtime" `isInfixOf` source)
         && not ("import Bootstrap." `isInfixOf` source)
     )
+
+effectsFacadeBoundaryPassed :: IO Bool
+effectsFacadeBoundaryPassed = do
+  sources <-
+    mapM
+      readFile
+      [ "domain-app/src/Effects/System.hs"
+      , "domain-app/src/Effects/User.hs"
+      , "domain-app/src/Effects/Report.hs"
+      , "domain-app/src/Effects/Logging.hs"
+      ]
+  pure (all effectFacadeSourcePassed sources)
+
+effectFacadeSourcePassed :: String -> Bool
+effectFacadeSourcePassed source =
+  "import Framework.Business" `isInfixOf` source
+    && not ("import Framework.Effect" `isInfixOf` source)
+    && not ("import Framework.Runtime" `isInfixOf` source)
+    && not ("import Bootstrap." `isInfixOf` source)
 
 effectFacadeLoweringPassed :: Bool
 effectFacadeLoweringPassed =
