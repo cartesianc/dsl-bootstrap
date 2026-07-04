@@ -234,6 +234,7 @@ schema catalog witness payload claims 包含每个 schema 输出检查：
 ```text
 schema-catalog-output:framework-core-report.v1
 schema-catalog-output:domain-report.v1
+schema-catalog-output:domain-map.v1
 schema-catalog-output:fixed-point-report.v1
 schema-catalog-output:fixed-point-summary.v1
 schema-catalog-output:framework-core-frontend-evidence.v1

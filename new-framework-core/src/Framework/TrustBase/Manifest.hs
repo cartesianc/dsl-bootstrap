@@ -266,6 +266,7 @@ trustBaseManifestRequiredJsonSchemas :: [String]
 trustBaseManifestRequiredJsonSchemas =
   [ "framework-core-report.v1 <- bootstrap-report -- --json"
   , "domain-report.v1 <- domain-app-report -- --json"
+  , "domain-map.v1 <- domain-map -- json all"
   , "fixed-point-report.v1 <- fixed-point-smoke -- --json"
   , "fixed-point-summary.v1 <- fixed-point-smoke -- --summary-json"
   , "framework-core-frontend-evidence.v1 <- framework-core-frontend-witness -- --json"

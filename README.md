@@ -591,6 +591,7 @@ JSON 输出带 schema 字段：
 ```text
 framework-core-report.v1
 domain-report.v1
+domain-map.v1
 fixed-point-report.v1
 fixed-point-summary.v1
 framework-core-frontend-evidence.v1

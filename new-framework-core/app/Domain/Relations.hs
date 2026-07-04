@@ -91,7 +91,10 @@ renderRegisteredDomainMap =
 renderRegisteredDomainMapJson :: String
 renderRegisteredDomainMapJson =
   jsonObject
-    [ ( "domains"
+    [ ( "schema"
+      , jsonString domainMapSchemaName
+      )
+    , ( "domains"
       , jsonArray (map domainJson registeredDomains)
       )
     ]
@@ -112,11 +115,18 @@ renderSelectedDomainMapJson name =
     domains ->
       Right
         ( jsonObject
-            [ ( "domains"
+            [ ( "schema"
+              , jsonString domainMapSchemaName
+              )
+            , ( "domains"
               , jsonArray (map domainJson domains)
               )
             ]
         )
+
+domainMapSchemaName :: String
+domainMapSchemaName =
+  "domain-map.v1"
 
 renderDomainMap :: [DomainRegistration] -> [String]
 renderDomainMap domains =
