@@ -26,6 +26,7 @@ import Framework.TrustBase
   ( SchemaCatalogEvidencePayload
   , renderSchemaCatalogEvidencePayload
   , renderSchemaCatalogEvidencePayloadsJson
+  , schemaCatalogClaimManifestPayload
   , schemaCatalogEvidence
   , schemaCatalogEvidencePayloadPassed
   , trustBaseManifestRequiredJsonSchemas
@@ -40,7 +41,9 @@ data SchemaCatalogEntry = SchemaCatalogEntry
 main :: IO ()
 main = do
   args <- getArgs
-  payloads <- schemaCatalogPayloads trustBaseManifestRequiredJsonSchemas
+  corePayloads <- schemaCatalogPayloads trustBaseManifestRequiredJsonSchemas
+  let payloads =
+        corePayloads ++ [schemaCatalogClaimManifestPayload corePayloads]
   let failedPayloads =
         filter (not . schemaCatalogEvidencePayloadPassed) payloads
   case args of

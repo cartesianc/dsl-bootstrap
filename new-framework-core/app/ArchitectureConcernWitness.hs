@@ -71,6 +71,8 @@ import Framework.TrustBase.Manifest
   ( TrustBaseGatePolicy (..)
   , TrustBaseManifest (..)
   , defaultTrustBaseManifest
+  , schemaCatalogCoreClaimNames
+  , schemaCatalogEvidenceClaimNames
   , trustBaseManifestEvidenceClaimNames
   , trustBaseManifestRequiredCoreSurfaceModules
   , trustBaseManifestRequiredGatePolicies
@@ -698,9 +700,16 @@ schemaCatalogCoveragePayload =
         ++
       [ ("Framework.TrustBase.Manifest SchemaCatalogEvidencePayload type", coreSurfaceTypeCapabilityPresent "Framework.TrustBase.Manifest" "SchemaCatalogEvidencePayload")
       , ("Framework.TrustBase.Manifest SchemaCatalogEvidenceStatus type", coreSurfaceTypeCapabilityPresent "Framework.TrustBase.Manifest" "SchemaCatalogEvidenceStatus")
+      , ("Framework.TrustBase.Manifest schemaCatalogClaimManifestPayload value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "schemaCatalogClaimManifestPayload")
+      , ("Framework.TrustBase.Manifest schemaCatalogCoreClaimNames value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "schemaCatalogCoreClaimNames")
       , ("Framework.TrustBase.Manifest schemaCatalogEvidence value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "schemaCatalogEvidence")
+      , ("Framework.TrustBase.Manifest schemaCatalogEvidenceArtifactSummary value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "schemaCatalogEvidenceArtifactSummary")
+      , ("Framework.TrustBase.Manifest schemaCatalogEvidenceClaimNames value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "schemaCatalogEvidenceClaimNames")
       , ("Framework.TrustBase.Manifest schemaCatalogEvidencePayloadPassed value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "schemaCatalogEvidencePayloadPassed")
       , ("Framework.TrustBase.Manifest renderSchemaCatalogEvidencePayloadsJson value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "renderSchemaCatalogEvidencePayloadsJson")
+      , ("schema catalog framework-core report claim", "schema-catalog-output:framework-core-report.v1" `elem` schemaCatalogCoreClaimNames)
+      , ("schema catalog registry codegen claim", "schema-catalog-output:registry-codegen-evidence.v1" `elem` schemaCatalogCoreClaimNames)
+      , ("schema catalog claim manifest", "schema-catalog-claim-manifest" `elem` schemaCatalogEvidenceClaimNames)
       , ("Framework.Runtime.Evidence runtimeEvidenceCoreClaimNames value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Evidence" "runtimeEvidenceCoreClaimNames")
       , ("Framework.Runtime.Evidence runtimeEvidenceClaimNames value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Evidence" "runtimeEvidenceClaimNames")
       , ("runtime evidence plan build claim", "runtime-plan-build-evidence" `elem` runtimeEvidenceCoreClaimNames)

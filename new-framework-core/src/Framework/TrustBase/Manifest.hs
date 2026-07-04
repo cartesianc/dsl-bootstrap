@@ -14,7 +14,11 @@ module Framework.TrustBase.Manifest
   , renderTrustBaseManifestEvidencePayloadsJson
   , renderTrustBaseManifestEvidenceStatus
   , renderTrustBaseManifestJson
+  , schemaCatalogClaimManifestPayload
+  , schemaCatalogCoreClaimNames
   , schemaCatalogEvidence
+  , schemaCatalogEvidenceArtifactSummary
+  , schemaCatalogEvidenceClaimNames
   , schemaCatalogEvidencePayloadPassed
   , trustBaseManifestEvidenceArtifactSummary
   , trustBaseManifestEvidenceClaimNames
@@ -162,6 +166,19 @@ schemaCatalogEvidencePayloadPassed :: SchemaCatalogEvidencePayload -> Bool
 schemaCatalogEvidencePayloadPassed payload =
   schemaCatalogEvidenceStatus payload == SchemaCatalogEvidencePassed
 
+schemaCatalogCoreClaimNames :: [String]
+schemaCatalogCoreClaimNames =
+  map schemaCatalogClaimNameForEntry trustBaseManifestRequiredJsonSchemas
+
+schemaCatalogEvidenceClaimNames :: [String]
+schemaCatalogEvidenceClaimNames =
+  schemaCatalogCoreClaimNames ++ ["schema-catalog-claim-manifest"]
+
+schemaCatalogEvidenceArtifactSummary :: String
+schemaCatalogEvidenceArtifactSummary =
+  "schema catalog evidence payload claims: "
+    ++ joinWith ", " schemaCatalogEvidenceClaimNames
+
 trustBaseManifestEvidenceClaimNames :: [String]
 trustBaseManifestEvidenceClaimNames =
   [ "trust-base-kernel-modules-exposed"
@@ -195,6 +212,27 @@ schemaCatalogEvidence claim passed expected observed artifact =
     , schemaCatalogEvidenceObserved = observed
     , schemaCatalogEvidenceArtifact = artifact
     }
+
+schemaCatalogClaimManifestPayload :: [SchemaCatalogEvidencePayload] -> SchemaCatalogEvidencePayload
+schemaCatalogClaimManifestPayload payloads =
+  schemaCatalogEvidence
+    "schema-catalog-claim-manifest"
+    manifestSynced
+    "schema catalog payload claims match exported claim manifest"
+    observed
+    "SchemaCatalogClaimManifestArtifact"
+  where
+    actualCoreClaimNames =
+      map schemaCatalogEvidenceClaim payloads
+    actualEvidenceClaimNames =
+      actualCoreClaimNames ++ ["schema-catalog-claim-manifest"]
+    manifestSynced =
+      actualCoreClaimNames == schemaCatalogCoreClaimNames
+        && actualEvidenceClaimNames == schemaCatalogEvidenceClaimNames
+    observed =
+      if manifestSynced
+        then "claim manifest synced: " ++ show (length actualCoreClaimNames) ++ " core claims"
+        else "expected " ++ show schemaCatalogEvidenceClaimNames ++ "; actual " ++ show actualEvidenceClaimNames
 
 trustBaseManifestRequiredCoreSurfaceModules :: [String]
 trustBaseManifestRequiredCoreSurfaceModules =
@@ -464,6 +502,43 @@ trustBaseGatePolicyJson policy =
 renderArtifactSourceText :: ArtifactSource -> String
 renderArtifactSourceText source =
   artifactSourcePath source ++ " -> " ++ artifactTargetPath source
+
+schemaCatalogClaimNameForEntry :: String -> String
+schemaCatalogClaimNameForEntry entry =
+  "schema-catalog-output:" ++ schemaCatalogSchemaNameForEntry entry
+
+schemaCatalogSchemaNameForEntry :: String -> String
+schemaCatalogSchemaNameForEntry entry =
+  case breakOn " <- " entry of
+    Just (schemaName, _) ->
+      schemaName
+    Nothing ->
+      entry
+
+breakOn :: String -> String -> Maybe (String, String)
+breakOn marker text =
+  go "" text
+  where
+    go _ [] =
+      Nothing
+    go prefix rest
+      | marker `isPrefixOfLocal` rest =
+          Just (prefix, drop (length marker) rest)
+      | otherwise =
+          case rest of
+            current : next ->
+              go (prefix ++ [current]) next
+
+isPrefixOfLocal :: String -> String -> Bool
+isPrefixOfLocal [] _ =
+  True
+isPrefixOfLocal _ [] =
+  False
+isPrefixOfLocal (left : leftRest) (right : rightRest)
+  | left == right =
+      isPrefixOfLocal leftRest rightRest
+  | otherwise =
+      False
 
 indentLines :: Int -> [String] -> [String]
 indentLines count =

@@ -608,6 +608,8 @@ runtime-concurrency-evidence.v1
 architecture-concern-evidence.v1
 ```
 
+`schema-catalog-witness -- --json` 为每个 catalog entry 输出 `schema-catalog-output:<schema>` payload，并追加 `schema-catalog-claim-manifest` 自检。
+
 `bootstrap-report -- --json` 和 `domain-app-report -- --json` 输出 report 后会检查 `status`；`failed` 会让命令返回非零退出码。
 `domain-app-report` 的 semanticEvidence 保留 `details`，同时每条都提供结构化 `payload`：`claim/status/expected/observed/artifact`。当前 payload 覆盖 built-in checks、runtime diagnosis 和 registry codegen evidence。
 

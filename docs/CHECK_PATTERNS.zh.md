@@ -228,6 +228,28 @@ runtime-concurrency-evidence.v1
 architecture-concern-evidence.v1
 ```
 
+schema catalog witness payload claims 包含每个 schema 输出检查：
+```text
+schema-catalog-output:framework-core-report.v1
+schema-catalog-output:domain-report.v1
+schema-catalog-output:fixed-point-report.v1
+schema-catalog-output:fixed-point-summary.v1
+schema-catalog-output:framework-core-frontend-evidence.v1
+schema-catalog-output:trust-base-manifest.v2
+schema-catalog-output:trust-base-manifest-evidence.v1
+schema-catalog-output:schema-catalog-evidence.v1
+schema-catalog-output:business-syntax-evidence.v1
+schema-catalog-output:runtime-evidence.v1
+schema-catalog-output:runtime-hot-path-evidence.v1
+schema-catalog-output:runtime-policy-evidence.v1
+schema-catalog-output:runtime-diagnosis-evidence.v1
+schema-catalog-output:registry-codegen-evidence.v1
+schema-catalog-output:workflow-semantics-evidence.v1
+schema-catalog-output:runtime-concurrency-evidence.v1
+schema-catalog-output:architecture-concern-evidence.v1
+schema-catalog-claim-manifest
+```
+
 `RunRuntimeEvidence` 现在对应 7 条 `RuntimeEvidencePayload`：
 
 ```text

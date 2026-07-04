@@ -208,6 +208,8 @@ Manifest 里的 `json schemas` 记录当前发布快照承诺的 machine-readabl
 
 这条 witness 只读取当前 cabal、CoreSurface 和 `defaultSelfArtifactManifest`，检查 manifest 里声明的 module、executable、artifact sources、artifact commands 和 CoreSurface coverage 没有漂移。它不物化 Stage 1 artifact，也不执行 `self-artifact-witness`。
 
+schema catalog evidence 追加 `schema-catalog-claim-manifest`，用于检查 `schema-catalog-output:<schema>` payload 列表和 `Framework.TrustBase.Manifest` 导出的 claim manifest 同步。
+
 ## 6. 后续收缩方向
 
 优先收缩 kernel，避免扩大 runtime。
