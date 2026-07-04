@@ -85,9 +85,12 @@ main = do
 
 architectureConcernEvidencePayloads :: IO [ArchitectureConcernEvidencePayload]
 architectureConcernEvidencePayloads = do
-  pure (corePayloads ++ [architectureConcernClaimManifestPayload corePayloads])
+  checkLibText <- readFile "scripts/check-lib.ps1"
+  let payloads =
+        corePayloads checkLibText
+  pure (payloads ++ [architectureConcernClaimManifestPayload payloads])
   where
-    corePayloads =
+    corePayloads checkLibText =
       [ runtimeDiagnosisPayloadIrPayload
       , runtimeDiagnosisImplementationPayload
       , runtimeImplementationModuleCoveragePayload
@@ -101,6 +104,7 @@ architectureConcernEvidencePayloads = do
       , capabilityPrivateFactPayload
       , businessFacadeBoundaryPayload
       , trustBaseMachineReadableGatesPayload
+      , selfArtifactHighRiskGateGuardPayload checkLibText
       , runtimeHotPathGuardPayload
       , runtimePolicyEvidencePayload
       , schemaCatalogCoveragePayload
@@ -540,6 +544,32 @@ trustBaseMachineReadableGatesPayload =
     missing =
       [ name | (name, present) <- required, not present ]
 
+selfArtifactHighRiskGateGuardPayload :: String -> ArchitectureConcernEvidencePayload
+selfArtifactHighRiskGateGuardPayload checkLibText =
+  concernEvidence
+    "session3-self-artifact-high-risk-gate-guard"
+    (null missing)
+    "self-artifact-witness is a high-risk release gate that is skipped by default and guarded by a per-HEAD marker"
+    (observedList missing)
+    "SelfArtifactHighRiskGateGuardArtifact"
+    "low:gate-policy"
+    "keep self-artifact-witness behind IncludeSelfArtifact and preserve the per-HEAD marker before changing artifact gate execution"
+  where
+    required =
+      [ ("check-release gate is not high-risk", gatePolicyHighRiskFlag "check-release" False)
+      , ("check-release-with-self-artifact gate is high-risk", gatePolicyHighRiskFlag "check-release-with-self-artifact" True)
+      , ("check-release skips self-artifact by default", gatePolicyCommandPresent "check-release" "# self-artifact-witness skipped; pass -IncludeSelfArtifact to run the high-risk artifact gate once")
+      , ("check-release-with-self-artifact lists high-risk marker note", gatePolicyCommandPresent "check-release-with-self-artifact" "# self-artifact-witness high-risk gate; same HEAD may run only once unless marker is reset")
+      , ("check-release-with-self-artifact lists self-artifact command", gatePolicyCommandPresent "check-release-with-self-artifact" "stack --work-dir .stack-work-codex exec self-artifact-witness")
+      , ("check-lib requires IncludeSelfArtifact", "IncludeSelfArtifact" `isInfixOf` checkLibText)
+      , ("check-lib supports ResetSelfArtifactMarker", "ResetSelfArtifactMarker" `isInfixOf` checkLibText)
+      , ("check-lib writes per-HEAD marker path", "self-artifact-witness-\" + $head + \".ran" `isInfixOf` checkLibText)
+      , ("check-lib blocks repeated self-artifact run", "self-artifact-witness already ran for HEAD" `isInfixOf` checkLibText)
+      , ("check-lib records marker after successful gate", "Set-Content -LiteralPath $markerPath" `isInfixOf` checkLibText)
+      ]
+    missing =
+      [ name | (name, present) <- required, not present ]
+
 runtimeHotPathGuardPayload :: ArchitectureConcernEvidencePayload
 runtimeHotPathGuardPayload =
   concernEvidence
@@ -729,6 +759,22 @@ schemaCatalogEntryHas schemaName entry =
 gatePolicyPresent :: String -> Bool
 gatePolicyPresent policyName =
   any ((== policyName) . trustBaseGatePolicyName) trustBaseManifestRequiredGatePolicies
+
+gatePolicyHighRiskFlag :: String -> Bool -> Bool
+gatePolicyHighRiskFlag policyName expected =
+  any matches trustBaseManifestRequiredGatePolicies
+  where
+    matches policy =
+      trustBaseGatePolicyName policy == policyName
+        && trustBaseGatePolicyHighRisk policy == expected
+
+gatePolicyCommandPresent :: String -> String -> Bool
+gatePolicyCommandPresent policyName command =
+  any matches trustBaseManifestRequiredGatePolicies
+  where
+    matches policy =
+      trustBaseGatePolicyName policy == policyName
+        && command `elem` trustBaseGatePolicyCommands policy
 
 highRiskGatePolicyPresent :: String -> Bool
 highRiskGatePolicyPresent policyName =
