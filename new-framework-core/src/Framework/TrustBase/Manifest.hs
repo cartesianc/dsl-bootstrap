@@ -102,6 +102,7 @@ defaultTrustBaseManifest =
         , "business-syntax-witness"
         , "trust-base-manifest-witness"
         , "schema-catalog-witness"
+        , "architecture-concern-witness"
         ]
     , trustBaseManifestArtifactGateExecutable = "self-artifact-witness"
     , trustBaseManifestArtifactSources =
@@ -193,6 +194,7 @@ trustBaseManifestRequiredJsonSchemas =
   , "registry-codegen-evidence.v1 <- registry-codegen-witness -- --json"
   , "workflow-semantics-evidence.v1 <- workflow-semantics-witness -- --json"
   , "runtime-concurrency-evidence.v1 <- workflow-semantics-witness -- --runtime-concurrency-json"
+  , "architecture-concern-evidence.v1 <- architecture-concern-witness -- --json"
   ]
 
 trustBaseManifestRequiredGatePolicies :: [TrustBaseGatePolicy]
@@ -208,6 +210,7 @@ trustBaseManifestRequiredGatePolicies =
       , "stack --work-dir .stack-work-codex exec runtime-policy-witness -- --json"
       , "stack --work-dir .stack-work-codex exec runtime-diagnosis-witness -- --json"
       , "stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json"
+      , "stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json"
       ]
   , TrustBaseGatePolicy
       "check-semantic"
@@ -223,6 +226,7 @@ trustBaseManifestRequiredGatePolicies =
       , "stack --work-dir .stack-work-codex exec workflow-semantics-witness -- --json"
       , "stack --work-dir .stack-work-codex exec workflow-semantics-witness -- --runtime-concurrency-json"
       , "stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json"
+      , "stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json"
       ]
   , TrustBaseGatePolicy
       "check-release"
@@ -268,6 +272,7 @@ releaseGateBaseCommands =
   , "stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json"
   , "stack --work-dir .stack-work-codex exec schema-catalog-witness -- --json"
   , "stack --work-dir .stack-work-codex exec registry-codegen-witness -- --json"
+  , "stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json"
   ]
 
 renderTrustBaseManifest :: TrustBaseManifest -> [String]

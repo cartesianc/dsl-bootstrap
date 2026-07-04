@@ -178,6 +178,7 @@ trust-base-manifest.v2
 trust-base-manifest-evidence.v1
 schema-catalog-evidence.v1
 registry-codegen-evidence.v1
+architecture-concern-evidence.v1
 host boundary
 kernel modules
 facade modules

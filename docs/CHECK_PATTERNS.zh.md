@@ -129,6 +129,7 @@ trust-base-manifest-witness: trust-base-manifest.v2
 trust-base-manifest-witness -- --evidence-json: trust-base-manifest-evidence.v1
 schema-catalog-witness -- --json: schema-catalog-evidence.v1
 registry-codegen-witness -- --json: registry-codegen-evidence.v1
+architecture-concern-witness -- --json: architecture-concern-evidence.v1
 fixed-point-smoke: fixed-point diff evidence 14 payload claims
 fixed-point-smoke: diffs: 0
 fixed-point-smoke --json: fixed-point-report.v1
@@ -224,6 +225,7 @@ runtime-diagnosis-evidence.v1
 registry-codegen-evidence.v1
 workflow-semantics-evidence.v1
 runtime-concurrency-evidence.v1
+architecture-concern-evidence.v1
 ```
 
 `RunRuntimeEvidence` 现在对应 6 条 `RuntimeEvidencePayload`：
@@ -439,6 +441,7 @@ stack exec runtime-diagnosis-witness
 stack exec framework-core-frontend-witness -- --json
 stack exec domain-app-report
 stack exec registry-codegen-witness -- --json
+stack exec architecture-concern-witness -- --json
 stack exec business-syntax-witness
 ```
 

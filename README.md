@@ -163,6 +163,7 @@ runtime-evidence-witness: ok runtime evidence 6 payload claims
 trust-base-manifest-witness: ok trust base manifest trust-base-manifest.v2
 workflow-semantics-witness: ok workflow semantics evidence 14 payload claims
 business-syntax-witness: ok business syntax evidence 17 payload claims
+architecture-concern-witness: ok architecture concern evidence 10 payload claims
 self-artifact-witness: passed (仅高危 artifact gate 轮次需要)
 ```
 
@@ -597,6 +598,7 @@ runtime-diagnosis-evidence.v1
 registry-codegen-evidence.v1
 workflow-semantics-evidence.v1
 runtime-concurrency-evidence.v1
+architecture-concern-evidence.v1
 ```
 
 `bootstrap-report -- --json` 和 `domain-app-report -- --json` 输出 report 后会检查 `status`；`failed` 会让命令返回非零退出码。
@@ -653,6 +655,7 @@ stack exec runtime-diagnosis-witness
 stack exec framework-core-frontend-witness -- --json
 stack exec domain-app-report
 stack exec registry-codegen-witness -- --json
+stack exec architecture-concern-witness -- --json
 stack exec business-syntax-witness
 ```
 
@@ -695,6 +698,7 @@ stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness -- --smt=auto
 stack exec workflow-semantics-witness
 stack exec registry-codegen-witness -- --json
+stack exec architecture-concern-witness -- --json
 stack exec business-syntax-witness
 ```
 
@@ -716,6 +720,7 @@ stack exec workflow-semantics-witness
 stack exec runtime-diagnosis-witness
 stack exec constraint-proof-witness -- --smt=auto
 stack exec registry-codegen-witness -- --json
+stack exec architecture-concern-witness -- --json
 ```
 
 高危 artifact gate（大构建完成后最多一次）：

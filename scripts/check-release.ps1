@@ -33,6 +33,7 @@ $commands = @(
   ,@("stack", "--work-dir", $WorkDir, "exec", "trust-base-manifest-witness", "--", "--evidence-json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "schema-catalog-witness", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "registry-codegen-witness", "--", "--json")
+  ,@("stack", "--work-dir", $WorkDir, "exec", "architecture-concern-witness", "--", "--json")
 )
 
 Push-Location $WorkspaceRoot
