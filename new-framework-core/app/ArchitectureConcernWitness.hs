@@ -33,7 +33,9 @@ import Framework.Business.Evidence
   , businessSyntaxEvidenceClaimNames
   )
 import Framework.FixedPoint
-  ( runtimeBackendParityEvidenceClaimNames )
+  ( runtimeBackendParityCoreClaimNames
+  , runtimeBackendParityEvidenceClaimNames
+  )
 import Framework.Frontend.Evidence
   ( FrontendClaimModuleLink (..)
   , frameworkCoreFrontendEvidenceClaimNames
@@ -262,7 +264,8 @@ backendParityPayload =
       , "runtime-backend-parity-report"
       ]
     missing =
-      missingItems runtimeBackendParityEvidenceClaimNames expectedClaims
+      missingItems runtimeBackendParityCoreClaimNames expectedClaims
+        ++ missingItems runtimeBackendParityEvidenceClaimNames ["runtime-backend-parity-claim-manifest"]
 
 effectSystemScopePayload :: ArchitectureConcernEvidencePayload
 effectSystemScopePayload =

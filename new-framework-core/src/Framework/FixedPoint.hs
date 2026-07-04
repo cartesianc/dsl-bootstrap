@@ -21,6 +21,7 @@ module Framework.FixedPoint
   , runtimeBackendParityEvidencePayloadPassed
   , runtimeBackendParityEvidencePayloads
   , runtimeBackendParityEvidenceArtifactSummary
+  , runtimeBackendParityCoreClaimNames
   , runtimeBackendParityEvidenceClaimNames
   ) where
 
@@ -204,11 +205,18 @@ renderFixedPointDiffEvidenceStatus FixedPointDiffEvidenceFailed =
 
 runtimeBackendParityEvidencePayloads :: FixedPointReport -> [RuntimeBackendParityEvidencePayload]
 runtimeBackendParityEvidencePayloads report =
-  map (`runtimeBackendParityEvidencePayload` report) runtimeBackendParityEvidenceSpecs
+  corePayloads ++ [runtimeBackendParityClaimManifestPayload corePayloads]
+  where
+    corePayloads =
+      map (`runtimeBackendParityEvidencePayload` report) runtimeBackendParityEvidenceSpecs
+
+runtimeBackendParityCoreClaimNames :: [String]
+runtimeBackendParityCoreClaimNames =
+  map runtimeBackendParityEvidenceSpecClaim runtimeBackendParityEvidenceSpecs
 
 runtimeBackendParityEvidenceClaimNames :: [String]
 runtimeBackendParityEvidenceClaimNames =
-  map runtimeBackendParityEvidenceSpecClaim runtimeBackendParityEvidenceSpecs
+  runtimeBackendParityCoreClaimNames ++ ["runtime-backend-parity-claim-manifest"]
 
 runtimeBackendParityEvidenceArtifactSummary :: String
 runtimeBackendParityEvidenceArtifactSummary =
@@ -462,6 +470,31 @@ runtimeBackendParityEvidencePayload spec report =
       if null diffs
         then "matched fields: " ++ show (runtimeBackendParityEvidenceSpecFields spec)
         else "diff fields: " ++ show (map evidenceDiffField diffs)
+
+runtimeBackendParityClaimManifestPayload :: [RuntimeBackendParityEvidencePayload] -> RuntimeBackendParityEvidencePayload
+runtimeBackendParityClaimManifestPayload payloads =
+  RuntimeBackendParityEvidencePayload
+    { runtimeBackendParityEvidenceClaim = "runtime-backend-parity-claim-manifest"
+    , runtimeBackendParityEvidenceStatus =
+        if manifestSynced
+          then RuntimeBackendParityEvidencePassed
+          else RuntimeBackendParityEvidenceFailed
+    , runtimeBackendParityEvidenceExpected =
+        "runtime backend parity payload claims match exported claim manifest"
+    , runtimeBackendParityEvidenceObserved =
+        if manifestSynced
+          then "claim manifest synced: " ++ show (length actualCoreClaimNames) ++ " core claims"
+          else "expected " ++ show runtimeBackendParityEvidenceClaimNames ++ "; actual " ++ show actualEvidenceClaimNames
+    , runtimeBackendParityEvidenceArtifact = "RuntimeBackendParityClaimManifestArtifact"
+    }
+  where
+    actualCoreClaimNames =
+      map runtimeBackendParityEvidenceClaim payloads
+    actualEvidenceClaimNames =
+      actualCoreClaimNames ++ ["runtime-backend-parity-claim-manifest"]
+    manifestSynced =
+      actualCoreClaimNames == runtimeBackendParityCoreClaimNames
+        && actualEvidenceClaimNames == runtimeBackendParityEvidenceClaimNames
 
 diffsForFields :: [String] -> [EvidenceDiff] -> [EvidenceDiff]
 diffsForFields fields diffs =
