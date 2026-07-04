@@ -49,6 +49,8 @@ import Control.Monad
   ( filterM )
 import Data.Char
   ( isSpace )
+import Data.List
+  ( isInfixOf )
 import System.Directory
   ( doesFileExist )
 import System.Environment
@@ -94,11 +96,12 @@ frameworkCoreFrontendEvidencePayloads = do
   generatedPayloads <- mapM generatedSourceEvidencePayload frameworkCoreFrontendSources
   cabalText <- readFile "new-framework-core/new-framework-core.cabal"
   sourceBackedModules <- coreSurfaceSourceBackedModuleNames
+  runtimeDiagnosisBoundaryPayload <- runtimeDiagnosisImplementationBoundaryEvidencePayload
   let claimPayloads =
         map (claimModuleLinkEvidencePayload currentAst cabalText) claimModuleLinks
       exposurePayload =
         coreSurfaceExposedModulesEvidencePayload cabalText sourceBackedModules
-  pure (generatedPayloads ++ claimPayloads ++ [exposurePayload])
+  pure (generatedPayloads ++ claimPayloads ++ [exposurePayload, runtimeDiagnosisBoundaryPayload])
 
 data FrameworkCoreFrontendEvidencePayload = FrameworkCoreFrontendEvidencePayload
   { frameworkCoreFrontendEvidenceClaim :: String
@@ -218,6 +221,66 @@ coreSurfaceExposedModulesEvidencePayload cabalText sourceBackedModules =
           "all source-backed CoreSurface modules exposed: " ++ show (length sourceBackedModules)
       | otherwise =
           "missing exposed modules: " ++ joinWith ", " missing
+
+runtimeDiagnosisImplementationBoundaryEvidencePayload :: IO FrameworkCoreFrontendEvidencePayload
+runtimeDiagnosisImplementationBoundaryEvidencePayload = do
+  diagnosisSource <- readFile "new-framework-core/src/Framework/Runtime/Diagnosis.hs"
+  interpreterSource <- readFile "new-framework-core/src/Framework/Runtime/Interpreter.hs"
+  let missingAnchors =
+        [ anchor
+        | anchor <- runtimeDiagnosisImplementationAnchors
+        , not (anchor `isInfixOf` diagnosisSource)
+        ]
+      forbiddenAnchors =
+        [ anchor
+        | anchor <- runtimeDiagnosisForbiddenFacadeAnchors
+        , anchor `isInfixOf` diagnosisSource
+        ]
+      interpreterImportsDiagnosis =
+        "import Framework.Runtime.Diagnosis" `isInfixOf` interpreterSource
+      interpreterOwnsDiagnosisBuilder =
+        "buildFailureDiagnosisWithSystem ::" `isInfixOf` interpreterSource
+      failures =
+        [ "missing implementation anchors: " ++ joinWith ", " missingAnchors
+        | not (null missingAnchors)
+        ]
+          ++
+        [ "forbidden facade anchors: " ++ joinWith ", " forbiddenAnchors
+        | not (null forbiddenAnchors)
+        ]
+          ++
+        [ "Interpreter does not import Framework.Runtime.Diagnosis"
+        | not interpreterImportsDiagnosis
+        ]
+          ++
+        [ "Interpreter still owns buildFailureDiagnosisWithSystem"
+        | interpreterOwnsDiagnosisBuilder
+        ]
+  pure
+    ( frontendEvidence
+        "framework-core-frontend-runtime-diagnosis-implementation-boundary"
+        (null failures)
+        "Framework.Runtime.Diagnosis owns diagnosis implementation and Interpreter consumes it"
+        ( if null failures
+            then "Diagnosis owns construction, graph, root-cause, rendering, and JSON evidence anchors"
+            else joinWith "; " failures
+        )
+        "FrameworkRuntimeDiagnosisImplementationBoundaryArtifact"
+    )
+
+runtimeDiagnosisImplementationAnchors :: [String]
+runtimeDiagnosisImplementationAnchors =
+  [ "buildFailureDiagnosisWithSystem ::"
+  , "diagnosisNodesFrom ::"
+  , "runtimeDiagnosisRootCause ::"
+  , "renderRuntimeDiagnosisEvidencePayloadsJson ::"
+  ]
+
+runtimeDiagnosisForbiddenFacadeAnchors :: [String]
+runtimeDiagnosisForbiddenFacadeAnchors =
+  [ "( module Framework.Runtime"
+  , "import Framework.Runtime\n"
+  ]
 
 frontendEvidence :: String -> Bool -> String -> String -> String -> FrameworkCoreFrontendEvidencePayload
 frontendEvidence claim passed expected observed artifact =

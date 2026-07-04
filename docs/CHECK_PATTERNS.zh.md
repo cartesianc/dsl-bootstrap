@@ -298,6 +298,7 @@ stack exec registry-codegen-witness -- --json
 generated frontend sources
 AST claim -> CoreSurface module -> cabal exposed-module
 source-backed CoreSurface modules -> cabal exposed-modules
+Framework.Runtime.Diagnosis implementation boundary
 ```
 
 `--json` 输出 `framework-core-frontend-evidence.v1`，每条 payload 都包含 `claim`、`status`、`expected`、`observed` 和 `artifact` 字段。
