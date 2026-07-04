@@ -25,6 +25,8 @@ data ArchitectureConcernEvidencePayload = ArchitectureConcernEvidencePayload
   , architectureConcernEvidenceExpected :: String
   , architectureConcernEvidenceObserved :: String
   , architectureConcernEvidenceArtifact :: String
+  , architectureConcernEvidenceRisk :: String
+  , architectureConcernEvidenceNextAction :: String
   }
   deriving (Eq, Show)
 
@@ -76,6 +78,7 @@ architectureConcernEvidencePayloads = do
     , trustBaseMachineReadableGatesPayload cabalText
     , runtimeHotPathGuardPayload runtimeHotPathSource
     , schemaCatalogCoveragePayload
+    , semanticRiskReviewPayload
     ]
 
 runtimeDiagnosisPayloadIrPayload :: ArchitectureConcernEvidencePayload
@@ -86,6 +89,8 @@ runtimeDiagnosisPayloadIrPayload =
     "runtime diagnosis evidence has structured claim payloads and schema catalog entry"
     (observedList missing)
     "RuntimeDiagnosisEvidencePayloadCoverageArtifact"
+    "low:evidence-schema"
+    "keep runtime-diagnosis-evidence.v1 stable; extend payload fields only with schema review"
   where
     expectedClaims =
       [ "runtime-diagnosis-error-handler"
@@ -110,6 +115,8 @@ runtimeDiagnosisImplementationPayload diagnosisSource frontendWitnessSource =
     "Framework.Runtime.Diagnosis owns diagnosis implementation and frontend witness checks that boundary"
     (observedList missing)
     "RuntimeDiagnosisImplementationCoverageArtifact"
+    "medium:module-boundary"
+    "move runtime diagnosis code only inside Framework.Runtime.Diagnosis or a child module with frontend witness coverage"
   where
     required =
       [ ("buildFailureDiagnosisWithSystem", "buildFailureDiagnosisWithSystem ::" `isInfixOf` diagnosisSource)
@@ -128,6 +135,8 @@ astCoreCabalClaimLinkPayload cabalText frontendWitnessSource =
     "AST claim -> CoreSurface module -> cabal exposed-module links are checked by frontend witness"
     (observedList missing)
     "AstCoreCabalClaimLinkCoverageArtifact"
+    "low:surface-sync"
+    "add new AST claim links through frontend witness and cabal exposed-module checks"
   where
     required =
       [ ("RuntimeDiagnosisExpressedFact link", "ClaimModuleLink RuntimeDiagnosisExpressedFact \"Framework.Runtime.Diagnosis\"" `isInfixOf` frontendWitnessSource)
@@ -148,6 +157,8 @@ backendParityPayload =
     "backend parity is split into plan, fact closure, artifact, and report payload claims"
     (observedList missing)
     "RuntimeBackendParityCoverageArtifact"
+    "low:evidence-schema"
+    "extend backend parity by adding payload claims before changing fixed-point comparison semantics"
   where
     expectedClaims =
       [ "runtime-backend-parity-plan"
@@ -166,6 +177,8 @@ effectSystemScopePayload workflowWitnessSource =
     "EffectSystemBoundary imports, private facts, exports, contracts, and pipelines have workflow semantics evidence"
     (observedList missing)
     "EffectSystemScopeCoverageArtifact"
+    "high:semantic-review-required"
+    "review before changing EffectSystem imports, private fact visibility, export closure, or pipeline contract semantics"
   where
     requiredClaims =
       [ "workflow-effect-system-boundary"
@@ -184,6 +197,8 @@ capabilityPrivateFactPayload businessWitnessSource =
     "Framework.Business exposes capability privateFact lowering to private EffectSystemBoundary facts"
     (observedList missing)
     "CapabilityPrivateFactCoverageArtifact"
+    "high:authoring-semantics"
+    "review before changing capability lowering or privateFact export behavior"
   where
     required =
       [ ("privateFact import", "privateFact" `isInfixOf` businessWitnessSource)
@@ -201,6 +216,8 @@ businessFacadeBoundaryPayload domainBusinessSource effectVocabularySource =
     "domain business authoring imports Framework.Business without direct Framework.Effect, Framework.Runtime, or Bootstrap dependency"
     (observedList missing)
     "BusinessFacadeBoundaryCoverageArtifact"
+    "medium:public-facade"
+    "prefer Framework.Business re-exports or wrappers before exposing internal Effect or Runtime modules to domain authoring"
   where
     required =
       [ ("Domain.Business imports Framework.Business", "import Framework.Business" `isInfixOf` domainBusinessSource)
@@ -221,6 +238,8 @@ trustBaseMachineReadableGatesPayload cabalText =
     "TrustBase manifest records machine-readable schemas, check facades, and architecture concern witness executable"
     (observedList missing)
     "TrustBaseMachineReadableGateCoverageArtifact"
+    "low:manifest"
+    "sync TrustBase manifest, check scripts, and schema catalog when adding new evidence outputs"
   where
     required =
       [ ("architecture-concern-witness cabal executable", "executable architecture-concern-witness" `isInfixOf` cabalText)
@@ -242,6 +261,8 @@ runtimeHotPathGuardPayload runtimeHotPathSource =
     "runtime hot path has import and behavior guard payloads, with JSON schema in TrustBase catalog"
     (observedList missing)
     "RuntimeHotPathGuardCoverageArtifact"
+    "medium:runtime-hot-path"
+    "review before adding report, witness, TrustBase, registry, or artifact gate dependencies to typed runtime hot path"
   where
     required =
       [ ("runtime-hot-path-evidence schema", schemaPresent "runtime-hot-path-evidence.v1")
@@ -259,6 +280,8 @@ schemaCatalogCoveragePayload =
     "TrustBase schema catalog includes every currently published evidence/report schema needed by session concern coverage"
     (observedList missing)
     "SchemaCatalogCoverageArtifact"
+    "low:schema-catalog"
+    "add every new machine-readable output to TrustBase schema catalog and schema-catalog-witness"
   where
     requiredSchemas =
       [ "framework-core-report.v1"
@@ -281,6 +304,19 @@ schemaCatalogCoveragePayload =
       ]
     missing =
       [ schemaName | schemaName <- requiredSchemas, not (schemaPresent schemaName) ]
+
+semanticRiskReviewPayload :: ArchitectureConcernEvidencePayload
+semanticRiskReviewPayload =
+  concernEvidence
+    "session123-semantic-risk-review"
+    True
+    "architecture-changing follow-up tasks are explicitly classified before implementation"
+    ( "semantic review required for EffectSystem boundary semantics, capability lowering semantics, "
+        ++ "runtime diagnosis root-cause propagation, runtime policy algebra, and typed runtime hot-path dependencies"
+    )
+    "ArchitectureSemanticRiskReviewArtifact"
+    "high:semantic-review-required"
+    "pause for review before editing any listed semantic boundary; evidence/schema-only changes can proceed as low-risk work"
 
 expectedClaimsPresent :: [String] -> [String] -> [String]
 expectedClaimsPresent expected actual =
@@ -310,8 +346,8 @@ missingItems :: [String] -> [String] -> [String]
 missingItems actual expected =
   [ item | item <- expected, item `notElem` actual ]
 
-concernEvidence :: String -> Bool -> String -> String -> String -> ArchitectureConcernEvidencePayload
-concernEvidence claim passed expected observed artifact =
+concernEvidence :: String -> Bool -> String -> String -> String -> String -> String -> ArchitectureConcernEvidencePayload
+concernEvidence claim passed expected observed artifact risk nextAction =
   ArchitectureConcernEvidencePayload
     { architectureConcernEvidenceClaim = claim
     , architectureConcernEvidenceStatus =
@@ -321,6 +357,8 @@ concernEvidence claim passed expected observed artifact =
     , architectureConcernEvidenceExpected = expected
     , architectureConcernEvidenceObserved = observed
     , architectureConcernEvidenceArtifact = artifact
+    , architectureConcernEvidenceRisk = risk
+    , architectureConcernEvidenceNextAction = nextAction
     }
 
 architectureConcernEvidencePayloadPassed :: ArchitectureConcernEvidencePayload -> Bool
@@ -345,6 +383,8 @@ renderArchitectureConcernEvidencePayload payload =
   , "expected: " ++ architectureConcernEvidenceExpected payload
   , "observed: " ++ architectureConcernEvidenceObserved payload
   , "artifact: " ++ architectureConcernEvidenceArtifact payload
+  , "risk: " ++ architectureConcernEvidenceRisk payload
+  , "nextAction: " ++ architectureConcernEvidenceNextAction payload
   ]
 
 renderArchitectureConcernEvidenceStatus :: ArchitectureConcernEvidenceStatus -> String
@@ -374,6 +414,8 @@ architectureConcernEvidencePayloadJson payload =
     , jsonField "expected" (jsonString (architectureConcernEvidenceExpected payload))
     , jsonField "observed" (jsonString (architectureConcernEvidenceObserved payload))
     , jsonField "artifact" (jsonString (architectureConcernEvidenceArtifact payload))
+    , jsonField "risk" (jsonString (architectureConcernEvidenceRisk payload))
+    , jsonField "nextAction" (jsonString (architectureConcernEvidenceNextAction payload))
     ]
 
 failWhenEvidenceFailed :: [ArchitectureConcernEvidencePayload] -> IO ()
