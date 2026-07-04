@@ -66,6 +66,7 @@ empty_business closes recursion
 empty_business has no IO surface
 TrustBase is non-recursive at terminal business
 candidate foreground expands into boot-time AST layout
+content-addressed AST DAG + occurrence index is equivalent to boot-time AST layout
 explicit hanging context emits runtime cursors
 runtime cursors project onto layout nodes
 runtime cursors fold into AST node status overlay
@@ -82,6 +83,7 @@ claim manifest is synced
 ```powershell
 stack --work-dir .stack-work-codex exec ast-layout -- self-interpret-summary
 stack --work-dir .stack-work-codex exec ast-layout -- self-interpret-layout
+stack --work-dir .stack-work-codex exec ast-layout -- self-interpret-dag
 stack --work-dir .stack-work-codex exec ast-layout -- self-interpret-live
 ```
 
@@ -91,6 +93,9 @@ self-interpret-summary
 
 self-interpret-layout
   Bounded boot-layout sample for the candidate core foreground.
+
+self-interpret-dag
+  Bounded content-addressed DAG sample, occurrence index summary, and equivalence proof constraints.
 
 self-interpret-live
   Runtime cursor projection and AST node status overlay.

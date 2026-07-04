@@ -1,5 +1,12 @@
 module Framework.Ast.Layout
-  ( AstDiagnosisImpactKind (..)
+  ( AstDagContextIndex (..)
+  , AstDagEquivalenceProof (..)
+  , AstDagModel (..)
+  , AstDagMultiplicity (..)
+  , AstDagNode (..)
+  , AstDagOccurrence (..)
+  , AstDagProofConstraint (..)
+  , AstDiagnosisImpactKind (..)
   , AstDiagnosisImpactModel (..)
   , AstDiagnosisImpactNode (..)
   , AstLayoutAxis (..)
@@ -13,12 +20,23 @@ module Framework.Ast.Layout
   , astDiagnosisImpactModel
   , astLayoutContext
   , astLiveLayoutContext
+  , astDagEquivalenceProof
+  , astDagEquivalenceProofPassed
+  , astDagAppBlueprintProjection
+  , astDagDomainAppBlueprintProjection
+  , astDagModelFromAstTree
   , astLayoutNodeByPath
   , astRuntimeCursorFromEvent
   , astRuntimeStatusModel
+  , astTreeDagProjection
+  , layoutAppBlueprintWithDag
   , layoutAppBlueprint
+  , layoutAstTreeWithDag
   , layoutAstTree
+  , layoutDomainAppBlueprintWithDag
   , layoutDomainAppBlueprint
+  , renderAstDagEquivalenceProof
+  , renderAstDagModel
   , renderAstDiagnosisImpactModel
   , renderAstLayoutModel
   , renderAstRuntimeCursor
@@ -28,7 +46,17 @@ module Framework.Ast.Layout
   ) where
 
 import Data.List
-  ( isInfixOf )
+  ( foldl'
+  , intercalate
+  , isInfixOf
+  )
+import Data.Bits
+  ( xor )
+import Data.Char
+  ( ord )
+import qualified Data.Map.Strict as Map
+import Numeric
+  ( showHex )
 
 import Domain.Interpreter
   ( AstTreeNode (..)
@@ -82,6 +110,71 @@ data AstLayoutModel = AstLayoutModel
   , astLayoutEdges :: [AstLayoutEdge]
   }
   deriving (Eq, Show)
+
+data AstDagNode = AstDagNode
+  { astDagNodeId :: String
+  , astDagNodeKind :: String
+  , astDagNodeName :: String
+  , astDagNodeMetadata :: [(String, [String])]
+  , astDagNodeChildIds :: [String]
+  }
+  deriving (Eq, Show)
+
+data AstDagOccurrence = AstDagOccurrence
+  { astDagOccurrencePath :: [String]
+  , astDagOccurrenceNodeId :: String
+  , astDagOccurrenceContext :: [String]
+  }
+  deriving (Eq, Show)
+
+data AstDagMultiplicity = AstDagMultiplicity
+  { astDagMultiplicityNodeId :: String
+  , astDagMultiplicityCount :: Int
+  }
+  deriving (Eq, Show)
+
+data AstDagContextIndex = AstDagContextIndex
+  { astDagContextPath :: [String]
+  , astDagContextNodeId :: String
+  , astDagContextMultiplicity :: Int
+  }
+  deriving (Eq, Show)
+
+data AstDagModel = AstDagModel
+  { astDagRootPath :: [String]
+  , astDagRootNodeId :: String
+  , astDagNodes :: [AstDagNode]
+  , astDagOccurrences :: [AstDagOccurrence]
+  , astDagMultiplicities :: [AstDagMultiplicity]
+  , astDagContextIndex :: [AstDagContextIndex]
+  }
+  deriving (Eq, Show)
+
+data AstDagProofConstraint = AstDagProofConstraint
+  { astDagProofConstraintName :: String
+  , astDagProofConstraintPassed :: Bool
+  , astDagProofConstraintExpected :: String
+  , astDagProofConstraintObserved :: String
+  }
+  deriving (Eq, Show)
+
+data AstDagEquivalenceProof = AstDagEquivalenceProof
+  { astDagProofLayoutNodeCount :: Int
+  , astDagProofLayoutEdgeCount :: Int
+  , astDagProofDagNodeCount :: Int
+  , astDagProofOccurrenceCount :: Int
+  , astDagProofSharedNodeCount :: Int
+  , astDagProofMaxMultiplicity :: Int
+  , astDagProofConstraints :: [AstDagProofConstraint]
+  }
+  deriving (Eq, Show)
+
+data AstDagAccumulator = AstDagAccumulator
+  { astDagAccumulatorNodes :: Map.Map String AstDagNode
+  , astDagAccumulatorOccurrences :: [AstDagOccurrence]
+  , astDagAccumulatorMultiplicities :: Map.Map String Int
+  , astDagAccumulatorContextIndex :: [AstDagContextIndex]
+  }
 
 data AstRuntimeCursor = AstRuntimeCursor
   { astRuntimeCursorContext :: RecursionContextName
@@ -170,9 +263,39 @@ layoutAppBlueprint :: AppBlueprint -> AstLayoutModel
 layoutAppBlueprint =
   layoutAstTree . astTreeStructure
 
+layoutAppBlueprintWithDag :: AppBlueprint -> (AstLayoutModel, AstDagModel)
+layoutAppBlueprintWithDag =
+  layoutAstTreeWithDag . astTreeStructure
+
 layoutDomainAppBlueprint :: Effect.EffectTheory -> AppBlueprint -> AstLayoutModel
 layoutDomainAppBlueprint theory =
   layoutAstTree . expandAstTreeWithEffectTheory theory . astTreeStructure
+
+layoutDomainAppBlueprintWithDag :: Effect.EffectTheory -> AppBlueprint -> (AstLayoutModel, AstDagModel)
+layoutDomainAppBlueprintWithDag theory =
+  layoutAstTreeWithDag . expandAstTreeWithEffectTheory theory . astTreeStructure
+
+astDagAppBlueprintProjection :: AppBlueprint -> (AstDagModel, AstDagEquivalenceProof)
+astDagAppBlueprintProjection =
+  astTreeDagProjection . astTreeStructure
+
+astDagDomainAppBlueprintProjection :: Effect.EffectTheory -> AppBlueprint -> (AstDagModel, AstDagEquivalenceProof)
+astDagDomainAppBlueprintProjection theory =
+  astTreeDagProjection . expandAstTreeWithEffectTheory theory . astTreeStructure
+
+astDagModelFromAstTree :: AstTreeNode -> AstDagModel
+astDagModelFromAstTree rootNode =
+  dag
+  where
+    (dag, _, _) =
+      astDagModelFromAstTreeWithStats rootNode
+
+astTreeDagProjection :: AstTreeNode -> (AstDagModel, AstDagEquivalenceProof)
+astTreeDagProjection rootNode =
+  (dag, astTreeDagEquivalenceProofFromStats (astTreeNodePath rootNode) nodeCount edgeCount dag)
+  where
+    (dag, nodeCount, edgeCount) =
+      astDagModelFromAstTreeWithStats rootNode
 
 layoutAstTree :: AstTreeNode -> AstLayoutModel
 layoutAstTree rootNode =
@@ -184,6 +307,320 @@ layoutAstTree rootNode =
   where
     (nodes, edges, _) =
       layoutNode AstLayoutY (0, 0) [] [] rootNode
+
+layoutAstTreeWithDag :: AstTreeNode -> (AstLayoutModel, AstDagModel)
+layoutAstTreeWithDag rootNode =
+  ( layout
+  , astDagModelFromAccumulator layout rootId accumulator
+  )
+  where
+    layout =
+      AstLayoutModel
+        { astLayoutRootPath = astTreeNodePath rootNode
+        , astLayoutNodes = reverse nodes
+        , astLayoutEdges = reverse edges
+        }
+    (nodes, edges, _, accumulator, rootId) =
+      layoutNodeWithDag AstLayoutY (0, 0) [] [] emptyAstDagAccumulator rootNode
+
+astDagEquivalenceProof :: AstLayoutModel -> AstDagModel -> AstDagEquivalenceProof
+astDagEquivalenceProof layout dag =
+  AstDagEquivalenceProof
+    { astDagProofLayoutNodeCount = layoutNodeCount
+    , astDagProofLayoutEdgeCount = layoutEdgeCount
+    , astDagProofDagNodeCount = dagNodeCount
+    , astDagProofOccurrenceCount = occurrenceCount
+    , astDagProofSharedNodeCount = sharedNodeCount
+    , astDagProofMaxMultiplicity = maxMultiplicity
+    , astDagProofConstraints = constraints
+    }
+  where
+    layoutNodeCount =
+      length (astLayoutNodes layout)
+    layoutEdgeCount =
+      length (astLayoutEdges layout)
+    dagNodeCount =
+      length (astDagNodes dag)
+    occurrenceCount =
+      length (astDagOccurrences dag)
+    sharedNodeCount =
+      length [item | item <- astDagMultiplicities dag, astDagMultiplicityCount item > 1]
+    maxMultiplicity =
+      maximumOrZero (map astDagMultiplicityCount (astDagMultiplicities dag))
+    constraints =
+      [ proofConstraint
+          "ast-dag-root-path"
+          (astLayoutRootPath layout == astDagRootPath dag)
+          "DAG root path equals layout root path"
+          ("layout=" ++ renderPath (astLayoutRootPath layout) ++ "; dag=" ++ renderPath (astDagRootPath dag))
+      , proofConstraint
+          "ast-dag-root-occurrence"
+          rootOccurrencePresent
+          "root occurrence points at DAG root node"
+          ("root node id=" ++ astDagRootNodeId dag)
+      , proofConstraint
+          "ast-dag-occurrence-count"
+          (occurrenceCount == layoutNodeCount)
+          "one occurrence for every full layout node"
+          ("layout nodes=" ++ show layoutNodeCount ++ "; occurrences=" ++ show occurrenceCount)
+      , proofConstraint
+          "ast-dag-edge-tree-count"
+          (layoutNodeCount == 0 || layoutEdgeCount + 1 == layoutNodeCount)
+          "full layout remains a tree-shaped human-readable projection"
+          ("layout nodes=" ++ show layoutNodeCount ++ "; edges=" ++ show layoutEdgeCount)
+      , proofConstraint
+          "ast-dag-path-index-complete"
+          layoutPathsMatchOccurrences
+          "occurrence index path set equals full layout path set"
+          ("layout paths=" ++ show layoutNodeCount ++ "; occurrence paths=" ++ show occurrenceCount)
+      , proofConstraint
+          "ast-dag-layout-edge-endpoints"
+          layoutEdgeEndpointsKnown
+          "every full layout edge endpoint resolves to a layout node path"
+          ("missing endpoints=" ++ show (length missingLayoutEdgeEndpoints))
+      , proofConstraint
+          "ast-dag-occurrence-structure"
+          occurrenceStructureMatches
+          "each occurrence node id is recomputed from the full layout node and child ids"
+          ("mismatched occurrences=" ++ show (length mismatchedOccurrenceStructures))
+      , proofConstraint
+          "ast-dag-occurrence-targets-known"
+          occurrenceTargetsKnown
+          "every occurrence references a content-addressed DAG node"
+          ("unknown targets=" ++ show (length unknownOccurrenceTargets))
+      , proofConstraint
+          "ast-dag-node-coverage"
+          dagNodesCoveredByOccurrences
+          "every content-addressed DAG node is reached by at least one occurrence"
+          ("uncovered dag nodes=" ++ show (length uncoveredDagNodes))
+      , proofConstraint
+          "ast-dag-structural-hashes"
+          structuralHashesMatch
+          "every DAG node id equals its structural content hash"
+          ("mismatched ids=" ++ show (length mismatchedNodeIds))
+      , proofConstraint
+          "ast-dag-child-targets-known"
+          childTargetsKnown
+          "every DAG child id references a known content-addressed node"
+          ("unknown children=" ++ show (length unknownChildTargets))
+      , proofConstraint
+          "ast-dag-multiplicity-index"
+          multiplicityIndexMatches
+          "multiplicity index counts match occurrence index counts"
+          ("multiplicity entries=" ++ show (length (astDagMultiplicities dag)))
+      , proofConstraint
+          "ast-dag-context-index"
+          contextIndexMatches
+          "context -> node id index counts match occurrence contexts"
+          ("context entries=" ++ show (length (astDagContextIndex dag)))
+      ]
+    nodeIndex =
+      Map.fromList [(astDagNodeId node, ()) | node <- astDagNodes dag]
+    layoutNodeIndex =
+      Map.fromList [(astLayoutNodePath node, node) | node <- astLayoutNodes layout]
+    layoutExpectedNodeIds =
+      layoutExpectedDagNodeIds layout
+    occurrenceTargetIndex =
+      Map.fromList [(astDagOccurrenceNodeId occurrence, ()) | occurrence <- astDagOccurrences dag]
+    rootOccurrencePresent =
+      any
+        ( \occurrence ->
+            astDagOccurrencePath occurrence == astDagRootPath dag
+              && astDagOccurrenceNodeId occurrence == astDagRootNodeId dag
+        )
+        (astDagOccurrences dag)
+    layoutPathsMatchOccurrences =
+      pathCounts (map astLayoutNodePath (astLayoutNodes layout))
+        == pathCounts (map astDagOccurrencePath (astDagOccurrences dag))
+    missingLayoutEdgeEndpoints =
+      [ endpoint
+      | edge <- astLayoutEdges layout
+      , endpoint <- [astLayoutEdgeFrom edge, astLayoutEdgeTo edge]
+      , Map.notMember endpoint layoutNodeIndex
+      ]
+    layoutEdgeEndpointsKnown =
+      null missingLayoutEdgeEndpoints
+    mismatchedOccurrenceStructures =
+      [ occurrence
+      | occurrence <- astDagOccurrences dag
+      , Map.lookup (astDagOccurrencePath occurrence) layoutExpectedNodeIds /= Just (astDagOccurrenceNodeId occurrence)
+      ]
+    occurrenceStructureMatches =
+      null mismatchedOccurrenceStructures
+    unknownOccurrenceTargets =
+      [ target
+      | occurrence <- astDagOccurrences dag
+      , let target = astDagOccurrenceNodeId occurrence
+      , not (Map.member target nodeIndex)
+      ]
+    occurrenceTargetsKnown =
+      null unknownOccurrenceTargets
+    uncoveredDagNodes =
+      [ astDagNodeId node
+      | node <- astDagNodes dag
+      , Map.notMember (astDagNodeId node) occurrenceTargetIndex
+      ]
+    dagNodesCoveredByOccurrences =
+      null uncoveredDagNodes
+    mismatchedNodeIds =
+      [ node
+      | node <- astDagNodes dag
+      , astDagNodeId node /= astDagStructuralNodeId node
+      ]
+    structuralHashesMatch =
+      null mismatchedNodeIds
+    unknownChildTargets =
+      [ childId
+      | childId <- concatMap astDagNodeChildIds (astDagNodes dag)
+      , not (Map.member childId nodeIndex)
+      ]
+    childTargetsKnown =
+      null unknownChildTargets
+    multiplicityIndexMatches =
+      astDagMultiplicities dag == multiplicitiesFromOccurrences (astDagOccurrences dag)
+    contextIndexMatches =
+      astDagContextIndex dag == layoutExpectedDagContextIndex layout layoutExpectedNodeIds
+
+astTreeDagEquivalenceProofFromStats :: [String] -> Int -> Int -> AstDagModel -> AstDagEquivalenceProof
+astTreeDagEquivalenceProofFromStats rootPath treeNodeCount treeEdgeCount dag =
+  AstDagEquivalenceProof
+    { astDagProofLayoutNodeCount = treeNodeCount
+    , astDagProofLayoutEdgeCount = treeEdgeCount
+    , astDagProofDagNodeCount = dagNodeCount
+    , astDagProofOccurrenceCount = occurrenceCount
+    , astDagProofSharedNodeCount = sharedNodeCount
+    , astDagProofMaxMultiplicity = maxMultiplicity
+    , astDagProofConstraints = constraints
+    }
+  where
+    dagNodeCount =
+      length (astDagNodes dag)
+    occurrenceCount =
+      length (astDagOccurrences dag)
+    sharedNodeCount =
+      length [item | item <- astDagMultiplicities dag, astDagMultiplicityCount item > 1]
+    maxMultiplicity =
+      maximumOrZero (map astDagMultiplicityCount (astDagMultiplicities dag))
+    constraints =
+      [ proofConstraint
+          "ast-dag-root-path"
+          (rootPath == astDagRootPath dag)
+          "DAG root path equals expanded AST root path"
+          ("tree=" ++ renderPath rootPath ++ "; dag=" ++ renderPath (astDagRootPath dag))
+      , proofConstraint
+          "ast-dag-root-occurrence"
+          rootOccurrencePresent
+          "root occurrence points at DAG root node"
+          ("root node id=" ++ astDagRootNodeId dag)
+      , proofConstraint
+          "ast-dag-occurrence-count"
+          (occurrenceCount == treeNodeCount)
+          "one occurrence for every expanded AST tree node"
+          ("tree nodes=" ++ show treeNodeCount ++ "; occurrences=" ++ show occurrenceCount)
+      , proofConstraint
+          "ast-dag-edge-tree-count"
+          (treeNodeCount == 0 || treeEdgeCount + 1 == treeNodeCount)
+          "expanded AST remains tree-shaped before DAG sharing"
+          ("tree nodes=" ++ show treeNodeCount ++ "; edges=" ++ show treeEdgeCount)
+      , proofConstraint
+          "ast-dag-path-index-complete"
+          (occurrenceCount == treeNodeCount)
+          "occurrence path index covers the full expanded tree"
+          ("tree nodes=" ++ show treeNodeCount ++ "; occurrence paths=" ++ show occurrenceCount)
+      , proofConstraint
+          "ast-dag-occurrence-targets-known"
+          occurrenceTargetsKnown
+          "every occurrence references a content-addressed DAG node"
+          ("unknown targets=" ++ show (length unknownOccurrenceTargets))
+      , proofConstraint
+          "ast-dag-node-coverage"
+          dagNodesCoveredByOccurrences
+          "every content-addressed DAG node is reached by at least one occurrence"
+          ("uncovered dag nodes=" ++ show (length uncoveredDagNodes))
+      , proofConstraint
+          "ast-dag-structural-hashes"
+          structuralHashesMatch
+          "every DAG node id equals its structural content hash"
+          ("mismatched ids=" ++ show (length mismatchedNodeIds))
+      , proofConstraint
+          "ast-dag-child-targets-known"
+          childTargetsKnown
+          "every DAG child id references a known content-addressed node"
+          ("unknown children=" ++ show (length unknownChildTargets))
+      , proofConstraint
+          "ast-dag-multiplicity-index"
+          multiplicityIndexMatches
+          "multiplicity index counts match occurrence index counts"
+          ("multiplicity entries=" ++ show (length (astDagMultiplicities dag)))
+      , proofConstraint
+          "ast-dag-context-index"
+          (contextIndexCoversOccurrences && contextTargetsKnown)
+          "context -> node id multiplicities cover every occurrence and target known DAG nodes"
+          ( "context entries="
+              ++ show (length (astDagContextIndex dag))
+              ++ "; context multiplicity total="
+              ++ show contextMultiplicityTotal
+              ++ "; unknown context targets="
+              ++ show (length unknownContextTargets)
+          )
+      ]
+    nodeIndex =
+      Map.fromList [(astDagNodeId node, ()) | node <- astDagNodes dag]
+    occurrenceTargetIndex =
+      Map.fromList [(astDagOccurrenceNodeId occurrence, ()) | occurrence <- astDagOccurrences dag]
+    rootOccurrencePresent =
+      any
+        ( \occurrence ->
+            astDagOccurrencePath occurrence == astDagRootPath dag
+              && astDagOccurrenceNodeId occurrence == astDagRootNodeId dag
+        )
+        (astDagOccurrences dag)
+    unknownOccurrenceTargets =
+      [ target
+      | occurrence <- astDagOccurrences dag
+      , let target = astDagOccurrenceNodeId occurrence
+      , not (Map.member target nodeIndex)
+      ]
+    occurrenceTargetsKnown =
+      null unknownOccurrenceTargets
+    uncoveredDagNodes =
+      [ astDagNodeId node
+      | node <- astDagNodes dag
+      , Map.notMember (astDagNodeId node) occurrenceTargetIndex
+      ]
+    dagNodesCoveredByOccurrences =
+      null uncoveredDagNodes
+    mismatchedNodeIds =
+      [ node
+      | node <- astDagNodes dag
+      , astDagNodeId node /= astDagStructuralNodeId node
+      ]
+    structuralHashesMatch =
+      null mismatchedNodeIds
+    unknownChildTargets =
+      [ childId
+      | childId <- concatMap astDagNodeChildIds (astDagNodes dag)
+      , not (Map.member childId nodeIndex)
+      ]
+    childTargetsKnown =
+      null unknownChildTargets
+    multiplicityIndexMatches =
+      astDagMultiplicities dag == multiplicitiesFromOccurrences (astDagOccurrences dag)
+    contextMultiplicityTotal =
+      sum (map astDagContextMultiplicity (astDagContextIndex dag))
+    contextIndexCoversOccurrences =
+      contextMultiplicityTotal == occurrenceCount
+    unknownContextTargets =
+      [ astDagContextNodeId entry
+      | entry <- astDagContextIndex dag
+      , Map.notMember (astDagContextNodeId entry) nodeIndex
+      ]
+    contextTargetsKnown =
+      null unknownContextTargets
+
+astDagEquivalenceProofPassed :: AstDagEquivalenceProof -> Bool
+astDagEquivalenceProofPassed proof =
+  all astDagProofConstraintPassed (astDagProofConstraints proof)
 
 astLayoutNodeByPath :: [String] -> AstLayoutModel -> Maybe AstLayoutNode
 astLayoutNodeByPath path model =
@@ -487,6 +924,33 @@ renderAstLayoutModel model =
     : map renderLayoutNode (astLayoutNodes model)
     ++ map renderLayoutEdge (astLayoutEdges model)
 
+renderAstDagModel :: AstDagModel -> [String]
+renderAstDagModel dag =
+  [ "dag root "
+      ++ renderPath (astDagRootPath dag)
+      ++ " "
+      ++ astDagRootNodeId dag
+  , "dag nodes " ++ show (length (astDagNodes dag))
+  , "dag occurrences " ++ show (length (astDagOccurrences dag))
+  , "dag shared nodes " ++ show (length [item | item <- astDagMultiplicities dag, astDagMultiplicityCount item > 1])
+  ]
+    ++ map renderAstDagNode (take renderDagNodeLimit (astDagNodes dag))
+    ++ map renderAstDagOccurrence (take renderDagOccurrenceLimit (astDagOccurrences dag))
+    ++ map renderAstDagMultiplicity (take renderDagMultiplicityLimit (astDagMultiplicities dag))
+    ++ map renderAstDagContextIndex (take renderDagContextLimit (astDagContextIndex dag))
+
+renderAstDagEquivalenceProof :: AstDagEquivalenceProof -> [String]
+renderAstDagEquivalenceProof proof =
+  [ "dag-proof layout-nodes " ++ show (astDagProofLayoutNodeCount proof)
+  , "dag-proof layout-edges " ++ show (astDagProofLayoutEdgeCount proof)
+  , "dag-proof dag-nodes " ++ show (astDagProofDagNodeCount proof)
+  , "dag-proof occurrences " ++ show (astDagProofOccurrenceCount proof)
+  , "dag-proof shared-nodes " ++ show (astDagProofSharedNodeCount proof)
+  , "dag-proof max-multiplicity " ++ show (astDagProofMaxMultiplicity proof)
+  , "dag-proof constraints " ++ show (length (astDagProofConstraints proof))
+  ]
+    ++ map renderAstDagProofConstraint (astDagProofConstraints proof)
+
 astDiagnosisImpactModel :: AstLayoutModel -> RuntimeFailureDiagnosis -> AstDiagnosisImpactModel
 astDiagnosisImpactModel layout diagnosis =
   AstDiagnosisImpactModel
@@ -621,6 +1085,86 @@ layoutChild parent childAxis childCount (nodes, edges, occupied) (index, child) 
         childCoordinate
         nodes
         (AstLayoutEdge (astLayoutNodePath parent) (astTreeNodePath child) : edges)
+        child
+
+layoutNodeWithDag ::
+  AstLayoutAxis ->
+  (Int, Int) ->
+  [AstLayoutNode] ->
+  [AstLayoutEdge] ->
+  AstDagAccumulator ->
+  AstTreeNode ->
+  ([AstLayoutNode], [AstLayoutEdge], [(Int, Int)], AstDagAccumulator, String)
+layoutNodeWithDag axis coordinate nodes edges accumulator treeNode =
+  ( finalNodes
+  , finalEdges
+  , finalOccupied
+  , addDagOccurrence occurrence (addDagNode dagNode finalAccumulator)
+  , nodeId
+  )
+  where
+    children =
+      astTreeNodeChildren treeNode
+    (placedCoordinate, imposed) =
+      placeCoordinate axis coordinate (map nodeCoordinate nodes) (imposedNodeKind (astTreeNodeKind treeNode))
+    childAxis =
+      flipAxis axis
+    placedNode =
+      AstLayoutNode
+        { astLayoutNodePath = astTreeNodePath treeNode
+        , astLayoutNodeKind = astTreeNodeKind treeNode
+        , astLayoutNodeName = astTreeNodeName treeNode
+        , astLayoutNodeX = fst placedCoordinate
+        , astLayoutNodeY = snd placedCoordinate
+        , astLayoutNodeAxis = axis
+        , astLayoutNodeImposed = imposed
+        , astLayoutNodeMetadata = astTreeNodeMetadata treeNode
+        }
+    (finalNodes, finalEdges, finalOccupied, finalAccumulator, childIds) =
+      foldl
+        (layoutChildWithDag placedNode childAxis (length children))
+        (placedNode : nodes, edges, [placedCoordinate], accumulator, [])
+        (indexedItems children)
+    nodeId =
+      astDagNodeIdFor
+        (astLayoutNodeKind placedNode)
+        (astLayoutNodeName placedNode)
+        (astLayoutNodeMetadata placedNode)
+        childIds
+    occurrence =
+      AstDagOccurrence
+        { astDagOccurrencePath = astLayoutNodePath placedNode
+        , astDagOccurrenceNodeId = nodeId
+        , astDagOccurrenceContext = occurrenceContext (astLayoutNodePath placedNode)
+        }
+    dagNode =
+      AstDagNode
+        { astDagNodeId = nodeId
+        , astDagNodeKind = astLayoutNodeKind placedNode
+        , astDagNodeName = astLayoutNodeName placedNode
+        , astDagNodeMetadata = astLayoutNodeMetadata placedNode
+        , astDagNodeChildIds = childIds
+        }
+
+layoutChildWithDag ::
+  AstLayoutNode ->
+  AstLayoutAxis ->
+  Int ->
+  ([AstLayoutNode], [AstLayoutEdge], [(Int, Int)], AstDagAccumulator, [String]) ->
+  (Int, AstTreeNode) ->
+  ([AstLayoutNode], [AstLayoutEdge], [(Int, Int)], AstDagAccumulator, [String])
+layoutChildWithDag parent childAxis childCount (nodes, edges, occupied, accumulator, childIds) (index, child) =
+  (childNodes, childEdges, uniqueCoordinates (childOccupied ++ occupied), childAccumulator, childIds ++ [childId])
+  where
+    childCoordinate =
+      childBaseCoordinate parent childAxis childCount index child
+    (childNodes, childEdges, childOccupied, childAccumulator, childId) =
+      layoutNodeWithDag
+        childAxis
+        childCoordinate
+        nodes
+        (AstLayoutEdge (astLayoutNodePath parent) (astTreeNodePath child) : edges)
+        accumulator
         child
 
 childBaseCoordinate :: AstLayoutNode -> AstLayoutAxis -> Int -> Int -> AstTreeNode -> (Int, Int)
@@ -857,6 +1401,386 @@ producerStepMetadata step =
       [("fact", [show currentFact])]
     Effect.Error send ->
       [("send", [show send])]
+
+emptyAstDagAccumulator :: AstDagAccumulator
+emptyAstDagAccumulator =
+  AstDagAccumulator
+    { astDagAccumulatorNodes = Map.empty
+    , astDagAccumulatorOccurrences = []
+    , astDagAccumulatorMultiplicities = Map.empty
+    , astDagAccumulatorContextIndex = []
+    }
+
+addDagNode :: AstDagNode -> AstDagAccumulator -> AstDagAccumulator
+addDagNode node accumulator =
+  accumulator
+    { astDagAccumulatorNodes =
+        Map.insertWith
+          keepExistingDagNode
+          (astDagNodeId node)
+          node
+          (astDagAccumulatorNodes accumulator)
+    }
+
+keepExistingDagNode :: AstDagNode -> AstDagNode -> AstDagNode
+keepExistingDagNode _ existing =
+  existing
+
+addDagOccurrence :: AstDagOccurrence -> AstDagAccumulator -> AstDagAccumulator
+addDagOccurrence occurrence accumulator =
+  accumulator
+    { astDagAccumulatorOccurrences =
+        occurrence : astDagAccumulatorOccurrences accumulator
+    , astDagAccumulatorMultiplicities =
+        Map.insertWith
+          (+)
+          (astDagOccurrenceNodeId occurrence)
+          1
+          (astDagAccumulatorMultiplicities accumulator)
+    }
+
+addDagContextEntries :: [AstDagContextIndex] -> AstDagAccumulator -> AstDagAccumulator
+addDagContextEntries entries accumulator =
+  accumulator
+    { astDagAccumulatorContextIndex =
+        reverse entries ++ astDagAccumulatorContextIndex accumulator
+    }
+
+astDagModelFromAccumulator :: AstLayoutModel -> String -> AstDagAccumulator -> AstDagModel
+astDagModelFromAccumulator layout rootId accumulator =
+  AstDagModel
+    { astDagRootPath = astLayoutRootPath layout
+    , astDagRootNodeId = rootId
+    , astDagNodes = map snd (Map.toList (astDagAccumulatorNodes accumulator))
+    , astDagOccurrences = reverse (astDagAccumulatorOccurrences accumulator)
+    , astDagMultiplicities = multiplicitiesFromMap (astDagAccumulatorMultiplicities accumulator)
+    , astDagContextIndex = layoutExpectedDagContextIndex layout (layoutExpectedDagNodeIds layout)
+    }
+
+astDagModelFromAstTreeWithStats :: AstTreeNode -> (AstDagModel, Int, Int)
+astDagModelFromAstTreeWithStats rootNode =
+  ( astDagModelFromTreeAccumulator (astTreeNodePath rootNode) rootId accumulator
+  , nodeCount
+  , edgeCount
+  )
+  where
+    (accumulator, rootId, nodeCount, edgeCount) =
+      collectAstTreeDagNode emptyAstDagAccumulator rootNode
+
+astDagModelFromTreeAccumulator :: [String] -> String -> AstDagAccumulator -> AstDagModel
+astDagModelFromTreeAccumulator rootPath rootId accumulator =
+  AstDagModel
+    { astDagRootPath = rootPath
+    , astDagRootNodeId = rootId
+    , astDagNodes = map snd (Map.toList (astDagAccumulatorNodes accumulator))
+    , astDagOccurrences = reverse (astDagAccumulatorOccurrences accumulator)
+    , astDagMultiplicities = multiplicitiesFromMap (astDagAccumulatorMultiplicities accumulator)
+    , astDagContextIndex = reverse (astDagAccumulatorContextIndex accumulator)
+    }
+
+collectAstTreeDagNode :: AstDagAccumulator -> AstTreeNode -> (AstDagAccumulator, String, Int, Int)
+collectAstTreeDagNode accumulator treeNode =
+  ( finalAccumulator
+  , nodeId
+  , childNodeCount + 1
+  , childEdgeCount + length children
+  )
+  where
+    children =
+      astTreeNodeChildren treeNode
+    (childAccumulator, childIds, childNodeCount, childEdgeCount) =
+      foldl' collectChild (accumulator, [], 0, 0) children
+    collectChild (currentAccumulator, currentChildIds, currentNodeCount, currentEdgeCount) child =
+      (nextAccumulator, currentChildIds ++ [childId], currentNodeCount + nodeCount, currentEdgeCount + edgeCount)
+      where
+        (nextAccumulator, childId, nodeCount, edgeCount) =
+          collectAstTreeDagNode currentAccumulator child
+    nodeId =
+      astDagNodeIdFor
+        (astTreeNodeKind treeNode)
+        (astTreeNodeName treeNode)
+        (astTreeNodeMetadata treeNode)
+        childIds
+    occurrence =
+      AstDagOccurrence
+        { astDagOccurrencePath = astTreeNodePath treeNode
+        , astDagOccurrenceNodeId = nodeId
+        , astDagOccurrenceContext = occurrenceContext (astTreeNodePath treeNode)
+        }
+    dagNode =
+      AstDagNode
+        { astDagNodeId = nodeId
+        , astDagNodeKind = astTreeNodeKind treeNode
+        , astDagNodeName = astTreeNodeName treeNode
+        , astDagNodeMetadata = astTreeNodeMetadata treeNode
+        , astDagNodeChildIds = childIds
+        }
+    finalAccumulator =
+      addDagContextEntries
+        (astTreeDagContextEntries (astTreeNodePath treeNode) nodeId childIds)
+        (addDagOccurrence occurrence (addDagNode dagNode childAccumulator))
+
+astTreeDagContextEntries :: [String] -> String -> [String] -> [AstDagContextIndex]
+astTreeDagContextEntries path nodeId childIds =
+  rootEntry ++ contextIndexEntries path childIds
+  where
+    rootEntry
+      | occurrenceContext path == [] =
+          [ AstDagContextIndex
+              { astDagContextPath = []
+              , astDagContextNodeId = nodeId
+              , astDagContextMultiplicity = 1
+              }
+          ]
+      | otherwise =
+          []
+
+multiplicitiesFromOccurrences :: [AstDagOccurrence] -> [AstDagMultiplicity]
+multiplicitiesFromOccurrences occurrences =
+  multiplicitiesFromMap
+    ( foldl'
+        ( \counts occurrence ->
+            Map.insertWith (+) (astDagOccurrenceNodeId occurrence) 1 counts
+        )
+        Map.empty
+        occurrences
+    )
+
+multiplicitiesFromMap :: Map.Map String Int -> [AstDagMultiplicity]
+multiplicitiesFromMap counts =
+  [ AstDagMultiplicity
+      { astDagMultiplicityNodeId = nodeId
+      , astDagMultiplicityCount = count
+      }
+  | (nodeId, count) <- Map.toList counts
+  ]
+
+pathCounts :: [[String]] -> Map.Map [String] Int
+pathCounts paths =
+  foldl'
+    (\counts path -> Map.insertWith (+) path 1 counts)
+    Map.empty
+    paths
+
+layoutExpectedDagNodeIds :: AstLayoutModel -> Map.Map [String] String
+layoutExpectedDagNodeIds layout =
+  foldl' addExpectedNodeId Map.empty (reverse (astLayoutNodes layout))
+  where
+    childrenByPath =
+      layoutChildrenByPath (astLayoutEdges layout)
+    addExpectedNodeId expectedIds node =
+      Map.insert
+        (astLayoutNodePath node)
+        ( astDagNodeIdFor
+            (astLayoutNodeKind node)
+            (astLayoutNodeName node)
+            (astLayoutNodeMetadata node)
+            childIds
+        )
+        expectedIds
+      where
+        childIds =
+          [ Map.findWithDefault (missingLayoutChildNodeId childPath) childPath expectedIds
+          | childPath <- Map.findWithDefault [] (astLayoutNodePath node) childrenByPath
+          ]
+
+layoutChildrenByPath :: [AstLayoutEdge] -> Map.Map [String] [[String]]
+layoutChildrenByPath edges =
+  foldl' addEdge Map.empty edges
+  where
+    addEdge children edge =
+      Map.alter addChild (astLayoutEdgeFrom edge) children
+      where
+        addChild Nothing =
+          Just [astLayoutEdgeTo edge]
+        addChild (Just childPaths) =
+          Just (childPaths ++ [astLayoutEdgeTo edge])
+
+missingLayoutChildNodeId :: [String] -> String
+missingLayoutChildNodeId path =
+  "missing-layout-child:" ++ renderPath path
+
+layoutExpectedDagContextIndex :: AstLayoutModel -> Map.Map [String] String -> [AstDagContextIndex]
+layoutExpectedDagContextIndex layout expectedNodeIds =
+  concatMap contextEntriesForNode (astLayoutNodes layout)
+  where
+    childrenByPath =
+      layoutChildrenByPath (astLayoutEdges layout)
+    contextEntriesForNode node =
+      rootContextEntry node ++ childContextEntries node
+    rootContextEntry node
+      | occurrenceContext (astLayoutNodePath node) == [] =
+          [ AstDagContextIndex
+              { astDagContextPath = []
+              , astDagContextNodeId =
+                  Map.findWithDefault
+                    (missingLayoutChildNodeId (astLayoutNodePath node))
+                    (astLayoutNodePath node)
+                    expectedNodeIds
+              , astDagContextMultiplicity = 1
+              }
+          ]
+      | otherwise =
+          []
+    childContextEntries node =
+      contextIndexEntries
+        (astLayoutNodePath node)
+        [ Map.findWithDefault (missingLayoutChildNodeId childPath) childPath expectedNodeIds
+        | childPath <- Map.findWithDefault [] (astLayoutNodePath node) childrenByPath
+        ]
+
+contextIndexEntries :: [String] -> [String] -> [AstDagContextIndex]
+contextIndexEntries contextPath nodeIds =
+  [ AstDagContextIndex
+      { astDagContextPath = contextPath
+      , astDagContextNodeId = nodeId
+      , astDagContextMultiplicity = count
+      }
+  | (nodeId, count) <- countInFirstOccurrenceOrder nodeIds
+  ]
+
+countInFirstOccurrenceOrder :: [String] -> [(String, Int)]
+countInFirstOccurrenceOrder =
+  foldl' addCount []
+  where
+    addCount [] nodeId =
+      [(nodeId, 1)]
+    addCount ((currentNodeId, currentCount) : rest) nodeId
+      | currentNodeId == nodeId =
+          (currentNodeId, currentCount + 1) : rest
+      | otherwise =
+          (currentNodeId, currentCount) : addCount rest nodeId
+
+occurrenceContext :: [String] -> [String]
+occurrenceContext [] =
+  []
+occurrenceContext [_] =
+  []
+occurrenceContext path =
+  take (length path - 1) path
+
+astDagStructuralNodeId :: AstDagNode -> String
+astDagStructuralNodeId node =
+  astDagNodeIdFor
+    (astDagNodeKind node)
+    (astDagNodeName node)
+    (astDagNodeMetadata node)
+    (astDagNodeChildIds node)
+
+astDagNodeIdFor :: String -> String -> [(String, [String])] -> [String] -> String
+astDagNodeIdFor kind name metadata childIds =
+  "ast-dag:" ++ stableHashText fingerprint
+  where
+    fingerprint =
+      intercalate
+        "\RS"
+        [ kind
+        , name
+        , show metadata
+        , intercalate "," childIds
+        ]
+
+stableHashText :: String -> String
+stableHashText =
+  padHash . (`showHex` "") . foldl fnvStep fnvOffset
+
+fnvStep :: Integer -> Char -> Integer
+fnvStep current char =
+  ((current `xor` toInteger (ord char)) * fnvPrime) `mod` fnvModulus
+
+fnvOffset :: Integer
+fnvOffset =
+  14695981039346656037
+
+fnvPrime :: Integer
+fnvPrime =
+  1099511628211
+
+fnvModulus :: Integer
+fnvModulus =
+  18446744073709551616
+
+padHash :: String -> String
+padHash hashText =
+  replicate (max 0 (16 - length hashText)) '0' ++ hashText
+
+proofConstraint :: String -> Bool -> String -> String -> AstDagProofConstraint
+proofConstraint name passed expected observed =
+  AstDagProofConstraint
+    { astDagProofConstraintName = name
+    , astDagProofConstraintPassed = passed
+    , astDagProofConstraintExpected = expected
+    , astDagProofConstraintObserved = observed
+    }
+
+maximumOrZero :: [Int] -> Int
+maximumOrZero [] =
+  0
+maximumOrZero values =
+  maximum values
+
+renderAstDagNode :: AstDagNode -> String
+renderAstDagNode node =
+  "dag-node "
+    ++ astDagNodeId node
+    ++ " "
+    ++ astDagNodeKind node
+    ++ " "
+    ++ astDagNodeName node
+    ++ " children="
+    ++ show (length (astDagNodeChildIds node))
+
+renderAstDagOccurrence :: AstDagOccurrence -> String
+renderAstDagOccurrence occurrence =
+  "dag-occurrence "
+    ++ renderPath (astDagOccurrencePath occurrence)
+    ++ " -> "
+    ++ astDagOccurrenceNodeId occurrence
+    ++ " context "
+    ++ renderPath (astDagOccurrenceContext occurrence)
+
+renderAstDagMultiplicity :: AstDagMultiplicity -> String
+renderAstDagMultiplicity multiplicity =
+  "dag-multiplicity "
+    ++ astDagMultiplicityNodeId multiplicity
+    ++ " count="
+    ++ show (astDagMultiplicityCount multiplicity)
+
+renderAstDagContextIndex :: AstDagContextIndex -> String
+renderAstDagContextIndex entry =
+  "dag-context "
+    ++ renderPath (astDagContextPath entry)
+    ++ " -> "
+    ++ astDagContextNodeId entry
+    ++ " count="
+    ++ show (astDagContextMultiplicity entry)
+
+renderAstDagProofConstraint :: AstDagProofConstraint -> String
+renderAstDagProofConstraint constraint =
+  "dag-proof-constraint "
+    ++ astDagProofConstraintName constraint
+    ++ " "
+    ++ (if astDagProofConstraintPassed constraint then "passed" else "failed")
+    ++ " expected "
+    ++ show (astDagProofConstraintExpected constraint)
+    ++ " observed "
+    ++ show (astDagProofConstraintObserved constraint)
+
+renderDagNodeLimit :: Int
+renderDagNodeLimit =
+  40
+
+renderDagOccurrenceLimit :: Int
+renderDagOccurrenceLimit =
+  40
+
+renderDagMultiplicityLimit :: Int
+renderDagMultiplicityLimit =
+  40
+
+renderDagContextLimit :: Int
+renderDagContextLimit =
+  40
 
 renderDiagnosisImpactNode :: AstDiagnosisImpactNode -> String
 renderDiagnosisImpactNode node =

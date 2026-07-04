@@ -64,12 +64,17 @@ import Domain.Ast
 import Domain.Effects
   ( EffectRegistration (..) )
 import Framework.Ast.Layout
-  ( AstLayoutModel (..)
+  ( AstDagEquivalenceProof (..)
+  , AstDagModel (..)
+  , AstDagMultiplicity (..)
+  , AstLayoutModel (..)
   , AstLayoutNode (..)
   , AstRuntimeCursor (..)
   , AstRuntimeNodeStatus (..)
   , AstRuntimeStatus (..)
   , AstRuntimeStatusModel (..)
+  , astDagDomainAppBlueprintProjection
+  , astDagEquivalenceProofPassed
   , astLayoutNodeByPath
   , astRuntimeCursorFromEvent
   , astRuntimeStatusModel
@@ -137,6 +142,12 @@ data CoreSelfInterpretAstProjectionEvidence = CoreSelfInterpretAstProjectionEvid
   { coreSelfInterpretBootLayoutRootPath :: [String]
   , coreSelfInterpretBootLayoutNodeCount :: Int
   , coreSelfInterpretBootLayoutEdgeCount :: Int
+  , coreSelfInterpretBootDagNodeCount :: Int
+  , coreSelfInterpretBootDagOccurrenceCount :: Int
+  , coreSelfInterpretBootDagSharedNodeCount :: Int
+  , coreSelfInterpretBootDagMaxMultiplicity :: Int
+  , coreSelfInterpretBootDagProofPassed :: Bool
+  , coreSelfInterpretBootDagProofConstraintCount :: Int
   , coreSelfInterpretDefaultHangingCount :: Int
   , coreSelfInterpretLiveHangingCount :: Int
   , coreSelfInterpretLiveContextModes :: [RecursionSchemeMode]
@@ -222,6 +233,7 @@ coreSelfInterpretEvidenceClaimNames =
   , "core-self-interpret-empty-business-no-io"
   , "core-self-interpret-trustbase-non-recursive"
   , "core-self-interpret-boot-ast-layout-expands"
+  , "core-self-interpret-ast-dag-equivalence"
   , "core-self-interpret-live-ast-cursor-projects"
   , "core-self-interpret-live-ast-status-projects"
   , "core-self-interpret-listener-context-explicit"
@@ -313,6 +325,12 @@ coreSelfInterpretEvidencePayloads previousCoreReport newCoreReport emptyBusiness
       "candidate core foreground can be expanded into a boot-time AST layout"
       (bootAstLayoutObserved astProjectionEvidence)
       "CoreSelfInterpretBootAstLayoutArtifact"
+  , coreSelfInterpretEvidence
+      "core-self-interpret-ast-dag-equivalence"
+      (bootAstDagEquivalent astProjectionEvidence)
+      "content-addressed AST DAG and occurrence index are equivalent to the full layout expansion"
+      (bootAstDagObserved astProjectionEvidence)
+      "CoreSelfInterpretAstDagEquivalenceArtifact"
   , coreSelfInterpretEvidence
       "core-self-interpret-live-ast-cursor-projects"
       (liveAstCursorProjects astProjectionEvidence)
@@ -446,6 +464,7 @@ astProjectionStage evidence =
     { coreSelfInterpretStageName = "self-interpret-ast-projection"
     , coreSelfInterpretStageStatus =
         if bootAstLayoutExpands evidence
+          && bootAstDagEquivalent evidence
           && liveAstCursorProjects evidence
           && liveAstStatusProjects evidence
           && listenerContextExplicit evidence
@@ -454,6 +473,10 @@ astProjectionStage evidence =
     , coreSelfInterpretStageSummary =
         "boot nodes="
           ++ show (coreSelfInterpretBootLayoutNodeCount evidence)
+          ++ ", dag nodes="
+          ++ show (coreSelfInterpretBootDagNodeCount evidence)
+          ++ ", shared dag nodes="
+          ++ show (coreSelfInterpretBootDagSharedNodeCount evidence)
           ++ ", live cursors="
           ++ show (coreSelfInterpretLiveCursorCount evidence)
           ++ ", aligned="
@@ -559,6 +582,10 @@ buildCoreSelfInterpretAstProjectionEvidence = do
       coreSelfInterpretLiveBlueprint
   let bootLayout =
         coreSelfInterpretBootLayout
+      bootDag =
+        fst bootDagProjection
+      bootDagProof =
+        snd bootDagProjection
       liveLayout =
         layoutDomainAppBlueprint emptyBusinessEffects coreSelfInterpretLiveBlueprint
       liveRuntime =
@@ -582,11 +609,21 @@ buildCoreSelfInterpretAstProjectionEvidence = do
         astRuntimeStatusModelNodes liveStatusModel
       renderedStatusLines =
         renderAstRuntimeStatusModel liveStatusModel
+      bootDagProjection =
+        coreSelfInterpretBootDagProjection
   pure
     CoreSelfInterpretAstProjectionEvidence
       { coreSelfInterpretBootLayoutRootPath = astLayoutRootPath bootLayout
       , coreSelfInterpretBootLayoutNodeCount = length (astLayoutNodes bootLayout)
       , coreSelfInterpretBootLayoutEdgeCount = length (astLayoutEdges bootLayout)
+      , coreSelfInterpretBootDagNodeCount = length (astDagNodes bootDag)
+      , coreSelfInterpretBootDagOccurrenceCount = length (astDagOccurrences bootDag)
+      , coreSelfInterpretBootDagSharedNodeCount =
+          length [item | item <- astDagMultiplicities bootDag, astDagMultiplicityCount item > 1]
+      , coreSelfInterpretBootDagMaxMultiplicity =
+          maximumOrZeroInt (map astDagMultiplicityCount (astDagMultiplicities bootDag))
+      , coreSelfInterpretBootDagProofPassed = astDagEquivalenceProofPassed bootDagProof
+      , coreSelfInterpretBootDagProofConstraintCount = length (astDagProofConstraints bootDagProof)
       , coreSelfInterpretDefaultHangingCount = length (hangingItems (blueprintHanging emptyBusinessBlueprint))
       , coreSelfInterpretLiveHangingCount = length (hangingItems (blueprintHanging coreSelfInterpretLiveBlueprint))
       , coreSelfInterpretLiveContextModes = coreSelfInterpretLiveModes
@@ -609,11 +646,21 @@ buildCoreSelfInterpretAstProjectionEvidence = do
       , coreSelfInterpretLiveRuntimeError = runtimeResultError liveResult
       }
 
+coreSelfInterpretBootDagProjection :: (AstDagModel, AstDagEquivalenceProof)
+coreSelfInterpretBootDagProjection =
+  astDagDomainAppBlueprintProjection coreSelfInterpretBootEffectTheory coreSelfInterpretBootBlueprint
+
 coreSelfInterpretBootLayout :: AstLayoutModel
 coreSelfInterpretBootLayout =
-  layoutDomainAppBlueprint
-    (effectRegistrationTheory (domainEffects frameworkCoreFacadeDomain))
-    (astRegistrationBlueprint (domainAst frameworkCoreFacadeDomain))
+  layoutDomainAppBlueprint coreSelfInterpretBootEffectTheory coreSelfInterpretBootBlueprint
+
+coreSelfInterpretBootEffectTheory :: EffectTheory
+coreSelfInterpretBootEffectTheory =
+  effectRegistrationTheory (domainEffects frameworkCoreFacadeDomain)
+
+coreSelfInterpretBootBlueprint :: AppBlueprint
+coreSelfInterpretBootBlueprint =
+  astRegistrationBlueprint (domainAst frameworkCoreFacadeDomain)
 
 coreSelfInterpretLiveBlueprint :: AppBlueprint
 coreSelfInterpretLiveBlueprint =
@@ -651,6 +698,28 @@ bootAstLayoutObserved evidence =
     ++ show (coreSelfInterpretBootLayoutNodeCount evidence)
     ++ ", edges="
     ++ show (coreSelfInterpretBootLayoutEdgeCount evidence)
+
+bootAstDagEquivalent :: CoreSelfInterpretAstProjectionEvidence -> Bool
+bootAstDagEquivalent evidence =
+  coreSelfInterpretBootDagProofPassed evidence
+    && coreSelfInterpretBootDagOccurrenceCount evidence == coreSelfInterpretBootLayoutNodeCount evidence
+    && coreSelfInterpretBootDagNodeCount evidence > 0
+    && coreSelfInterpretBootDagNodeCount evidence <= coreSelfInterpretBootDagOccurrenceCount evidence
+
+bootAstDagObserved :: CoreSelfInterpretAstProjectionEvidence -> String
+bootAstDagObserved evidence =
+  "dag nodes="
+    ++ show (coreSelfInterpretBootDagNodeCount evidence)
+    ++ ", occurrences="
+    ++ show (coreSelfInterpretBootDagOccurrenceCount evidence)
+    ++ ", shared nodes="
+    ++ show (coreSelfInterpretBootDagSharedNodeCount evidence)
+    ++ ", max multiplicity="
+    ++ show (coreSelfInterpretBootDagMaxMultiplicity evidence)
+    ++ ", proof constraints="
+    ++ show (coreSelfInterpretBootDagProofConstraintCount evidence)
+    ++ ", proof passed="
+    ++ show (coreSelfInterpretBootDagProofPassed evidence)
 
 liveAstCursorProjects :: CoreSelfInterpretAstProjectionEvidence -> Bool
 liveAstCursorProjects evidence =
@@ -956,6 +1025,12 @@ coreExchangeabilityObserved report =
 renderPath :: [String] -> String
 renderPath path =
   intercalate "/" path
+
+maximumOrZeroInt :: [Int] -> Int
+maximumOrZeroInt [] =
+  0
+maximumOrZeroInt values =
+  maximum values
 
 frameworkCoreReportPassed :: FrameworkCoreReport -> Bool
 frameworkCoreReportPassed report =

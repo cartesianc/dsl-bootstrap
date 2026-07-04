@@ -30,7 +30,9 @@ import Domain.Registry
   , renderRegisteredAstTreesJson
   )
 import Framework.Ast.Layout
-  ( AstDiagnosisImpactKind (..)
+  ( AstDagEquivalenceProof (..)
+  , AstDagModel (..)
+  , AstDiagnosisImpactKind (..)
   , AstDiagnosisImpactModel (..)
   , AstDiagnosisImpactNode (..)
   , AstLayoutModel (..)
@@ -38,9 +40,12 @@ import Framework.Ast.Layout
   , AstRuntimeNodeStatus (..)
   , AstRuntimeStatus (..)
   , AstRuntimeStatusModel (..)
+  , astDagEquivalenceProof
+  , astDagEquivalenceProofPassed
   , astDiagnosisImpactModel
   , astRuntimeStatusModel
   , layoutAppBlueprint
+  , layoutAppBlueprintWithDag
   )
 import Framework.Runtime.Types
   ( RuntimeContextEvent (..) )
@@ -358,6 +363,12 @@ astLayoutOptionalProjectionPayload =
       flattenAstTree tree
     layout =
       layoutAppBlueprint blueprint
+    layoutWithDag =
+      layoutAppBlueprintWithDag blueprint
+    dag =
+      snd layoutWithDag
+    dagProof =
+      astDagEquivalenceProof (fst layoutWithDag) dag
     layoutNodes =
       astLayoutNodes layout
     sampleStatusNode =
@@ -379,7 +390,14 @@ astLayoutOptionalProjectionPayload =
     impactNodes =
       astDiagnosisImpactNodes impact
     required =
-      [ ("Framework.Ast.Layout AstDiagnosisImpactKind type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstDiagnosisImpactKind")
+      [ ("Framework.Ast.Layout AstDagContextIndex type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstDagContextIndex")
+      , ("Framework.Ast.Layout AstDagEquivalenceProof type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstDagEquivalenceProof")
+      , ("Framework.Ast.Layout AstDagModel type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstDagModel")
+      , ("Framework.Ast.Layout AstDagMultiplicity type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstDagMultiplicity")
+      , ("Framework.Ast.Layout AstDagNode type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstDagNode")
+      , ("Framework.Ast.Layout AstDagOccurrence type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstDagOccurrence")
+      , ("Framework.Ast.Layout AstDagProofConstraint type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstDagProofConstraint")
+      , ("Framework.Ast.Layout AstDiagnosisImpactKind type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstDiagnosisImpactKind")
       , ("Framework.Ast.Layout AstDiagnosisImpactModel type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstDiagnosisImpactModel")
       , ("Framework.Ast.Layout AstDiagnosisImpactNode type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstDiagnosisImpactNode")
       , ("Framework.Ast.Layout AstLayoutModel type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstLayoutModel")
@@ -388,10 +406,21 @@ astLayoutOptionalProjectionPayload =
       , ("Framework.Ast.Layout AstRuntimeStatus type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstRuntimeStatus")
       , ("Framework.Ast.Layout AstRuntimeNodeStatus type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstRuntimeNodeStatus")
       , ("Framework.Ast.Layout AstRuntimeStatusModel type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstRuntimeStatusModel")
+      , ("Framework.Ast.Layout astDagAppBlueprintProjection value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "astDagAppBlueprintProjection")
+      , ("Framework.Ast.Layout astDagDomainAppBlueprintProjection value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "astDagDomainAppBlueprintProjection")
+      , ("Framework.Ast.Layout astDagEquivalenceProof value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "astDagEquivalenceProof")
+      , ("Framework.Ast.Layout astDagEquivalenceProofPassed value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "astDagEquivalenceProofPassed")
+      , ("Framework.Ast.Layout astDagModelFromAstTree value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "astDagModelFromAstTree")
       , ("Framework.Ast.Layout astDiagnosisImpactModel value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "astDiagnosisImpactModel")
       , ("Framework.Ast.Layout astRuntimeStatusModel value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "astRuntimeStatusModel")
       , ("Framework.Ast.Layout layoutAppBlueprint value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "layoutAppBlueprint")
+      , ("Framework.Ast.Layout layoutAppBlueprintWithDag value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "layoutAppBlueprintWithDag")
+      , ("Framework.Ast.Layout layoutAstTreeWithDag value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "layoutAstTreeWithDag")
+      , ("Framework.Ast.Layout layoutDomainAppBlueprintWithDag value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "layoutDomainAppBlueprintWithDag")
+      , ("Framework.Ast.Layout astTreeDagProjection value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "astTreeDagProjection")
       , ("Framework.Ast.Layout astLiveLayoutContext value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "astLiveLayoutContext")
+      , ("Framework.Ast.Layout renderAstDagEquivalenceProof value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "renderAstDagEquivalenceProof")
+      , ("Framework.Ast.Layout renderAstDagModel value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "renderAstDagModel")
       , ("Framework.Ast.Layout renderAstDiagnosisImpactModel value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "renderAstDiagnosisImpactModel")
       , ("Framework.Ast.Layout renderAstRuntimeCursor value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "renderAstRuntimeCursor")
       , ("Framework.Ast.Layout renderAstRuntimeCursorOnLayout value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "renderAstRuntimeCursorOnLayout")
@@ -400,6 +429,9 @@ astLayoutOptionalProjectionPayload =
       , ("default framework-core AST has no context node", not (anyNodeKind "context" nodes))
       , ("layout root path matches AST root", astLayoutRootPath layout == astTreeNodePath tree)
       , ("layout node count matches AST projection", length layoutNodes == length nodes)
+      , ("DAG occurrence count matches layout projection", length (astDagOccurrences dag) == length layoutNodes)
+      , ("DAG proof passes", astDagEquivalenceProofPassed dagProof)
+      , ("DAG proof exposes constraints", not (null (astDagProofConstraints dagProof)))
       , ("layout includes run node coordinates", any ((== "run") . astLayoutNodeKind) layoutNodes)
       , ("runtime status projection has sample node", length statusNodes == 1)
       , ("runtime status projection resolves to layout coordinate", any resolvedRuntimeStatusNode statusNodes)
@@ -413,6 +445,10 @@ astLayoutOptionalProjectionPayload =
         then
           "optional layout nodes: "
             ++ show (length layoutNodes)
+            ++ "; dag nodes: "
+            ++ show (length (astDagNodes dag))
+            ++ "; dag occurrences: "
+            ++ show (length (astDagOccurrences dag))
             ++ "; runtime status nodes: "
             ++ show (length statusNodes)
             ++ "; impact nodes: "

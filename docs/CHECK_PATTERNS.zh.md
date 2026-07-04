@@ -95,6 +95,7 @@ candidate core runs as a domain expression
 empty_business closes recursion without IO
 TrustBase is non-recursive at terminal business
 boot AST layout expands
+boot AST DAG + occurrence index equivalence proof passes
 runtime cursor projects through explicit hanging context
 runtime cursor folds into AST node status overlay
 listener context stays out of default hot path
@@ -253,6 +254,7 @@ architecture-concern-evidence.v1
 ```powershell
 stack --work-dir .stack-work-codex exec ast-layout -- self-interpret-summary
 stack --work-dir .stack-work-codex exec ast-layout -- self-interpret-layout
+stack --work-dir .stack-work-codex exec ast-layout -- self-interpret-dag
 stack --work-dir .stack-work-codex exec ast-layout -- self-interpret-live
 ```
 
@@ -262,6 +264,9 @@ self-interpret-summary
 
 self-interpret-layout
   候选 core 的 boot-time AST layout。
+
+self-interpret-dag
+  boot-time AST DAG sample, occurrence index summary, and equivalence proof constraints.
 
 self-interpret-live
   hanging context runtime cursor 与 AST node status overlay。

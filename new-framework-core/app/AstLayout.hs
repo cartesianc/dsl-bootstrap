@@ -25,14 +25,19 @@ import Framework.Ast
 import qualified Framework.Ast as Ast
 import Framework.Ast.Layout
   ( AstDiagnosisImpactModel
+  , AstDagEquivalenceProof (..)
+  , AstDagModel (..)
   , AstLayoutModel (..)
   , AstRuntimeCursor (..)
+  , astDagDomainAppBlueprintProjection
   , astDiagnosisImpactModel
   , astLiveLayoutContext
   , astRuntimeCursorFromEvent
   , astRuntimeStatusModel
   , layoutAppBlueprint
   , layoutDomainAppBlueprint
+  , renderAstDagEquivalenceProof
+  , renderAstDagModel
   , renderAstDiagnosisImpactModel
   , renderAstLayoutModel
   , renderAstRuntimeCursorOnLayout
@@ -72,6 +77,8 @@ main = do
       printSelfInterpretSummary
     ["self-interpret-layout"] ->
       printSelfInterpretLayoutSample
+    ["self-interpret-dag"] ->
+      printSelfInterpretDag
     ["self-interpret-live"] ->
       printSelfInterpretLive
     ["all"] ->
@@ -120,7 +127,7 @@ printDiagnosisImpact =
 
 printUsage :: IO ()
 printUsage =
-  putStrLn "usage: ast-layout [all|domain|layout|structure|summary|cursor|diagnosis|live|live-core|self-interpret|self-interpret-summary|self-interpret-layout|self-interpret-live]"
+  putStrLn "usage: ast-layout [all|domain|layout|structure|summary|cursor|diagnosis|live|live-core|self-interpret|self-interpret-summary|self-interpret-layout|self-interpret-dag|self-interpret-live]"
 
 printLive :: IO ()
 printLive = do
@@ -198,6 +205,14 @@ printSelfInterpretLayoutSample = do
         ++ " total render lines"
     )
 
+printSelfInterpretDag :: IO ()
+printSelfInterpretDag = do
+  printSelfInterpretSummary
+  putStrLn "[ast-layout] self-interpret DAG sample"
+  mapM_ putStrLn (renderAstDagModel selfInterpretBootDag)
+  putStrLn "[ast-layout] self-interpret DAG equivalence proof"
+  mapM_ putStrLn (renderAstDagEquivalenceProof selfInterpretDagProof)
+
 printSelfInterpretLive :: IO ()
 printSelfInterpretLive = do
   result <-
@@ -238,7 +253,19 @@ frameworkCoreStructureLayout =
 
 selfInterpretBootLayout :: AstLayoutModel
 selfInterpretBootLayout =
-  SelfInterpret.coreSelfInterpretBootLayout
+  layoutDomainAppBlueprint frameworkCoreEffects (astRegistrationBlueprint frameworkCoreAstRegistration)
+
+selfInterpretBootDag :: AstDagModel
+selfInterpretBootDag =
+  fst selfInterpretBootDagProjection
+
+selfInterpretDagProof :: AstDagEquivalenceProof
+selfInterpretDagProof =
+  snd selfInterpretBootDagProjection
+
+selfInterpretBootDagProjection :: (AstDagModel, AstDagEquivalenceProof)
+selfInterpretBootDagProjection =
+  astDagDomainAppBlueprintProjection frameworkCoreEffects (astRegistrationBlueprint frameworkCoreAstRegistration)
 
 selfInterpretLayoutSampleSize :: Int
 selfInterpretLayoutSampleSize =

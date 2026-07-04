@@ -77,6 +77,14 @@ astLiveLayoutContext
 layoutAppBlueprint :: AppBlueprint -> AstLayoutModel
 layoutAstTree :: AstTreeNode -> AstLayoutModel
 renderAstLayoutModel :: AstLayoutModel -> [String]
+layoutAppBlueprintWithDag :: AppBlueprint -> (AstLayoutModel, AstDagModel)
+layoutAstTreeWithDag :: AstTreeNode -> (AstLayoutModel, AstDagModel)
+astDagAppBlueprintProjection :: AppBlueprint -> (AstDagModel, AstDagEquivalenceProof)
+astDagDomainAppBlueprintProjection :: EffectTheory -> AppBlueprint -> (AstDagModel, AstDagEquivalenceProof)
+astTreeDagProjection :: AstTreeNode -> (AstDagModel, AstDagEquivalenceProof)
+astDagEquivalenceProof :: AstLayoutModel -> AstDagModel -> AstDagEquivalenceProof
+renderAstDagModel :: AstDagModel -> [String]
+renderAstDagEquivalenceProof :: AstDagEquivalenceProof -> [String]
 ```
 
 数据模型：
@@ -95,6 +103,13 @@ AstLayoutNode
   axis
   imposed
   metadata
+
+AstDagModel
+  rootPath
+  rootNodeId
+  unique content-addressed nodes
+  occurrence path -> node id index
+  context path -> node id multiplicity index
 ```
 
 布局规则：
@@ -220,6 +235,7 @@ stack --work-dir .stack-work-codex exec ast-layout -- layout
 stack --work-dir .stack-work-codex exec ast-layout -- cursor
 stack --work-dir .stack-work-codex exec ast-layout -- diagnosis
 stack --work-dir .stack-work-codex exec ast-layout -- live
+stack --work-dir .stack-work-codex exec ast-layout -- self-interpret-dag
 stack --work-dir .stack-work-codex exec workflow-semantics-witness -- --json
 stack --work-dir .stack-work-codex exec framework-core-frontend-witness -- --json
 stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json
