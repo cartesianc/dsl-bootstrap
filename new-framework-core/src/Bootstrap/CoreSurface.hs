@@ -1045,10 +1045,14 @@ architectureConcernFacade =
     "Framework.Architecture.Concern"
     "architecture concern and semantic risk evidence manifest"
     ( map typeCapability
-        [ "ArchitectureSemanticRisk"
+        [ "ArchitectureConcernEvidencePayload"
+        , "ArchitectureConcernEvidenceStatus"
+        , "ArchitectureSemanticRisk"
         ]
         ++ map valueCapability
           [ "architectureConcernClaimManifestEvidenceClaimName"
+          , "architectureConcernEvidence"
+          , "architectureConcernEvidencePayloadPassed"
           , "architectureConcernCoreClaimNames"
           , "architectureConcernEvidenceArtifactSummary"
           , "architectureConcernEvidenceClaimNames"
@@ -1056,6 +1060,9 @@ architectureConcernFacade =
           , "architectureSemanticRiskItemNames"
           , "architectureSemanticRiskItems"
           , "architectureSemanticRiskReviewClaimName"
+          , "renderArchitectureConcernEvidencePayload"
+          , "renderArchitectureConcernEvidencePayloadsJson"
+          , "renderArchitectureConcernEvidenceStatus"
           , "renderArchitectureSemanticRisk"
           ]
     )

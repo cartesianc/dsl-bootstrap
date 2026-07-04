@@ -13,12 +13,17 @@ import Bootstrap.CoreSurface
   , coreSurfaceModules
   )
 import Framework.Architecture.Concern
-  ( architectureConcernClaimManifestEvidenceClaimName
+  ( ArchitectureConcernEvidencePayload (..)
+  , architectureConcernClaimManifestEvidenceClaimName
   , architectureConcernCoreClaimNames
+  , architectureConcernEvidence
   , architectureConcernEvidenceClaimNames
+  , architectureConcernEvidencePayloadPassed
   , architectureSemanticRiskItemNames
   , architectureSemanticRiskItems
   , architectureSemanticRiskReviewClaimName
+  , renderArchitectureConcernEvidencePayload
+  , renderArchitectureConcernEvidencePayloadsJson
   , renderArchitectureSemanticRisk
   )
 import Framework.Business.Evidence
@@ -51,22 +56,6 @@ import Framework.Workflow.Semantics
   ( workflowSemanticsCoreClaimNames
   , workflowSemanticsEvidenceClaimNames
   )
-
-data ArchitectureConcernEvidencePayload = ArchitectureConcernEvidencePayload
-  { architectureConcernEvidenceClaim :: String
-  , architectureConcernEvidenceStatus :: ArchitectureConcernEvidenceStatus
-  , architectureConcernEvidenceExpected :: String
-  , architectureConcernEvidenceObserved :: String
-  , architectureConcernEvidenceArtifact :: String
-  , architectureConcernEvidenceRisk :: String
-  , architectureConcernEvidenceNextAction :: String
-  }
-  deriving (Eq, Show)
-
-data ArchitectureConcernEvidenceStatus
-  = ArchitectureConcernEvidencePassed
-  | ArchitectureConcernEvidenceFailed
-  deriving (Eq, Show)
 
 main :: IO ()
 main = do
@@ -486,23 +475,8 @@ missingItems actual expected =
   [ item | item <- expected, item `notElem` actual ]
 
 concernEvidence :: String -> Bool -> String -> String -> String -> String -> String -> ArchitectureConcernEvidencePayload
-concernEvidence claim passed expected observed artifact risk nextAction =
-  ArchitectureConcernEvidencePayload
-    { architectureConcernEvidenceClaim = claim
-    , architectureConcernEvidenceStatus =
-        if passed
-          then ArchitectureConcernEvidencePassed
-          else ArchitectureConcernEvidenceFailed
-    , architectureConcernEvidenceExpected = expected
-    , architectureConcernEvidenceObserved = observed
-    , architectureConcernEvidenceArtifact = artifact
-    , architectureConcernEvidenceRisk = risk
-    , architectureConcernEvidenceNextAction = nextAction
-    }
-
-architectureConcernEvidencePayloadPassed :: ArchitectureConcernEvidencePayload -> Bool
-architectureConcernEvidencePayloadPassed payload =
-  architectureConcernEvidenceStatus payload == ArchitectureConcernEvidencePassed
+concernEvidence =
+  architectureConcernEvidence
 
 observedList :: [String] -> String
 observedList [] =
@@ -514,48 +488,6 @@ renderPayloadBlock :: ArchitectureConcernEvidencePayload -> [String]
 renderPayloadBlock payload =
   map ("  " ++) (renderArchitectureConcernEvidencePayload payload)
     ++ [""]
-
-renderArchitectureConcernEvidencePayload :: ArchitectureConcernEvidencePayload -> [String]
-renderArchitectureConcernEvidencePayload payload =
-  [ "claim: " ++ architectureConcernEvidenceClaim payload
-  , "status: " ++ renderArchitectureConcernEvidenceStatus (architectureConcernEvidenceStatus payload)
-  , "expected: " ++ architectureConcernEvidenceExpected payload
-  , "observed: " ++ architectureConcernEvidenceObserved payload
-  , "artifact: " ++ architectureConcernEvidenceArtifact payload
-  , "risk: " ++ architectureConcernEvidenceRisk payload
-  , "nextAction: " ++ architectureConcernEvidenceNextAction payload
-  ]
-
-renderArchitectureConcernEvidenceStatus :: ArchitectureConcernEvidenceStatus -> String
-renderArchitectureConcernEvidenceStatus ArchitectureConcernEvidencePassed =
-  "passed"
-renderArchitectureConcernEvidenceStatus ArchitectureConcernEvidenceFailed =
-  "failed"
-
-renderArchitectureConcernEvidencePayloadsJson :: [ArchitectureConcernEvidencePayload] -> String
-renderArchitectureConcernEvidencePayloadsJson payloads =
-  jsonObject
-    [ jsonField "schema" (jsonString "architecture-concern-evidence.v1")
-    , jsonField "status" (jsonString status)
-    , jsonField "payloads" (jsonArray (map architectureConcernEvidencePayloadJson payloads))
-    ]
-  where
-    status =
-      if all architectureConcernEvidencePayloadPassed payloads
-        then "passed"
-        else "failed"
-
-architectureConcernEvidencePayloadJson :: ArchitectureConcernEvidencePayload -> String
-architectureConcernEvidencePayloadJson payload =
-  jsonObject
-    [ jsonField "claim" (jsonString (architectureConcernEvidenceClaim payload))
-    , jsonField "status" (jsonString (renderArchitectureConcernEvidenceStatus (architectureConcernEvidenceStatus payload)))
-    , jsonField "expected" (jsonString (architectureConcernEvidenceExpected payload))
-    , jsonField "observed" (jsonString (architectureConcernEvidenceObserved payload))
-    , jsonField "artifact" (jsonString (architectureConcernEvidenceArtifact payload))
-    , jsonField "risk" (jsonString (architectureConcernEvidenceRisk payload))
-    , jsonField "nextAction" (jsonString (architectureConcernEvidenceNextAction payload))
-    ]
 
 failWhenEvidenceFailed :: [ArchitectureConcernEvidencePayload] -> IO ()
 failWhenEvidenceFailed [] =
@@ -573,38 +505,6 @@ statusText payloads =
   if all architectureConcernEvidencePayloadPassed payloads
     then "ok"
     else "failed"
-
-jsonObject :: [String] -> String
-jsonObject fields =
-  "{" ++ joinWith "," fields ++ "}"
-
-jsonField :: String -> String -> String
-jsonField name value =
-  jsonString name ++ ":" ++ value
-
-jsonArray :: [String] -> String
-jsonArray values =
-  "[" ++ joinWith "," values ++ "]"
-
-jsonString :: String -> String
-jsonString value =
-  "\"" ++ concatMap jsonChar value ++ "\""
-
-jsonChar :: Char -> String
-jsonChar currentChar =
-  case currentChar of
-    '"' ->
-      "\\\""
-    '\\' ->
-      "\\\\"
-    '\n' ->
-      "\\n"
-    '\r' ->
-      "\\r"
-    '\t' ->
-      "\\t"
-    _ ->
-      [currentChar]
 
 joinWith :: String -> [String] -> String
 joinWith _ [] =
