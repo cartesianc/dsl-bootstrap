@@ -81,7 +81,7 @@ core boundary 检查只针对：
 new-framework-core/src
 ```
 
-这保证当前 core 不再从旧实现目录偷读任何源码。
+这保证当前 core 的源码来源只来自当前 package 边界。
 
 ## 4. 导入规则
 

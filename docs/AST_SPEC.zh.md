@@ -1,6 +1,6 @@
 # AST 规范
 
-本文描述当前 production AST 如何表达 framework-core。旧业务 DomainApp 的组件、插件和 effect 示例不再属于本文档。
+本文描述当前 production AST 如何表达 framework-core。旧业务 DomainApp 的组件、插件和 effect 示例归档在历史文档中。
 
 ## 1. 入口
 
@@ -62,7 +62,7 @@ wait gates
 hanging hooks
 ```
 
-AST 中不应该出现：
+中间过程进入 effect theory closure：
 
 ```text
 module scan 实现细节

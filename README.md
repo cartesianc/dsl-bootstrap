@@ -8,7 +8,7 @@ The framework is iterated as an EDSL self-interpretation line:
 core_0 -> new_core -> empty_business
 ```
 
-For ordinary architecture work, the default proof is:
+Default architecture proof:
 
 ```powershell
 stack --work-dir .stack-work-codex build
@@ -23,9 +23,8 @@ live AST node status rendering, default gate consolidation, and normalized
 `core_0 ~= core_1` fixed-point evidence.
 
 Focused witnesses such as `fixed-point-smoke`, `domain-app-report`, workflow,
-runtime, business, registry, and schema witnesses remain available for debugging
-their surfaces. They are not the ordinary release criteria once their behavior
-is covered by `core-self-interpret`.
+runtime, business, registry, and schema witnesses remain available for boundary
+debugging and acceptance work.
 
 For human AST inspection:
 
@@ -43,11 +42,10 @@ For the current consolidated script shape:
 .\scripts\check-release.cmd -List
 ```
 
-`self-artifact-witness` is not part of ordinary iteration. It appears only
-behind the explicit high-risk `.\scripts\check-release.cmd -IncludeSelfArtifact`
-promotion path, and its internal artifact commands mirror the same
-build + `core-self-interpret` + TrustBase manifest + architecture guardrail
-release proof.
+`self-artifact-witness` belongs to the explicit high-risk promotion path:
+`.\scripts\check-release.cmd -IncludeSelfArtifact`. Its artifact commands mirror
+the release proof: build + `core-self-interpret` + TrustBase manifest +
+architecture guardrail.
 
 ## 项目说明
 

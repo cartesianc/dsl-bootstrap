@@ -1,39 +1,47 @@
-# Domain Framework 晋升 Core Framework SOP
+# Core Promotion SOP
 
-本文定义 `domain framework` 晋升为可替换 `core framework` 的流程。
+本文定义候选 framework core 晋升为下一轮 TrustBase 的流程。
 
 适用范围：
 
 ```text
 new-framework-core/src/Domain
 new-framework-core/src/FrameworkCore
-domain-app
-TrustBase
+Framework.TrustBase
 artifact gate
+check scripts
 ```
 
-这份 SOP 关注 core promotion。`docs/SELF_BOOTSTRAP_GATE.md` 继续定义 self-bootstrap gate 细节。
+## 1. 候选对象
 
-## 1. 晋升对象
-
-候选 core 必须同时满足三条线：
+候选 core 由当前源码表达：
 
 ```text
 Domain-as-core expression
-  new-framework-core/src/Domain 用 facade style 表达当前 framework-core。
+  new-framework-core/src/Domain
 
-Readable current core frontend
-  new-framework-core/src/FrameworkCore 提供 currentTrustBase / currentAst / currentEffects / currentInterpreter / currentApp。
+Readable core frontend
+  new-framework-core/src/FrameworkCore
 
-Domain-side acceptance
-  domain-app 验证 Framework.* facade、handler implementation、semantic evidence 和 report 可以在 domain 侧闭合。
+TrustBase self-interpret entry
+  Framework.TrustBase.SelfInterpret
 ```
 
-这三条线都通过后，候选 core 才进入 replacement gate。
+候选 core 的验证线：
 
-## 2. 开工前语义风险复核
+```text
+core_0 -> core_1 -> empty_business
+```
 
-开始修改前先判断本轮是否会改变架构语义。以下改动属于 semantic-risk：
+Promotion 后：
+
+```text
+core_1 -> core_2 -> empty_business
+```
+
+## 2. 语义风险
+
+以下改动属于 semantic-risk：
 
 ```text
 AST constructor / hanging branch / recursion context
@@ -50,25 +58,55 @@ fixed-point diff key
 artifact source list
 ```
 
-semantic-risk 改动需要先写清楚预期语义，再改代码，并为对应 witness 增加或更新 claim。
+semantic-risk 改动需要对应的 fact、effect、witness claim 或 schema evidence。
 
-文档、README、说明性注释、命令索引只改变阅读材料时，不触发 `self-artifact-witness`。
+文档、README、说明性注释、命令索引变更不触发 artifact gate。
 
-## 3. Facade Conformance
+## 3. Release Pre-gate
 
-候选 core 必须证明自身语义能从 facade 被索引到：
+目标提交先运行：
+
+```powershell
+.\scripts\check-release.cmd
+```
+
+展开命令：
+
+```text
+stack --work-dir .stack-work-codex build
+stack --work-dir .stack-work-codex exec core-self-interpret -- --json
+stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json
+stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json
+```
+
+通过条件：
+
+```text
+build passed
+core-self-interpret-report.v1 passed
+core_0/core_1 exchangeability passed
+TrustBase manifest evidence passed
+architecture guardrail passed
+```
+
+## 4. Focused Witnesses
+
+Focused witnesses 用于定位具体边界：
 
 ```powershell
 stack --work-dir .stack-work-codex exec framework-core-frontend-witness -- --json
-```
-
-如果触碰 capability / lowering / business authoring surface，再运行：
-
-```powershell
 stack --work-dir .stack-work-codex exec business-syntax-witness -- --json
+stack --work-dir .stack-work-codex exec domain-app-report -- --json
+stack --work-dir .stack-work-codex exec workflow-semantics-witness -- --json
+stack --work-dir .stack-work-codex exec runtime-evidence-witness -- --json
+stack --work-dir .stack-work-codex exec runtime-diagnosis-witness -- --json
+stack --work-dir .stack-work-codex exec schema-catalog-witness -- --json
+stack --work-dir .stack-work-codex exec registry-codegen-witness -- --json
 ```
 
-边界检查：
+运行选择见 [CHECK_PATTERNS.zh.md](CHECK_PATTERNS.zh.md)。
+
+## 5. Boundary Checks
 
 ```powershell
 rg -n "^import\s+Framework\." new-framework-core/src/Bootstrap
@@ -77,144 +115,84 @@ rg -n "^import\s+Bootstrap\." domain-app/src domain-app/app
 
 两个命令应无输出。
 
-## 4. Semantic Witness
+## 6. Artifact Gate
 
-候选 core 触碰哪一块语义，就运行对应 witness。常用组合：
-
-```powershell
-stack --work-dir .stack-work-codex exec workflow-semantics-witness -- --json
-stack --work-dir .stack-work-codex exec runtime-evidence-witness -- --json
-stack --work-dir .stack-work-codex exec runtime-diagnosis-witness -- --json
-stack --work-dir .stack-work-codex exec constraint-proof-witness -- --smt=auto
-stack --work-dir .stack-work-codex exec registry-codegen-witness -- --json
-stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json
-```
-
-通过标准：
-
-```text
-相关 claim status 全部 passed
-claim manifest 与导出清单同步
-新增语义有对应 fact / effect / witness handle
-```
-
-## 5. Fixed-point
-
-候选 core 必须证明 Stage 0 和 Stage 1 没有语义分裂：
-
-```powershell
-stack --work-dir .stack-work-codex exec bootstrap-report
-stack --work-dir .stack-work-codex exec fixed-point-smoke
-```
-
-通过标准：
-
-```text
-bootstrap-report: status passed
-fixed-point-smoke: diffs: 0
-```
-
-如果本轮修改 JSON schema、report payload 或 fixed-point diff key，再运行对应 JSON 输出：
-
-```powershell
-stack --work-dir .stack-work-codex exec bootstrap-report -- --json
-stack --work-dir .stack-work-codex exec fixed-point-smoke -- --json
-stack --work-dir .stack-work-codex exec fixed-point-smoke -- --summary-json
-```
-
-## 6. TrustBase
-
-候选 core 必须证明 TrustBase 边界没有漂移：
-
-```powershell
-stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --json
-stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json
-stack --work-dir .stack-work-codex exec schema-catalog-witness -- --json
-```
-
-通过标准：
-
-```text
-TrustBase manifest 覆盖当前 module / executable / artifact source / gate policy
-schema catalog 覆盖当前 machine-readable report 和 witness payload
-self-artifact manifest 没有未声明的 source 或 command 漂移
-```
-
-`schema-catalog-witness -- --json` 会执行 schema catalog 中的 JSON 命令，单独运行也可能需要数分钟。release pre-gate 的工具超时应按 20 到 30 分钟设置；10 分钟超时只记为 inconclusive。
-
-## 7. Artifact Gate
-
-`self-artifact-witness` 是晋升 core 的重 gate。它证明当前 framework/code inputs 可以物化隔离的 Stage 1 artifact，并在 artifact 内部重新运行核心 gates。
-
-运行前必须满足：
-
-```text
-大构建通过
-轻量 gates 通过
-当前轮还没有运行过 self-artifact-witness
-本轮不是 README/docs-only 改动
-```
-
-运行：
-
-```powershell
-stack --work-dir .stack-work-codex exec self-artifact-witness
-```
-
-或通过 check facade：
+Promotion artifact gate：
 
 ```powershell
 .\scripts\check-release.cmd -IncludeSelfArtifact
 ```
 
-执行约束：
+运行条件：
 
 ```text
-预计耗时至少 10 分钟。
-工具超时应给 15 到 20 分钟。
-同一轮大构建后最多运行一次。
-超时只记为 inconclusive，不能记为 passed 或 failed。
+release pre-gate passed
+same HEAD has not run self-artifact-witness in this round
+current round is a promotion/replacement round
 ```
 
-## 8. Core Replacement
-
-只有以下证据全部成立，候选 core 才允许替换当前 core：
+Stage1 artifact：
 
 ```text
-facade conformance: passed
-core-self-interpret report: passed
-core_0/core_1 exchangeability: passed
-TrustBase manifest: passed
-architecture guardrail: passed
+.generated/stage1-framework
+```
+
+Artifact 内部命令：
+
+```text
+stack build
+core-self-interpret -- --json
+trust-base-manifest-witness -- --evidence-json
+architecture-concern-witness -- --json
+```
+
+通过条件：
+
+```text
+artifact created
+artifact build passed
+artifact core-self-interpret passed
+artifact TrustBase manifest evidence passed
+artifact architecture guardrail passed
+artifact command list matches defaultSelfArtifactManifest
+```
+
+超时状态记为 inconclusive。
+
+## 7. Replacement Decision
+
+允许替换当前 core 的证据：
+
+```text
+release pre-gate: passed
 artifact gate: passed
-git diff: 只包含本轮预期改动
+boundary checks: passed
+git diff: scoped to current round
+target commit recorded
 ```
 
-替换提交建议分两步：
+建议提交顺序：
 
 ```text
-commit 1: 引入或更新已自证候选 core
-commit 2: 用已验证候选 core 替换旧 core
+commit 1: introduce verified candidate core
+commit 2: replace previous core with verified candidate
 ```
 
-artifact gate 失败、超时或缺少证据时，保留旧 core。不能把超时当作晋升依据。
+artifact gate failed、timeout 或 evidence 缺失时，保留当前 core。
 
-## 9. Evidence Record
+## 8. Evidence Record
 
-每次 promotion 记录以下信息：
+每次 promotion 记录：
 
 ```text
 target commit
 semantic-risk scope
 commands run
-core-self-interpret report result
+core-self-interpret result
 core_0/core_1 exchangeability result
 TrustBase manifest result
 architecture guardrail result
-focused witness list if any focused debugging was required
 self-artifact-witness result
 artifact path
 replacement decision
 ```
-
-这条记录可以放在 PR、release note 或维护日志中。说明性文档本身不进入 Stage 1 artifact。

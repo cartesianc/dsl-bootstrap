@@ -2,11 +2,11 @@
 
 本文描述当前 framework 如何把自身表达为一个 domain，并逐步走向 self-hosting。
 
-## 1. 目标
+## 1. 范围
 
-目标是保留可自举的 core kernel。旧 framework 入口和旧业务 DomainApp 作为历史参照。
+当前 self-iteration snapshot 保留可自举 core kernel。旧 framework 入口和旧业务 DomainApp 作为历史参照。
 
-目标是：
+当前范围：
 
 ```text
 new-framework-core

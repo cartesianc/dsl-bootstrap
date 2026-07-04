@@ -2,7 +2,7 @@
 
 本文记录 AST 渲染和运行监听的当前设计。
 
-目标：
+能力范围：
 
 ```text
 运行前可以生成整棵 AST 的 layout model
@@ -10,12 +10,12 @@
 recursion scheme 模式保持可选
 context 挂载进入 hanging tree
 algebra 通过 effect system 进入验证
-不把 layout 或 listener 写死进默认 core
+默认 core 保持无 layout/listener 自动挂载
 ```
 
 ## 1. 语义位置
 
-AST layout 不是新的业务语义。它是当前 AST 的只读 projection。
+AST layout 是当前 AST 的只读 projection。
 
 runtime listener 也不改写 AST 本体。它通过挂在 hanging tree 上的 `context` 节点声明一个 recursion context，runtime 只捕捉这个 context handle 下的节点事件。
 
@@ -35,7 +35,7 @@ RecursionSchemeModel
 RecursionContextAlgebra
 ```
 
-`RecursionContextAlgebra` 持有一组 `EffectSystem WorkflowFact`。这些 effect systems 会进入 build validation，所以 context algebra 不是随手塞的外部 metadata。
+`RecursionContextAlgebra` 持有一组 `EffectSystem WorkflowFact`。这些 effect systems 会进入 build validation，context algebra 属于可验证声明。
 
 ## 2. Recursion Scheme 模式
 
