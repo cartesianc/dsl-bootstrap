@@ -775,12 +775,20 @@ businessEvidenceFacade :: CoreSurfaceModule
 businessEvidenceFacade =
   moduleSurface
     "Framework.Business.Evidence"
-    "business capability frontend evidence claim manifest"
-    ( map valueCapability
+    "business capability frontend evidence payload model and claim manifest"
+    ( map typeCapability
+        [ "BusinessSyntaxEvidencePayload"
+        , "BusinessSyntaxEvidenceStatus"
+        ]
+        ++ map valueCapability
         [ "businessSyntaxClaimManifestEvidenceClaimName"
         , "businessSyntaxCoreClaimNames"
+        , "businessSyntaxEvidence"
         , "businessSyntaxEvidenceArtifactSummary"
         , "businessSyntaxEvidenceClaimNames"
+        , "businessSyntaxEvidencePayloadPassed"
+        , "renderBusinessSyntaxEvidencePayloadsJson"
+        , "renderBusinessSyntaxEvidenceStatus"
         ]
     )
 
