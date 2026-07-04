@@ -10,8 +10,10 @@ import Framework.Domain
   )
 import Framework.TrustBase
   ( RuntimeDiagnosisEvidencePayload (..)
+  , RuntimeDiagnosisEvidenceStatus (..)
   , renderRuntimeDiagnosisEvidencePayload
   , renderRuntimeDiagnosisEvidencePayloadsJson
+  , runtimeDiagnosisCoreClaimNames
   , runtimeDiagnosisEvidenceClaimNames
   , runtimeDiagnosisEvidencePayloadPassed
   )
@@ -26,7 +28,9 @@ main :: IO ()
 main = do
   args <- getArgs
   report <- buildDomainReport domainAppDomain
-  payloads <- runtimeDiagnosisEvidencePayloads
+  corePayloads <- runtimeDiagnosisEvidencePayloads
+  let payloads =
+        corePayloads ++ [runtimeDiagnosisClaimManifestPayload corePayloads]
   let missing =
         [ name
         | name <- expectedEvidence
@@ -73,7 +77,32 @@ renderPayloadBlock payload =
 
 expectedEvidence :: [String]
 expectedEvidence =
-  runtimeDiagnosisEvidenceClaimNames
+  runtimeDiagnosisCoreClaimNames
+
+runtimeDiagnosisClaimManifestPayload :: [RuntimeDiagnosisEvidencePayload] -> RuntimeDiagnosisEvidencePayload
+runtimeDiagnosisClaimManifestPayload payloads =
+  RuntimeDiagnosisEvidencePayload
+    { runtimeDiagnosisEvidenceClaim = "runtime-diagnosis-claim-manifest"
+    , runtimeDiagnosisEvidenceStatus =
+        if manifestSynced
+          then RuntimeDiagnosisEvidencePassed
+          else RuntimeDiagnosisEvidenceFailed
+    , runtimeDiagnosisEvidenceExpected =
+        "runtime diagnosis witness claims match exported claim manifest"
+    , runtimeDiagnosisEvidenceObserved =
+        if manifestSynced
+          then "claim manifest synced: " ++ show (length actualCoreClaimNames) ++ " core claims"
+          else "expected " ++ show runtimeDiagnosisEvidenceClaimNames ++ "; actual " ++ show actualEvidenceClaimNames
+    , runtimeDiagnosisEvidenceArtifact = "RuntimeDiagnosisClaimManifestArtifact"
+    }
+  where
+    actualCoreClaimNames =
+      map runtimeDiagnosisEvidenceClaim payloads
+    actualEvidenceClaimNames =
+      actualCoreClaimNames ++ ["runtime-diagnosis-claim-manifest"]
+    manifestSynced =
+      actualCoreClaimNames == runtimeDiagnosisCoreClaimNames
+        && actualEvidenceClaimNames == runtimeDiagnosisEvidenceClaimNames
 
 evidencePresent :: String -> DomainReport -> Bool
 evidencePresent name report =

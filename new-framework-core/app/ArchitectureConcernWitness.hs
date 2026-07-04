@@ -42,7 +42,9 @@ import Framework.Frontend.Evidence
 import Framework.Runtime.Concurrency
   ( runtimeConcurrencyEvidenceClaimNames )
 import Framework.Runtime.Diagnosis
-  ( runtimeDiagnosisEvidenceClaimNames )
+  ( runtimeDiagnosisCoreClaimNames
+  , runtimeDiagnosisEvidenceClaimNames
+  )
 import Framework.Runtime.HotPath
   ( runtimeHotPathEvidenceClaimNames )
 import Framework.Runtime.Policy
@@ -132,9 +134,10 @@ runtimeDiagnosisPayloadIrPayload =
     missing =
       missingItems
         ( [ "runtime-diagnosis-evidence.v1 schema" | schemaPresent "runtime-diagnosis-evidence.v1" ]
-            ++ expectedClaimsPresent expectedClaims runtimeDiagnosisEvidenceClaimNames
+            ++ expectedClaimsPresent expectedClaims runtimeDiagnosisCoreClaimNames
+            ++ expectedClaimsPresent ["runtime-diagnosis-claim-manifest"] runtimeDiagnosisEvidenceClaimNames
         )
-        ("runtime-diagnosis-evidence.v1 schema" : expectedClaims)
+        ("runtime-diagnosis-evidence.v1 schema" : expectedClaims ++ ["runtime-diagnosis-claim-manifest"])
     passed =
       null missing
 

@@ -22,6 +22,7 @@ module Framework.Runtime.Diagnosis
   , renderRuntimeDiagnosisEvidenceStatus
   , recordRuntimeDiagnosis
   , runtimeDiagnosisEvidenceArtifactSummary
+  , runtimeDiagnosisCoreClaimNames
   , runtimeDiagnosisEvidenceClaimNames
   , runtimeDiagnosisEvidencePayloadPassed
   , renderRuntimeFailureDiagnosis
@@ -487,13 +488,17 @@ runtimeDiagnosisEvidencePayloadPassed :: RuntimeDiagnosisEvidencePayload -> Bool
 runtimeDiagnosisEvidencePayloadPassed payload =
   runtimeDiagnosisEvidenceStatus payload == RuntimeDiagnosisEvidencePassed
 
-runtimeDiagnosisEvidenceClaimNames :: [String]
-runtimeDiagnosisEvidenceClaimNames =
+runtimeDiagnosisCoreClaimNames :: [String]
+runtimeDiagnosisCoreClaimNames =
   [ "runtime-diagnosis-error-handler"
   , "runtime-diagnosis-retry-probe"
   , "runtime-diagnosis-non-idempotent-blocker"
   , "runtime-diagnosis-system-root-cause"
   ]
+
+runtimeDiagnosisEvidenceClaimNames :: [String]
+runtimeDiagnosisEvidenceClaimNames =
+  runtimeDiagnosisCoreClaimNames ++ ["runtime-diagnosis-claim-manifest"]
 
 runtimeDiagnosisEvidenceArtifactSummary :: String
 runtimeDiagnosisEvidenceArtifactSummary =
