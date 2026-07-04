@@ -557,6 +557,13 @@ domain-app/src/Effects/Theory.hs
 stack exec registry-codegen-witness -- --json
 ```
 
+registry codegen witness payload claims：
+```text
+registry-codegen-plugins
+registry-codegen-effects
+registry-codegen-claim-manifest
+```
+
 ## 自举
 
 每次 framework 改动都要先自证。

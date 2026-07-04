@@ -1890,6 +1890,8 @@ registryCodegenFacade =
           [ "diffGeneratedLines"
           , "frameworkCoreFrontendSources"
           , "generatedLinesMatch"
+          , "registryCodegenClaimManifestPayload"
+          , "registryCodegenCoreClaimNames"
           , "registryCodegenEvidenceClaimNames"
           , "registryCodegenEvidenceStatus"
           , "renderRegistryCodegenEvidencePayload"

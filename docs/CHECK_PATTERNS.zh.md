@@ -228,7 +228,7 @@ runtime-concurrency-evidence.v1
 architecture-concern-evidence.v1
 ```
 
-`RunRuntimeEvidence` 现在对应 6 条 `RuntimeEvidencePayload`：
+`RunRuntimeEvidence` 现在对应 7 条 `RuntimeEvidencePayload`：
 
 ```text
 runtime-plan-build-evidence
@@ -295,6 +295,13 @@ framework-core facade/codegen 改动优先跑：
 ```powershell
 stack exec framework-core-frontend-witness -- --json
 stack exec registry-codegen-witness -- --json
+```
+
+registry codegen witness payload claims：
+```text
+registry-codegen-plugins
+registry-codegen-effects
+registry-codegen-claim-manifest
 ```
 
 `framework-core-frontend-witness` 同时检查：

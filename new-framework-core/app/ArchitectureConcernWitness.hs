@@ -43,6 +43,10 @@ import Framework.Frontend.Evidence
   , frameworkCoreFrontendEvidenceClaimNames
   , frontendClaimModuleLinks
   )
+import Framework.RegistryCodegen
+  ( registryCodegenCoreClaimNames
+  , registryCodegenEvidenceClaimNames
+  )
 import Framework.Runtime.Concurrency
   ( runtimeConcurrencyCoreClaimNames
   , runtimeConcurrencyEvidenceClaimNames
@@ -701,9 +705,14 @@ schemaCatalogCoveragePayload =
       , ("Framework.Runtime.Evidence runtimeEvidenceClaimNames value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Evidence" "runtimeEvidenceClaimNames")
       , ("runtime evidence plan build claim", "runtime-plan-build-evidence" `elem` runtimeEvidenceCoreClaimNames)
       , ("runtime evidence claim manifest", "runtime-evidence-claim-manifest" `elem` runtimeEvidenceClaimNames)
+      , ("Framework.RegistryCodegen registryCodegenCoreClaimNames value", coreSurfaceValueCapabilityPresent "Framework.RegistryCodegen" "registryCodegenCoreClaimNames")
       , ("Framework.RegistryCodegen registryCodegenEvidenceClaimNames value", coreSurfaceValueCapabilityPresent "Framework.RegistryCodegen" "registryCodegenEvidenceClaimNames")
+      , ("Framework.RegistryCodegen registryCodegenClaimManifestPayload value", coreSurfaceValueCapabilityPresent "Framework.RegistryCodegen" "registryCodegenClaimManifestPayload")
       , ("Framework.RegistryCodegen renderRegistryCodegenEvidencePayload value", coreSurfaceValueCapabilityPresent "Framework.RegistryCodegen" "renderRegistryCodegenEvidencePayload")
       , ("Framework.RegistryCodegen renderRegistryCodegenEvidencePayloadsJson value", coreSurfaceValueCapabilityPresent "Framework.RegistryCodegen" "renderRegistryCodegenEvidencePayloadsJson")
+      , ("registry codegen plugins claim", "registry-codegen-plugins" `elem` registryCodegenCoreClaimNames)
+      , ("registry codegen effects claim", "registry-codegen-effects" `elem` registryCodegenCoreClaimNames)
+      , ("registry codegen claim manifest", "registry-codegen-claim-manifest" `elem` registryCodegenEvidenceClaimNames)
       ]
     missing =
       [ name | (name, present) <- required, not present ]

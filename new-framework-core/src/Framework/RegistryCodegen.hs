@@ -5,6 +5,8 @@ module Framework.RegistryCodegen
   , diffGeneratedLines
   , frameworkCoreFrontendSources
   , generatedLinesMatch
+  , registryCodegenClaimManifestPayload
+  , registryCodegenCoreClaimNames
   , registryCodegenEvidenceClaimNames
   , registryCodegenEvidenceStatus
   , renderRegistryCodegenEvidencePayload
@@ -43,11 +45,15 @@ data EffectRegistryBinding = EffectRegistryBinding
   }
   deriving (Eq, Show)
 
-registryCodegenEvidenceClaimNames :: [String]
-registryCodegenEvidenceClaimNames =
+registryCodegenCoreClaimNames :: [String]
+registryCodegenCoreClaimNames =
   [ "registry-codegen-plugins"
   , "registry-codegen-effects"
   ]
+
+registryCodegenEvidenceClaimNames :: [String]
+registryCodegenEvidenceClaimNames =
+  registryCodegenCoreClaimNames ++ ["registry-codegen-claim-manifest"]
 
 renderRegistryCodegenEvidencePayload :: DomainSemanticEvidencePayload -> [String]
 renderRegistryCodegenEvidencePayload payload =
@@ -75,6 +81,31 @@ registryCodegenEvidenceStatus [] [] [] [] =
   "passed"
 registryCodegenEvidenceStatus _ _ _ _ =
   "failed"
+
+registryCodegenClaimManifestPayload :: [DomainSemanticEvidencePayload] -> DomainSemanticEvidencePayload
+registryCodegenClaimManifestPayload payloads =
+  DomainSemanticEvidencePayload
+    { domainSemanticEvidencePayloadClaim = "registry-codegen-claim-manifest"
+    , domainSemanticEvidencePayloadStatus =
+        if manifestSynced
+          then "passed"
+          else "failed"
+    , domainSemanticEvidencePayloadExpected =
+        "registry codegen payload claims match exported claim manifest"
+    , domainSemanticEvidencePayloadObserved =
+        if manifestSynced
+          then "claim manifest synced: " ++ show (length actualCoreClaimNames) ++ " core claims"
+          else "expected " ++ show registryCodegenEvidenceClaimNames ++ "; actual " ++ show actualEvidenceClaimNames
+    , domainSemanticEvidencePayloadArtifact = "RegistryCodegenClaimManifestArtifact"
+    }
+  where
+    actualCoreClaimNames =
+      map domainSemanticEvidencePayloadClaim payloads
+    actualEvidenceClaimNames =
+      actualCoreClaimNames ++ ["registry-codegen-claim-manifest"]
+    manifestSynced =
+      actualCoreClaimNames == registryCodegenCoreClaimNames
+        && actualEvidenceClaimNames == registryCodegenEvidenceClaimNames
 
 registryCodegenEvidencePayloadJson :: DomainSemanticEvidencePayload -> String
 registryCodegenEvidencePayloadJson payload =

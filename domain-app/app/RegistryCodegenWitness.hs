@@ -10,7 +10,9 @@ import Framework.Domain
   , domainSemanticEvidencePassed
   )
 import Framework.RegistryCodegen
-  ( registryCodegenEvidenceClaimNames
+  ( registryCodegenClaimManifestPayload
+  , registryCodegenCoreClaimNames
+  , registryCodegenEvidenceClaimNames
   , renderRegistryCodegenEvidencePayload
   , renderRegistryCodegenEvidencePayloadsJson
   )
@@ -25,7 +27,7 @@ main = do
   report <- buildDomainReport domainAppDomain
   let evidence =
         registryCodegenEvidence report
-      payloads =
+      corePayloads =
         registryCodegenPayloads evidence
       missing =
         missingRegistryCodegenEvidence report
@@ -33,6 +35,8 @@ main = do
         failedRegistryCodegenEvidence evidence
       missingPayloads =
         missingRegistryCodegenPayloads evidence
+      payloads =
+        corePayloads ++ [registryCodegenClaimManifestPayload corePayloads]
       failedPayloads =
         failedRegistryCodegenPayloads payloads
   case args of
@@ -62,7 +66,7 @@ registryCodegenEvidence :: DomainReport -> [DomainSemanticEvidence]
 registryCodegenEvidence report =
   [ evidence
   | evidence <- domainReportSemanticEvidence report
-  , domainSemanticEvidenceName evidence `elem` registryCodegenEvidenceClaimNames
+  , domainSemanticEvidenceName evidence `elem` registryCodegenCoreClaimNames
   ]
 
 registryCodegenPayloads :: [DomainSemanticEvidence] -> [DomainSemanticEvidencePayload]
@@ -75,7 +79,7 @@ registryCodegenPayloads evidence =
 missingRegistryCodegenEvidence :: DomainReport -> [String]
 missingRegistryCodegenEvidence report =
   [ name
-  | name <- registryCodegenEvidenceClaimNames
+  | name <- registryCodegenCoreClaimNames
   , not (evidencePresent name report)
   ]
 
