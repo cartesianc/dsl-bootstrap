@@ -7,6 +7,7 @@ module Bootstrap.Business
   , CapabilityPolicy (..)
   , CapabilityUse (..)
   , EffectName (..)
+  , EffectTheory (..)
   , EffectUnit (..)
   , HandlerBindingSpec (..)
   , HandlerName (..)
@@ -43,6 +44,7 @@ module Bootstrap.Business
   , retryOnce
   , transformBinding
   , transform
+  , theory
   , uses
   ) where
 
@@ -51,6 +53,7 @@ import qualified Bootstrap.Workflow as Workflow
 import Bootstrap.Effect
   ( EffectName
   , EffectSection (..)
+  , EffectTheory (..)
   , EffectUnit
   , FactProducer (..)
   , HandlerName
@@ -62,6 +65,7 @@ import Bootstrap.Effect
   , pattern ErrorInput
   , pattern NoInput
   , pattern Unit
+  , theory
   )
 
 data Capability = Capability

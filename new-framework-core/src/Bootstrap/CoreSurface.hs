@@ -744,6 +744,7 @@ businessFacade =
         , "CapabilityPolicy"
         , "CapabilityUse"
         , "HandlerBindingSpec"
+        , "EffectTheory"
         , "Pipeline"
         , "TransformBindingSpec"
         ]
@@ -771,6 +772,7 @@ businessFacade =
           , "retryOnce"
           , "transform"
           , "transformBinding"
+          , "theory"
           , "uses"
           ]
     )

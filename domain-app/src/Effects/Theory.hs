@@ -5,7 +5,7 @@ module Effects.Theory
   ( effectTheory
   ) where
 
-import Framework.Effect
+import Framework.Business
   ( EffectTheory
   , theory
   )

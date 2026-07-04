@@ -8,7 +8,7 @@ import Domain.Runtime
 import Framework.Ast
   ( AppBlueprint
   )
-import Framework.Effect
+import Framework.Business
   ( EffectTheory
   )
 import Framework.TrustBase

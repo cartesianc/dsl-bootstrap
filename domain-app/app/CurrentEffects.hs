@@ -2,7 +2,7 @@ module CurrentEffects
   ( currentEffects
   ) where
 
-import Framework.Effect
+import Framework.Business
   ( EffectTheory
   )
 import Effects.Theory

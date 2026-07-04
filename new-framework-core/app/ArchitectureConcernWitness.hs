@@ -405,6 +405,7 @@ capabilityAuthoringSurfacePayload =
       , "CapabilityClause"
       , "CapabilityPolicy"
       , "CapabilityUse"
+      , "EffectTheory"
       , "HandlerBindingSpec"
       , "Pipeline"
       , "TransformBindingSpec"
@@ -430,6 +431,7 @@ capabilityAuthoringSurfacePayload =
       , "retryOnce"
       , "transform"
       , "transformBinding"
+      , "theory"
       , "uses"
       ]
     requiredClaims =

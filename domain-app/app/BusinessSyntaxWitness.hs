@@ -595,6 +595,7 @@ effectsFacadeBoundaryPassed = do
       , "domain-app/src/Effects/User.hs"
       , "domain-app/src/Effects/Report.hs"
       , "domain-app/src/Effects/Logging.hs"
+      , "domain-app/src/Effects/Theory.hs"
       ]
   pure (all effectFacadeSourcePassed sources)
 
