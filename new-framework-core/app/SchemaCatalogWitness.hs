@@ -2,6 +2,18 @@ module Main
   ( main
   ) where
 
+import Control.Concurrent
+  ( MVar
+  , forkIO
+  , newEmptyMVar
+  , putMVar
+  , takeMVar
+  )
+import Control.Exception
+  ( SomeException
+  , displayException
+  , try
+  )
 import Data.List
   ( isInfixOf )
 import System.Environment
@@ -36,7 +48,7 @@ data SchemaCatalogEntry = SchemaCatalogEntry
 main :: IO ()
 main = do
   args <- getArgs
-  payloads <- mapM schemaCatalogPayload trustBaseManifestRequiredJsonSchemas
+  payloads <- schemaCatalogPayloads trustBaseManifestRequiredJsonSchemas
   let failedPayloads =
         filter (not . schemaCatalogEvidencePayloadPassed) payloads
   case args of
@@ -54,6 +66,39 @@ main = do
             ++ " payload claims"
         )
       failWhenEvidenceFailed failedPayloads
+
+schemaCatalogPayloads :: [String] -> IO [SchemaCatalogEvidencePayload]
+schemaCatalogPayloads entries =
+  fmap concat (mapM schemaCatalogPayloadChunk (chunksOf schemaCatalogParallelism entries))
+
+schemaCatalogParallelism :: Int
+schemaCatalogParallelism =
+  4
+
+schemaCatalogPayloadChunk :: [String] -> IO [SchemaCatalogEvidencePayload]
+schemaCatalogPayloadChunk entries = do
+  resultVars <- mapM startPayload entries
+  mapM takeMVar resultVars
+  where
+    startPayload :: String -> IO (MVar SchemaCatalogEvidencePayload)
+    startPayload entryText = do
+      resultVar <- newEmptyMVar
+      _ <-
+        forkIO $ do
+          result <- try (schemaCatalogPayload entryText)
+          putMVar resultVar (schemaCatalogPayloadResult entryText result)
+      pure resultVar
+
+schemaCatalogPayloadResult :: String -> Either SomeException SchemaCatalogEvidencePayload -> SchemaCatalogEvidencePayload
+schemaCatalogPayloadResult _ (Right payload) =
+  payload
+schemaCatalogPayloadResult entryText (Left exception) =
+  schemaCatalogEvidence
+    (schemaCatalogTextClaim entryText)
+    False
+    "schema catalog command completes and emits declared JSON schema"
+    ("command raised exception: " ++ compactPrefix (displayException exception))
+    "SchemaCatalogCommandArtifact"
 
 schemaCatalogPayload :: String -> IO SchemaCatalogEvidencePayload
 schemaCatalogPayload text =
@@ -117,6 +162,14 @@ runSchemaCatalogEntry entry =
 schemaCatalogClaim :: SchemaCatalogEntry -> String
 schemaCatalogClaim entry =
   "schema-catalog-output:" ++ schemaCatalogEntrySchema entry
+
+schemaCatalogTextClaim :: String -> String
+schemaCatalogTextClaim text =
+  case parseSchemaCatalogEntry text of
+    Just entry ->
+      schemaCatalogClaim entry
+    Nothing ->
+      "schema-catalog-entry:" ++ text
 
 schemaCatalogCommandIsSelf :: String -> Bool
 schemaCatalogCommandIsSelf command =
@@ -252,6 +305,15 @@ statusText payloads =
 compactPrefix :: String -> String
 compactPrefix text =
   take 240 (unwords (words text))
+
+chunksOf :: Int -> [a] -> [[a]]
+chunksOf _ [] =
+  []
+chunksOf size items =
+  current : chunksOf size rest
+  where
+    (current, rest) =
+      splitAt size items
 
 isPrefixOfLocal :: String -> String -> Bool
 isPrefixOfLocal [] _ =
