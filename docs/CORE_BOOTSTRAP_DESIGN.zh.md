@@ -161,19 +161,17 @@ kernel replacement flow
 core 成功：
 
 ```text
-stack exec domain-registry
-stack exec ast-tree -- all
-stack exec domain-map -- json all
-stack exec bootstrap-smoke
-stack exec bootstrap-runtime-smoke
-stack exec bootstrap-report
-stack exec mytest
+stack --work-dir .stack-work-codex build
+stack --work-dir .stack-work-codex exec core-self-interpret -- --json
+stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json
+stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json
 ```
 
 self domain app 成功：
 
 ```text
-stack exec domain-app-self-smoke
+core_0 -> new_core -> empty_business closes without IO
+core_0/core_1 exchangeability passes in core-self-interpret-report.v1
 ```
 
 负向标准：

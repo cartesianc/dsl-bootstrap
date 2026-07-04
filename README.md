@@ -1,5 +1,54 @@
 # dsl-bootstrap
 
+## Current Self-Interpret Entry
+
+The framework is iterated as an EDSL self-interpretation line:
+
+```text
+core_0 -> new_core -> empty_business
+```
+
+For ordinary architecture work, the default proof is:
+
+```powershell
+stack --work-dir .stack-work-codex build
+stack --work-dir .stack-work-codex exec core-self-interpret -- --json
+```
+
+`core-self-interpret-report.v1` is the primary evidence surface. It covers the
+previous compiled core running the candidate core foreground, the candidate core
+running as a domain expression, `empty_business` closing recursion without IO or
+TrustBase leakage, boot AST layout expansion, live runtime cursor projection,
+live AST node status rendering, default gate consolidation, and normalized
+`core_0 ~= core_1` fixed-point evidence.
+
+Focused witnesses such as `fixed-point-smoke`, `domain-app-report`, workflow,
+runtime, business, registry, and schema witnesses remain available for debugging
+their surfaces. They are not the ordinary release criteria once their behavior
+is covered by `core-self-interpret`.
+
+For human AST inspection:
+
+```powershell
+stack --work-dir .stack-work-codex exec ast-layout -- self-interpret-summary
+stack --work-dir .stack-work-codex exec ast-layout -- self-interpret-layout
+stack --work-dir .stack-work-codex exec ast-layout -- self-interpret-live
+```
+
+For the current consolidated script shape:
+
+```powershell
+.\scripts\check-fast.cmd -List
+.\scripts\check-semantic.cmd -List
+.\scripts\check-release.cmd -List
+```
+
+`self-artifact-witness` is not part of ordinary iteration. It appears only
+behind the explicit high-risk `.\scripts\check-release.cmd -IncludeSelfArtifact`
+promotion path, and its internal artifact commands mirror the same
+build + `core-self-interpret` + TrustBase manifest + architecture guardrail
+release proof.
+
 ## 项目说明
 
 `dsl-bootstrap` 是一个自举式 Haskell 业务框架实验仓库。它展示一套业务 DSL 如何用声明式源码表达 workflow、effect、runtime handler 和 semantic evidence，并把这些声明连接到 report、proof、diagnosis、codegen 和 artifact gate。
@@ -670,18 +719,10 @@ artifact gate 会物化 `.generated/stage1-framework`，只复制 framework/code
 `self-artifact-witness` 是高危/重型 gate：只有大构建和轻量 gates 完成后才允许运行一次。同一轮第二次不允许继续跑；README/docs-only 变更不触发它。
 
 ```text
-stack build
-stack exec bootstrap-report
-stack exec fixed-point-smoke
-stack exec runtime-evidence-witness
-stack exec constraint-proof-witness -- --smt=auto
-stack exec workflow-semantics-witness
-stack exec runtime-diagnosis-witness
-stack exec framework-core-frontend-witness -- --json
-stack exec domain-app-report
-stack exec registry-codegen-witness -- --json
-stack exec architecture-concern-witness -- --json
-stack exec business-syntax-witness
+stack --work-dir .stack-work-codex build
+stack --work-dir .stack-work-codex exec core-self-interpret -- --json
+stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json
+stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json
 ```
 
 运行：
@@ -699,19 +740,15 @@ workflow 语义：[docs/WORKFLOW_SEMANTICS.md](docs/WORKFLOW_SEMANTICS.md)
 日常开发：
 
 ```powershell
-stack build
-stack exec mytest
-stack exec domain-app-report
+stack --work-dir .stack-work-codex build
+stack --work-dir .stack-work-codex exec core-self-interpret -- --json
 ```
 
 framework 验证：
 
 ```powershell
-stack exec framework-core-mytest
-stack exec bootstrap-smoke
-stack exec bootstrap-runtime-smoke
-stack exec bootstrap-report
-stack exec fixed-point-smoke
+stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json
+stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json
 ```
 
 witness：
@@ -730,22 +767,7 @@ stack exec business-syntax-witness
 完整 gate：
 
 ```powershell
-stack build
-stack exec mytest
-stack exec domain-app-report
-stack exec domain-app-self-smoke
-stack exec business-syntax-witness
-stack exec framework-core-mytest
-stack exec bootstrap-smoke
-stack exec bootstrap-runtime-smoke
-stack exec bootstrap-report
-stack exec fixed-point-smoke
-stack exec runtime-evidence-witness
-stack exec workflow-semantics-witness
-stack exec runtime-diagnosis-witness
-stack exec constraint-proof-witness -- --smt=auto
-stack exec registry-codegen-witness -- --json
-stack exec architecture-concern-witness -- --json
+.\scripts\check-release.cmd
 ```
 
 高危 artifact gate（大构建完成后最多一次）：

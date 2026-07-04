@@ -125,8 +125,8 @@ buildFixedPointReport :: IO FixedPointReport
 buildFixedPointReport = do
   stage0Report <- buildFrameworkCoreReport
   stage1Report <- buildDomainReport frameworkCoreFacadeDomain
-  let stage0 = evidenceFromFrameworkCoreReport "stage0-bootstrap" stage0Report
-      stage1 = evidenceFromDomainReport "stage1-framework-facade" stage1Report
+  let stage0 = evidenceFromFrameworkCoreReport "core_0-previous-compiled-core" stage0Report
+      stage1 = evidenceFromDomainReport "core_1-candidate-edsl-core" stage1Report
       diffs = diffEvidence stage0 stage1
       status =
         if null diffs && stageEvidenceStatus stage0 == "passed" && stageEvidenceStatus stage1 == "passed"

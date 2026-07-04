@@ -182,9 +182,10 @@ stack --work-dir .stack-work-codex exec self-artifact-witness
 
 ```text
 facade conformance: passed
-semantic witness: passed
-fixed-point: diffs 0
+core-self-interpret report: passed
+core_0/core_1 exchangeability: passed
 TrustBase manifest: passed
+architecture guardrail: passed
 artifact gate: passed
 git diff: 只包含本轮预期改动
 ```
@@ -206,9 +207,11 @@ artifact gate 失败、超时或缺少证据时，保留旧 core。不能把超�
 target commit
 semantic-risk scope
 commands run
-passed witness list
-fixed-point result
+core-self-interpret report result
+core_0/core_1 exchangeability result
 TrustBase manifest result
+architecture guardrail result
+focused witness list if any focused debugging was required
 self-artifact-witness result
 artifact path
 replacement decision

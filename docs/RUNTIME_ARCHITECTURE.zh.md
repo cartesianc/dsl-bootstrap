@@ -265,34 +265,25 @@ RuntimeContextNodeExited
 
 ```text
 stack build
-stack exec bootstrap-report
-stack exec fixed-point-smoke
-stack exec runtime-evidence-witness
-stack exec runtime-hot-path-witness
-stack exec runtime-policy-witness
-stack exec constraint-proof-witness -- --smt=auto
-stack exec workflow-semantics-witness
-stack exec domain-app-report
-stack exec registry-codegen-witness -- --json
-stack exec business-syntax-witness
+stack exec core-self-interpret -- --json
+stack exec trust-base-manifest-witness -- --evidence-json
+stack exec architecture-concern-witness -- --json
 ```
 
 通过标准：
 
 ```text
-bootstrap report passed
-fixed-point diffs: 0
-workflow semantics witness passed
-domain-app report passed
-registry codegen witness passed
-business syntax witness passed
+core-self-interpret-report.v1 passed
+core_0/core_1 exchangeability passed
+TrustBase manifest evidence passed
+architecture concern evidence passed
 ```
 
 如果本机 HLS 占用默认 `.stack-work` 的 build lock，可以在当前工作树中用隔离目录验证：
 
 ```powershell
 stack --work-dir .stack-work-codex build
-stack --work-dir .stack-work-codex exec fixed-point-smoke
+stack --work-dir .stack-work-codex exec core-self-interpret -- --json
 ```
 
 artifact gate 仍然使用 artifact 内部自己的默认 `.stack-work`，不会依赖当前工作树的 `.stack-work-codex`。

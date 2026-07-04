@@ -11,7 +11,8 @@ Use this skill to make ordinary framework iterations with the lowest possible me
 
 1. Locate one anchor.
 2. Change the smallest semantic surface.
-3. Run the smallest witness that proves it.
+3. Prove it through the self-interpret line, using focused witnesses only while
+   debugging the changed surface.
 
 Do not start from the whole repository. Start from one of:
 
@@ -58,12 +59,40 @@ Prefer these entry points:
 ```text
 Framework.Business  capability authoring surface
 Framework.Ast       workflow / AppBlueprint / recursion context facade
-Framework.Ast.Layout optional AST layout and runtime cursor projection
+Framework.Ast.Layout optional AST layout, runtime cursor, and diagnosis impact projection
 Framework.Handler   handler / transform implementation API
 Framework.TrustBase self-iteration, reports, manifests, gates
 ```
 
 Avoid treating `Framework.Runtime` or `Bootstrap.Runtime` as business frontend.
+
+## Self-Interpret Spine
+
+Ordinary architecture iteration converges on:
+
+```text
+core_0 -> new_core -> empty_business
+```
+
+The default proof is:
+
+```powershell
+stack --work-dir .stack-work-codex build
+stack --work-dir .stack-work-codex exec core-self-interpret -- --json
+```
+
+For semantic/release guardrails, add:
+
+```powershell
+stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json
+stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json
+```
+
+Focused witnesses such as `workflow-semantics-witness`,
+`business-syntax-witness`, `runtime-*-witness`, `fixed-point-smoke`, and
+`domain-app-report` remain useful while debugging a surface. They should not
+become parallel default release criteria once their behavior is covered by
+`core-self-interpret-report.v1`.
 
 ## Recursion Context Model
 
@@ -75,11 +104,16 @@ Pre-run model:
 
 Live model:
   hanging context + listen-during-run -> RuntimeContextEvent -> AstRuntimeCursor
+
+Diagnosis replay:
+  RuntimeFailureDiagnosis + AstLayoutModel -> AstDiagnosisImpactModel
 ```
 
 Keep the context optional. Do not hardcode layout/listener context into the default core app.
 
 The runtime cursor path must match an `AstLayoutModel` node path. If path behavior changes, strengthen `workflow-recursion-context` or `session123-ast-layout-optional-projection` before trusting the feature.
+
+When a fact failure must be replayed graphically, use the diagnosis impact overlay. Do not push renderer behavior or drawing algorithms into core.
 
 ## Architecture Pressure
 

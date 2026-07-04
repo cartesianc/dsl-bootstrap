@@ -91,7 +91,7 @@ function Invoke-SelfArtifactGateOnce {
 
   if (-not $IncludeSelfArtifact) {
     if ($List) {
-      Write-Output "# self-artifact-witness skipped; pass -IncludeSelfArtifact to run the high-risk artifact gate once"
+      return
     } else {
       Write-Host "[check] self-artifact-witness skipped; pass -IncludeSelfArtifact to run the high-risk artifact gate once"
     }

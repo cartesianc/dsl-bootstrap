@@ -83,19 +83,10 @@ defaultSelfArtifactManifest =
         , ArtifactSource "LICENSE" "LICENSE"
         ]
     , artifactManifestCommands =
-        [ ArtifactCommand "stack build" "stack" ["build"]
-        , ArtifactCommand "bootstrap report" "stack" ["exec", "bootstrap-report"]
-        , ArtifactCommand "fixed point" "stack" ["exec", "fixed-point-smoke"]
-        , ArtifactCommand "runtime evidence witness" "stack" ["exec", "runtime-evidence-witness"]
-        , ArtifactCommand "runtime hot path witness" "stack" ["exec", "runtime-hot-path-witness"]
-        , ArtifactCommand "runtime policy witness" "stack" ["exec", "runtime-policy-witness"]
-        , ArtifactCommand "constraint proof witness" "stack" ["exec", "constraint-proof-witness", "--", "--smt=auto"]
-        , ArtifactCommand "workflow semantics witness" "stack" ["exec", "workflow-semantics-witness"]
-        , ArtifactCommand "runtime diagnosis witness" "stack" ["exec", "runtime-diagnosis-witness"]
-        , ArtifactCommand "framework core frontend witness" "stack" ["exec", "framework-core-frontend-witness"]
-        , ArtifactCommand "domain app report" "stack" ["exec", "domain-app-report"]
-        , ArtifactCommand "registry codegen witness" "stack" ["exec", "registry-codegen-witness"]
-        , ArtifactCommand "business syntax witness" "stack" ["exec", "business-syntax-witness"]
+        [ ArtifactCommand "stack build" "stack" ["--work-dir", ".stack-work-codex", "build"]
+        , ArtifactCommand "core self interpret" "stack" ["--work-dir", ".stack-work-codex", "exec", "core-self-interpret", "--", "--json"]
+        , ArtifactCommand "trust base manifest evidence" "stack" ["--work-dir", ".stack-work-codex", "exec", "trust-base-manifest-witness", "--", "--evidence-json"]
+        , ArtifactCommand "architecture concern evidence" "stack" ["--work-dir", ".stack-work-codex", "exec", "architecture-concern-witness", "--", "--json"]
         ]
     }
 

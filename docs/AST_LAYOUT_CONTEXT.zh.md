@@ -131,6 +131,8 @@ cursor projection：
 
 ```haskell
 astRuntimeCursorFromEvent :: RuntimeContextEvent -> Maybe AstRuntimeCursor
+renderAstRuntimeCursor :: AstRuntimeCursor -> String
+renderAstRuntimeCursorOnLayout :: AstLayoutModel -> AstRuntimeCursor -> String
 ```
 
 `AstRuntimeCursor` 保存：
@@ -170,7 +172,27 @@ astLiveLayoutContext
 
 它们都要求调用方传入 algebra effect systems。默认 framework-core AST 不自动挂 layout context。
 
-## 6. Witness
+## 6. Diagnosis Impact Overlay
+
+diagnosis 是 runtime listener 之后的复盘层。fact 失败、handler 返回空值、缺少 transform 或 send 失败时，runtime 先记录 `RuntimeFailureDiagnosis`，layout 层再把它投影成可渲染的影响范围。
+
+```text
+RuntimeFailureDiagnosis
+  -> astDiagnosisImpactModel AstLayoutModel
+  -> AstDiagnosisImpactModel
+```
+
+`AstDiagnosisImpactModel` 不修改 AST，也不修改 runtime 语义。它只把 diagnosis 里的事实映射到已有 layout 节点：
+
+```text
+rootFact
+suspectFacts
+pollutedFacts
+```
+
+renderer 可以把 `AstDiagnosisRootFact`、`AstDiagnosisSuspectFact`、`AstDiagnosisPollutedFact` 画成不同图层。后台监听系统拿到 fact 错误后，可以沿着 AST layout 展示影响范围。
+
+## 7. Witness
 
 当前 witness 覆盖：
 
@@ -186,15 +208,23 @@ session123-ast-layout-optional-projection
   layout 是默认 AST 的只读 projection
   默认 framework-core AST 不含 context node
   layout node count 与 AST tree node count 对齐
+  diagnosis impact overlay 可以把 root fact 映射到 layout 节点
 ```
 
 推荐轻量验证：
 
 ```powershell
 stack --work-dir .stack-work-codex build
+stack --work-dir .stack-work-codex exec ast-layout
+stack --work-dir .stack-work-codex exec ast-layout -- layout
+stack --work-dir .stack-work-codex exec ast-layout -- cursor
+stack --work-dir .stack-work-codex exec ast-layout -- diagnosis
+stack --work-dir .stack-work-codex exec ast-layout -- live
 stack --work-dir .stack-work-codex exec workflow-semantics-witness -- --json
 stack --work-dir .stack-work-codex exec framework-core-frontend-witness -- --json
 stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json
 ```
+
+`ast-layout -- live` 是轻量 runtime listener 样板。`ast-layout -- live-core` 会运行完整 framework-core self-domain 路径，可能触发较重 handler，不作为默认查看命令。
 
 `self-artifact-witness` 只在 core promotion gate 中运行。

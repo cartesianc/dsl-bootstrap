@@ -44,6 +44,7 @@ module Framework.TrustBase
   , module Framework.Runtime.Policy
   , module Framework.SelfArtifact
   , module Framework.TrustBase.Manifest
+  , module Framework.TrustBase.SelfInterpret
   , module Framework.Workflow.Semantics
   ) where
 
@@ -96,6 +97,7 @@ import Framework.Runtime.HotPath
 import Framework.Runtime.Policy
 import Framework.SelfArtifact
 import Framework.TrustBase.Manifest
+import Framework.TrustBase.SelfInterpret
 import Framework.Workflow.Semantics
 
 type TrustBaseRuntimeEffectEnvironment = Native.RuntimeEffectEnvironment

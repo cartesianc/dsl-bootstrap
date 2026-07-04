@@ -88,6 +88,7 @@ explicitCoreSurfaceModules =
   , domainReportFacade
   , trustBaseFacade
   , trustBaseManifestFacade
+  , trustBaseSelfInterpretFacade
   , fixedPointFacade
   , frontendEvidenceFacade
   , architectureConcernFacade
@@ -564,20 +565,34 @@ astLayoutFacade =
     "Framework.Ast.Layout"
     "optional AST layout model and runtime cursor projection for explicit recursion contexts"
     ( map typeCapability
-        [ "AstLayoutAxis"
+        [ "AstDiagnosisImpactKind"
+        , "AstDiagnosisImpactModel"
+        , "AstDiagnosisImpactNode"
+        , "AstLayoutAxis"
         , "AstLayoutEdge"
         , "AstLayoutModel"
         , "AstLayoutNode"
         , "AstRuntimeCursor"
+        , "AstRuntimeNodeStatus"
+        , "AstRuntimeStatus"
+        , "AstRuntimeStatusModel"
         ]
         ++ map valueCapability
-          [ "astLayoutContext"
+          [ "astDiagnosisImpactModel"
+          , "astLayoutContext"
           , "astLiveLayoutContext"
           , "astLayoutNodeByPath"
           , "astRuntimeCursorFromEvent"
+          , "astRuntimeStatusModel"
           , "layoutAppBlueprint"
           , "layoutAstTree"
+          , "layoutDomainAppBlueprint"
+          , "renderAstDiagnosisImpactModel"
           , "renderAstLayoutModel"
+          , "renderAstRuntimeCursor"
+          , "renderAstRuntimeCursorOnLayout"
+          , "renderAstRuntimeStatus"
+          , "renderAstRuntimeStatusModel"
           ]
     )
 
@@ -1157,6 +1172,36 @@ trustBaseManifestFacade =
           , "trustBaseManifestRequiredCoreSurfaceModules"
           , "trustBaseManifestRequiredGatePolicies"
           , "trustBaseManifestRequiredJsonSchemas"
+          ]
+    )
+
+trustBaseSelfInterpretFacade :: CoreSurfaceModule
+trustBaseSelfInterpretFacade =
+  moduleSurface
+    "Framework.TrustBase.SelfInterpret"
+    "core_0 -> new_core -> empty_business self-interpret report, AST projection, and evidence payload model"
+    ( map typeCapability
+        [ "CoreSelfInterpretReport"
+        , "CoreSelfInterpretStage"
+        , "CoreSelfInterpretEvidencePayload"
+        , "CoreSelfInterpretEvidenceStatus"
+        ]
+        ++ map valueCapability
+          [ "buildCoreSelfInterpretReport"
+          , "coreSelfInterpretBootLayout"
+          , "coreSelfInterpretEvidenceClaimNames"
+          , "coreSelfInterpretEvidencePayloadPassed"
+          , "coreSelfInterpretLiveBlueprint"
+          , "coreSelfInterpretLiveContextName"
+          , "coreSelfInterpretLiveModes"
+          , "coreSelfInterpretReportPassed"
+          , "emptyBusinessBlueprint"
+          , "emptyBusinessDomain"
+          , "emptyBusinessEffects"
+          , "renderCoreSelfInterpretEvidencePayload"
+          , "renderCoreSelfInterpretEvidenceStatus"
+          , "renderCoreSelfInterpretReport"
+          , "renderCoreSelfInterpretReportJson"
           ]
     )
 

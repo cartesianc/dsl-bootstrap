@@ -11,14 +11,7 @@ $WorkspaceRoot = Split-Path -Parent $ScriptRoot
 
 $commands = @(
   ,@("stack", "--work-dir", $WorkDir, "build")
-  ,@("stack", "--work-dir", $WorkDir, "exec", "framework-core-frontend-witness", "--", "--json")
-  ,@("stack", "--work-dir", $WorkDir, "exec", "business-syntax-witness", "--", "--json")
-  ,@("stack", "--work-dir", $WorkDir, "exec", "domain-app-report", "--", "--json")
-  ,@("stack", "--work-dir", $WorkDir, "exec", "runtime-hot-path-witness", "--", "--json")
-  ,@("stack", "--work-dir", $WorkDir, "exec", "runtime-policy-witness", "--", "--json")
-  ,@("stack", "--work-dir", $WorkDir, "exec", "runtime-diagnosis-witness", "--", "--json")
-  ,@("stack", "--work-dir", $WorkDir, "exec", "workflow-semantics-witness", "--", "--json")
-  ,@("stack", "--work-dir", $WorkDir, "exec", "workflow-semantics-witness", "--", "--runtime-concurrency-json")
+  ,@("stack", "--work-dir", $WorkDir, "exec", "core-self-interpret", "--", "--json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "trust-base-manifest-witness", "--", "--evidence-json")
   ,@("stack", "--work-dir", $WorkDir, "exec", "architecture-concern-witness", "--", "--json")
 )

@@ -229,15 +229,10 @@ artifact runner manifest policy split
 每次收缩都必须保持：
 
 ```powershell
-stack build
-stack exec bootstrap-report
-stack exec fixed-point-smoke
-stack exec runtime-evidence-witness
-stack exec runtime-hot-path-witness
-stack exec runtime-policy-witness
-stack exec workflow-semantics-witness
-stack exec runtime-diagnosis-witness
-stack exec trust-base-manifest-witness
+stack --work-dir .stack-work-codex build
+stack --work-dir .stack-work-codex exec core-self-interpret -- --json
+stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json
+stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json
 ```
 
 高危 artifact gate 只在大构建和轻量 gates 完成后最多运行一次：

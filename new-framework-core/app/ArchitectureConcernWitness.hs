@@ -13,6 +13,10 @@ import Bootstrap.CoreSurface
   , CoreSurfaceModule (..)
   , coreSurfaceModules
   )
+import Bootstrap.Workflow
+  ( RecursionContextName (..)
+  , WorkflowFact (..)
+  )
 import Domain.Ast
   ( AstRegistration (..)
   , frameworkCoreAstRegistration
@@ -26,10 +30,20 @@ import Domain.Registry
   , renderRegisteredAstTreesJson
   )
 import Framework.Ast.Layout
-  ( AstLayoutModel (..)
+  ( AstDiagnosisImpactKind (..)
+  , AstDiagnosisImpactModel (..)
+  , AstDiagnosisImpactNode (..)
+  , AstLayoutModel (..)
   , AstLayoutNode (..)
+  , AstRuntimeNodeStatus (..)
+  , AstRuntimeStatus (..)
+  , AstRuntimeStatusModel (..)
+  , astDiagnosisImpactModel
+  , astRuntimeStatusModel
   , layoutAppBlueprint
   )
+import Framework.Runtime.Types
+  ( RuntimeContextEvent (..) )
 import Framework.Architecture.Concern
   ( ArchitectureConcernEvidencePayload (..)
   , architectureConcernClaimManifestEvidenceClaimName
@@ -73,7 +87,9 @@ import Framework.Runtime.Concurrency
   , runtimeConcurrencyEvidenceClaimNames
   )
 import Framework.Runtime.Diagnosis
-  ( runtimeDiagnosisCoreClaimNames
+  ( RuntimeDiagnosisRootCause (..)
+  , RuntimeFailureDiagnosis (..)
+  , runtimeDiagnosisCoreClaimNames
   , runtimeDiagnosisEvidenceClaimNames
   )
 import Framework.Runtime.HotPath
@@ -344,16 +360,51 @@ astLayoutOptionalProjectionPayload =
       layoutAppBlueprint blueprint
     layoutNodes =
       astLayoutNodes layout
+    sampleStatusNode =
+      firstLayoutNodeKind "run" layoutNodes
+    sampleRuntimeContextEvents =
+      case sampleStatusNode of
+        Just node ->
+          [ RuntimeContextNodeEntered sampleRuntimeContextName (astLayoutNodePath node) (astLayoutNodeKind node) (astLayoutNodeName node)
+          , RuntimeContextNodeExited sampleRuntimeContextName (astLayoutNodePath node) (astLayoutNodeKind node) (astLayoutNodeName node)
+          ]
+        Nothing ->
+          []
+    statusModel =
+      astRuntimeStatusModel sampleRuntimeContextName layout sampleRuntimeContextEvents
+    statusNodes =
+      astRuntimeStatusModelNodes statusModel
+    impact =
+      astDiagnosisImpactModel layout sampleDiagnosis
+    impactNodes =
+      astDiagnosisImpactNodes impact
     required =
-      [ ("Framework.Ast.Layout AstLayoutModel type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstLayoutModel")
+      [ ("Framework.Ast.Layout AstDiagnosisImpactKind type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstDiagnosisImpactKind")
+      , ("Framework.Ast.Layout AstDiagnosisImpactModel type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstDiagnosisImpactModel")
+      , ("Framework.Ast.Layout AstDiagnosisImpactNode type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstDiagnosisImpactNode")
+      , ("Framework.Ast.Layout AstLayoutModel type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstLayoutModel")
       , ("Framework.Ast.Layout AstLayoutNode type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstLayoutNode")
       , ("Framework.Ast.Layout AstRuntimeCursor type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstRuntimeCursor")
+      , ("Framework.Ast.Layout AstRuntimeStatus type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstRuntimeStatus")
+      , ("Framework.Ast.Layout AstRuntimeNodeStatus type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstRuntimeNodeStatus")
+      , ("Framework.Ast.Layout AstRuntimeStatusModel type", coreSurfaceTypeCapabilityPresent "Framework.Ast.Layout" "AstRuntimeStatusModel")
+      , ("Framework.Ast.Layout astDiagnosisImpactModel value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "astDiagnosisImpactModel")
+      , ("Framework.Ast.Layout astRuntimeStatusModel value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "astRuntimeStatusModel")
       , ("Framework.Ast.Layout layoutAppBlueprint value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "layoutAppBlueprint")
       , ("Framework.Ast.Layout astLiveLayoutContext value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "astLiveLayoutContext")
+      , ("Framework.Ast.Layout renderAstDiagnosisImpactModel value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "renderAstDiagnosisImpactModel")
+      , ("Framework.Ast.Layout renderAstRuntimeCursor value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "renderAstRuntimeCursor")
+      , ("Framework.Ast.Layout renderAstRuntimeCursorOnLayout value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "renderAstRuntimeCursorOnLayout")
+      , ("Framework.Ast.Layout renderAstRuntimeStatus value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "renderAstRuntimeStatus")
+      , ("Framework.Ast.Layout renderAstRuntimeStatusModel value", coreSurfaceValueCapabilityPresent "Framework.Ast.Layout" "renderAstRuntimeStatusModel")
       , ("default framework-core AST has no context node", not (anyNodeKind "context" nodes))
       , ("layout root path matches AST root", astLayoutRootPath layout == astTreeNodePath tree)
       , ("layout node count matches AST projection", length layoutNodes == length nodes)
       , ("layout includes run node coordinates", any ((== "run") . astLayoutNodeKind) layoutNodes)
+      , ("runtime status projection has sample node", length statusNodes == 1)
+      , ("runtime status projection resolves to layout coordinate", any resolvedRuntimeStatusNode statusNodes)
+      , ("runtime status projection marks completed node", any ((== AstRuntimeCompleted) . astRuntimeNodeStatus) statusNodes)
+      , ("diagnosis impact root maps to layout node", any isRootImpactNode impactNodes)
       ]
     missing =
       [ name | (name, present) <- required, not present ]
@@ -362,9 +413,58 @@ astLayoutOptionalProjectionPayload =
         then
           "optional layout nodes: "
             ++ show (length layoutNodes)
+            ++ "; runtime status nodes: "
+            ++ show (length statusNodes)
+            ++ "; impact nodes: "
+            ++ show (length impactNodes)
             ++ "; root path: "
             ++ joinWith "/" (astLayoutRootPath layout)
         else observedList missing
+
+sampleDiagnosis :: RuntimeFailureDiagnosis
+sampleDiagnosis =
+  RuntimeFailureDiagnosis
+    { diagnosisRootSystem = Nothing
+    , diagnosisRootFact = astStructureFact
+    , diagnosisPipelineStep = Nothing
+    , diagnosisRootCause = DiagnosisUnknownRootCause "sample diagnosis impact"
+    , diagnosisRootSend = Nothing
+    , diagnosisRootError = "sample diagnosis impact"
+    , diagnosisNodes = []
+    , diagnosisProbes = []
+    , diagnosisSuspects = [astStructureFact]
+    , diagnosisPollutedFacts = []
+    }
+
+astStructureFact :: WorkflowFact
+astStructureFact =
+  WorkflowFact "AstStructureExpressedFact"
+
+sampleRuntimeContextName :: RecursionContextName
+sampleRuntimeContextName =
+  RecursionContextName "ArchitectureConcernStatusContext"
+
+isRootImpactNode :: AstDiagnosisImpactNode -> Bool
+isRootImpactNode node =
+  astDiagnosisImpactKind node == AstDiagnosisRootFact
+    && astDiagnosisImpactFact node == astStructureFact
+
+resolvedRuntimeStatusNode :: AstRuntimeNodeStatus -> Bool
+resolvedRuntimeStatusNode node =
+  case astRuntimeNodeStatusPosition node of
+    Just _ ->
+      True
+    Nothing ->
+      False
+
+firstLayoutNodeKind :: String -> [AstLayoutNode] -> Maybe AstLayoutNode
+firstLayoutNodeKind _ [] =
+  Nothing
+firstLayoutNodeKind expectedKind (node : rest)
+  | astLayoutNodeKind node == expectedKind =
+      Just node
+  | otherwise =
+      firstLayoutNodeKind expectedKind rest
 
 frontendClaimModuleLinkPresent :: String -> String -> Bool
 frontendClaimModuleLinkPresent factName moduleName =
@@ -700,7 +800,7 @@ selfArtifactHighRiskGateGuardPayload checkLibText =
   concernEvidence
     "session3-self-artifact-high-risk-gate-guard"
     (null missing)
-    "self-artifact-witness is a high-risk release gate that is skipped by default and guarded by a per-HEAD marker"
+    "self-artifact-witness is omitted from the default release gate and guarded by an explicit per-HEAD high-risk policy"
     (observedList missing)
     "SelfArtifactHighRiskGateGuardArtifact"
     "low:gate-policy"
@@ -709,7 +809,7 @@ selfArtifactHighRiskGateGuardPayload checkLibText =
     required =
       [ ("check-release gate is not high-risk", gatePolicyHighRiskFlag "check-release" False)
       , ("check-release-with-self-artifact gate is high-risk", gatePolicyHighRiskFlag "check-release-with-self-artifact" True)
-      , ("check-release skips self-artifact by default", gatePolicyCommandPresent "check-release" "# self-artifact-witness skipped; pass -IncludeSelfArtifact to run the high-risk artifact gate once")
+      , ("check-release omits self-artifact by default", not (gatePolicyCommandMentions "check-release" "self-artifact-witness"))
       , ("check-release-with-self-artifact lists high-risk marker note", gatePolicyCommandPresent "check-release-with-self-artifact" "# self-artifact-witness high-risk gate; same HEAD may run only once unless marker is reset")
       , ("check-release-with-self-artifact lists self-artifact command", gatePolicyCommandPresent "check-release-with-self-artifact" "stack --work-dir .stack-work-codex exec self-artifact-witness")
       , ("check-lib requires IncludeSelfArtifact", "IncludeSelfArtifact" `isInfixOf` checkLibText)
@@ -965,6 +1065,14 @@ gatePolicyCommandPresent policyName command =
     matches policy =
       trustBaseGatePolicyName policy == policyName
         && command `elem` trustBaseGatePolicyCommands policy
+
+gatePolicyCommandMentions :: String -> String -> Bool
+gatePolicyCommandMentions policyName text =
+  any matches trustBaseManifestRequiredGatePolicies
+  where
+    matches policy =
+      trustBaseGatePolicyName policy == policyName
+        && any (text `isInfixOf`) (trustBaseGatePolicyCommands policy)
 
 highRiskGatePolicyPresent :: String -> Bool
 highRiskGatePolicyPresent policyName =

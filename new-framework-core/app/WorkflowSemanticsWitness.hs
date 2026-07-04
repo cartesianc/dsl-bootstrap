@@ -530,6 +530,12 @@ recursionContextWitness = do
           Nothing ->
             False
   require "context cursor aligns with layout" (any cursorPathInLayout contextRunCursors)
+  require
+    "context cursor renders on layout"
+    ( any
+        (not . null . L.renderAstRuntimeCursorOnLayout layout)
+        (filter cursorPathInLayout contextRunCursors)
+    )
   requirePlanPasses "valid context algebra" validContextBlueprint validContextTheory
   requirePlanFails "context algebra missing import" missingContextImportBlueprint missingContextImportTheory
 

@@ -58,37 +58,19 @@ framework 改动完成前必须通过编译和自证。
 展开命令：
 
 ```powershell
-stack build
-stack exec mytest
-stack exec domain-app-report
-stack exec domain-app-self-smoke
-stack exec framework-core-mytest
-stack exec bootstrap-smoke
-stack exec bootstrap-runtime-smoke
-stack exec bootstrap-report
-stack exec fixed-point-smoke
-stack exec runtime-evidence-witness
-stack exec runtime-diagnosis-witness
-stack exec constraint-proof-witness -- --smt=auto
-stack exec workflow-semantics-witness
-stack exec registry-codegen-witness
-stack exec business-syntax-witness
+stack --work-dir .stack-work-codex build
+stack --work-dir .stack-work-codex exec core-self-interpret -- --json
+stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json
+stack --work-dir .stack-work-codex exec architecture-concern-witness -- --json
 ```
 
 通过结果：
 
 ```text
-domain-app-report: status passed
-domain-app semantic evidence: failed 0
-bootstrap-report: status passed
-fixed-point-smoke: diffs 0
-runtime-evidence-witness: passed
-runtime-diagnosis-witness: passed
-constraint-proof-witness --smt=auto: passed
-workflow-semantics-witness: passed
-registry-codegen-witness: passed
-business-syntax-witness: passed
-self-artifact-witness: passed (仅高危 artifact gate 轮次需要)
+core-self-interpret-report.v1: passed
+TrustBase manifest evidence: passed
+architecture concern evidence: passed
+self-artifact-witness: skipped unless this is the explicit high-risk artifact gate round
 ```
 
 边界检查：
@@ -115,22 +97,15 @@ README/docs-only 变更不触发它。
 gate 步骤：
 
 ```text
-1. 在目标提交完成大构建和轻量 gates。
+1. 在目标提交完成 release pre-gate：build + core-self-interpret + TrustBase manifest + architecture guardrail。
 2. 确认当前轮还没有运行过 self-artifact-witness。
 3. 运行 .\scripts\check-release.cmd -IncludeSelfArtifact。
 4. witness 创建 .generated/stage1-framework。
 5. Stage 1 artifact 运行 stack build。
-6. Stage 1 artifact 运行 bootstrap-report。
-7. Stage 1 artifact 运行 fixed-point-smoke。
-8. Stage 1 artifact 运行 runtime-evidence-witness。
-9. Stage 1 artifact 运行 constraint-proof-witness -- --smt=auto。
-10. Stage 1 artifact 运行 workflow-semantics-witness。
-11. Stage 1 artifact 运行 domain-app-report。
-12. Stage 1 artifact 运行 registry-codegen-witness。
-13. Stage 1 artifact 运行 business-syntax-witness。
+6. Stage 1 artifact 运行 core-self-interpret、trust-base-manifest-witness 和 architecture-concern-witness。
 ```
 
-十三步全部通过后，旧 framework 保留为参考和回滚点。
+artifact 内部的 self-interpret release proof 全部通过后，旧 framework 保留为参考和回滚点。
 
 ## 替换 Gate
 
@@ -139,9 +114,8 @@ gate 步骤：
 ```text
 artifact 物化 gate: passed
 边界检查: passed
-self-domain report: passed
-fixed-point evidence: diffs 0
-domain-app frontend entry: passed
+core-self-interpret report: passed
+core_0/core_1 exchangeability: passed
 git status: clean after commit
 ```
 
@@ -175,7 +149,7 @@ Stage 6 状态：
 ```text
 self-artifact manifest 已声明在 framework-core AST/effect semantics 中
 self-artifact-witness 物化 .generated/stage1-framework
-stage1 framework artifact 可编译并验证自身 reports
+stage1 framework artifact 可编译并验证 self-interpret release proof
 ```
 
 后续 stage 必须保留本文件列出的 gate。

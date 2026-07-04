@@ -14,11 +14,9 @@ Ordinary architecture iteration belongs to `$framework-self-iteration`.
 The candidate core must pass the whole chain:
 
 ```text
-domain-as-core expression
-  -> facade conformance
-  -> semantic witness
-  -> fixed-point
-  -> TrustBase manifest
+core_0 -> core_1 -> empty_business self-interpret
+  -> normalized core_0 ~= core_1 evidence
+  -> TrustBase manifest / architecture guardrails
   -> release pre-gate
   -> self-artifact gate
   -> replacement decision
@@ -48,12 +46,12 @@ Do not promote if any item is missing, timed out, failed, or only indirectly pro
 
 ```text
 build passed
-facade conformance passed
-semantic witness passed
-fixed-point diffs 0
+core-self-interpret passed
+core_0 ~= core_1 fixed-point evidence passed
+empty_business closes recursion without TrustBase leakage
+boot AST layout and live cursor projection passed
 TrustBase manifest passed
-schema catalog passed
-domain-side acceptance passed
+architecture concern guardrail passed
 self-artifact gate passed
 git diff contains only intended changes
 ```

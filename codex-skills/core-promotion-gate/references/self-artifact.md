@@ -16,6 +16,12 @@ do not rerun casually after timeout
 
 ## Preferred Command
 
+Run only after the default release pre-gate has passed:
+
+```text
+build + core-self-interpret + TrustBase manifest + architecture guardrail
+```
+
 ```powershell
 .\scripts\check-release.cmd -IncludeSelfArtifact
 ```
@@ -33,14 +39,16 @@ The gate must prove:
 ```text
 .generated/stage1-framework created
 artifact build passed
-artifact bootstrap-report passed
-artifact fixed-point-smoke diffs 0
-artifact runtime evidence passed
-artifact workflow semantics passed
-artifact domain-app-report passed
-artifact registry-codegen witness passed
-artifact business-syntax witness passed
+artifact core-self-interpret passed
+artifact TrustBase manifest evidence passed
+artifact architecture guardrail passed
+artifact commands remain collapsed onto the self-interpret release proof
 ```
+
+Focused witnesses such as `fixed-point-smoke`, `domain-app-report`, workflow,
+runtime, registry, business, and schema checks stay available for debugging
+their surfaces. They are not reintroduced as parallel artifact release criteria
+once the behavior is covered by `core-self-interpret-report.v1`.
 
 ## Failure Handling
 
