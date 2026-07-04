@@ -52,6 +52,7 @@ import Framework.TrustBase.Manifest
   , TrustBaseManifest (..)
   , defaultTrustBaseManifest
   , trustBaseManifestEvidenceClaimNames
+  , trustBaseManifestRequiredCoreSurfaceModules
   , trustBaseManifestRequiredGatePolicies
   , trustBaseManifestRequiredJsonSchemas
   )
@@ -154,11 +155,11 @@ runtimeImplementationModuleCoveragePayload =
   concernEvidence
     "session1-runtime-implementation-module-coverage"
     (null missing)
-    "runtime implementation split modules are indexed in CoreSurface with representative typed value, handler, state, interpreter, and diagnosis capabilities"
+    "runtime implementation split modules are indexed in CoreSurface and TrustBase manifest with representative typed value, handler, state, interpreter, and diagnosis capabilities"
     (observedList missing)
     "RuntimeImplementationModuleCoverageArtifact"
     "low:surface-sync"
-    "add runtime child modules to CoreSurface before relying on them as self-expressed architecture boundaries"
+    "add runtime child modules to CoreSurface and TrustBase manifest before relying on them as self-expressed architecture boundaries"
   where
     required =
       [ ("Framework.Runtime.Values runtimeValueToSome value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Values" "runtimeValueToSome")
@@ -175,8 +176,24 @@ runtimeImplementationModuleCoveragePayload =
       , ("Framework.Runtime.Interpreter runBlueprintWithEffectEnvironmentResult value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Interpreter" "runBlueprintWithEffectEnvironmentResult")
       , ("Framework.Runtime.Diagnosis buildFailureDiagnosisWithSystem value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Diagnosis" "buildFailureDiagnosisWithSystem")
       ]
+        ++ [ ("TrustBase manifest runtime module: " ++ moduleName, moduleName `elem` trustBaseManifestFacadeModules defaultTrustBaseManifest)
+           | moduleName <- runtimeImplementationTrustBaseModules
+           ]
+        ++ [ ("TrustBase required CoreSurface runtime module: " ++ moduleName, moduleName `elem` trustBaseManifestRequiredCoreSurfaceModules)
+           | moduleName <- runtimeImplementationTrustBaseModules
+           ]
     missing =
       [ name | (name, present) <- required, not present ]
+
+runtimeImplementationTrustBaseModules :: [String]
+runtimeImplementationTrustBaseModules =
+  [ "Framework.Runtime.Values"
+  , "Framework.Runtime.Handlers"
+  , "Framework.Runtime.State"
+  , "Framework.Runtime.Types"
+  , "Framework.Runtime.Interpreter"
+  , "Framework.Runtime.Diagnosis"
+  ]
 
 astCoreCabalClaimLinkPayload :: ArchitectureConcernEvidencePayload
 astCoreCabalClaimLinkPayload =
