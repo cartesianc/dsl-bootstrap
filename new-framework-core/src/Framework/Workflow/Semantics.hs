@@ -4,6 +4,8 @@ module Framework.Workflow.Semantics
   , renderWorkflowSemanticsEvidencePayload
   , renderWorkflowSemanticsEvidencePayloadsJson
   , renderWorkflowSemanticsEvidenceStatus
+  , workflowSemanticsCoreClaimNames
+  , workflowSemanticsEvidenceClaimNames
   , workflowSemanticsEvidencePayloadPassed
   ) where
 
@@ -20,6 +22,30 @@ data WorkflowSemanticsEvidenceStatus
   = WorkflowSemanticsEvidencePassed
   | WorkflowSemanticsEvidenceFailed
   deriving (Eq, Show)
+
+workflowSemanticsCoreClaimNames :: [String]
+workflowSemanticsCoreClaimNames =
+  [ "workflow-parallel-concurrency"
+  , "workflow-parallel-conflict"
+  , "workflow-race-cancellation"
+  , "workflow-race-exhausted"
+  , "workflow-fallback-isolation"
+  , "workflow-choice-selected-branch"
+  , "workflow-fact-any-fallback"
+  , "workflow-loop-fixed-point"
+  , "workflow-middleware-failure"
+  , "workflow-suspense-snapshot"
+  , "workflow-callback-failure"
+  , "workflow-native-framework-alignment"
+  , "workflow-effect-system-boundary"
+  , "workflow-effect-system-scope"
+  , "workflow-effect-system-contracts"
+  , "workflow-effect-system-pipeline"
+  ]
+
+workflowSemanticsEvidenceClaimNames :: [String]
+workflowSemanticsEvidenceClaimNames =
+  workflowSemanticsCoreClaimNames ++ ["workflow-semantics-claim-manifest"]
 
 workflowSemanticsEvidencePayloadPassed :: WorkflowSemanticsEvidencePayload -> Bool
 workflowSemanticsEvidencePayloadPassed payload =

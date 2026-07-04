@@ -5,6 +5,7 @@ module Framework.Runtime.Concurrency
   , renderRuntimeConcurrencyEvidencePayloadsJson
   , renderRuntimeConcurrencyEvidenceStatus
   , runtimeConcurrencyEvidenceArtifactSummary
+  , runtimeConcurrencyEvidenceClaimNames
   , runtimeConcurrencyEvidencePayloadPassed
   , runtimeConcurrencyEvidencePayloads
   ) where
@@ -74,7 +75,11 @@ renderRuntimeConcurrencyEvidencePayloadsJson payloads =
 runtimeConcurrencyEvidenceArtifactSummary :: String
 runtimeConcurrencyEvidenceArtifactSummary =
   "runtime concurrency evidence payload claims: "
-    ++ joinWith ", " (map runtimeConcurrencyClaimName runtimeConcurrencyClaimLinks)
+    ++ joinWith ", " runtimeConcurrencyEvidenceClaimNames
+
+runtimeConcurrencyEvidenceClaimNames :: [String]
+runtimeConcurrencyEvidenceClaimNames =
+  map runtimeConcurrencyClaimName runtimeConcurrencyClaimLinks
 
 runtimeConcurrencyClaimLinks :: [RuntimeConcurrencyClaimLink]
 runtimeConcurrencyClaimLinks =

@@ -9,6 +9,8 @@ import System.Environment
 
 import Framework.FixedPoint
   ( runtimeBackendParityEvidenceClaimNames )
+import Framework.Runtime.Concurrency
+  ( runtimeConcurrencyEvidenceClaimNames )
 import Framework.Runtime.Diagnosis
   ( runtimeDiagnosisEvidenceClaimNames )
 import Framework.TrustBase.Manifest
@@ -17,6 +19,10 @@ import Framework.TrustBase.Manifest
   , defaultTrustBaseManifest
   , trustBaseManifestRequiredGatePolicies
   , trustBaseManifestRequiredJsonSchemas
+  )
+import Framework.Workflow.Semantics
+  ( workflowSemanticsCoreClaimNames
+  , workflowSemanticsEvidenceClaimNames
   )
 
 data ArchitectureConcernEvidencePayload = ArchitectureConcernEvidencePayload
@@ -62,7 +68,6 @@ architectureConcernEvidencePayloads = do
   cabalText <- readFile "new-framework-core/new-framework-core.cabal"
   frontendWitnessSource <- readFile "new-framework-core/app/FrameworkCoreFrontendWitness.hs"
   businessWitnessSource <- readFile "domain-app/app/BusinessSyntaxWitness.hs"
-  workflowWitnessSource <- readFile "new-framework-core/app/WorkflowSemanticsWitness.hs"
   runtimeDiagnosisSource <- readFile "new-framework-core/src/Framework/Runtime/Diagnosis.hs"
   runtimeHotPathSource <- readFile "new-framework-core/src/Framework/Runtime/HotPath.hs"
   domainBusinessSource <- readFile "domain-app/src/Domain/Business.hs"
@@ -72,7 +77,8 @@ architectureConcernEvidencePayloads = do
     , runtimeDiagnosisImplementationPayload runtimeDiagnosisSource frontendWitnessSource
     , astCoreCabalClaimLinkPayload cabalText frontendWitnessSource
     , backendParityPayload
-    , effectSystemScopePayload workflowWitnessSource
+    , effectSystemScopePayload
+    , workflowAndConcurrencyManifestPayload
     , capabilityPrivateFactPayload businessWitnessSource
     , businessFacadeBoundaryPayload domainBusinessSource effectVocabularySource
     , trustBaseMachineReadableGatesPayload cabalText
@@ -169,8 +175,8 @@ backendParityPayload =
     missing =
       missingItems runtimeBackendParityEvidenceClaimNames expectedClaims
 
-effectSystemScopePayload :: String -> ArchitectureConcernEvidencePayload
-effectSystemScopePayload workflowWitnessSource =
+effectSystemScopePayload :: ArchitectureConcernEvidencePayload
+effectSystemScopePayload =
   concernEvidence
     "session2-effect-system-scope-boundary"
     (null missing)
@@ -187,7 +193,37 @@ effectSystemScopePayload workflowWitnessSource =
       , "workflow-effect-system-pipeline"
       ]
     missing =
-      [ claim | claim <- requiredClaims, not (claim `isInfixOf` workflowWitnessSource) ]
+      missingItems workflowSemanticsCoreClaimNames requiredClaims
+
+workflowAndConcurrencyManifestPayload :: ArchitectureConcernEvidencePayload
+workflowAndConcurrencyManifestPayload =
+  concernEvidence
+    "session2-workflow-concurrency-claim-manifest"
+    (null missing)
+    "workflow semantics and runtime concurrency evidence expose stable claim manifests"
+    (observedList missing)
+    "WorkflowConcurrencyClaimManifestCoverageArtifact"
+    "low:evidence-manifest"
+    "use exported workflow and runtime concurrency claim names before adding new semantics evidence"
+  where
+    requiredWorkflowClaims =
+      [ "workflow-parallel-concurrency"
+      , "workflow-race-cancellation"
+      , "workflow-effect-system-boundary"
+      , "workflow-effect-system-scope"
+      , "workflow-effect-system-contracts"
+      , "workflow-effect-system-pipeline"
+      , "workflow-semantics-claim-manifest"
+      ]
+    requiredConcurrencyClaims =
+      [ "runtime-concurrency-parallel-branches"
+      , "runtime-concurrency-parallel-merge-conflict"
+      , "runtime-concurrency-race-cancellation"
+      , "runtime-concurrency-race-exhausted"
+      ]
+    missing =
+      map ("workflow: " ++) (missingItems workflowSemanticsEvidenceClaimNames requiredWorkflowClaims)
+        ++ map ("runtime concurrency: " ++) (missingItems runtimeConcurrencyEvidenceClaimNames requiredConcurrencyClaims)
 
 capabilityPrivateFactPayload :: String -> ArchitectureConcernEvidencePayload
 capabilityPrivateFactPayload businessWitnessSource =

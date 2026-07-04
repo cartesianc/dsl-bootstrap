@@ -659,6 +659,8 @@ workflowSemanticsFacade =
           [ "renderWorkflowSemanticsEvidencePayload"
           , "renderWorkflowSemanticsEvidencePayloadsJson"
           , "renderWorkflowSemanticsEvidenceStatus"
+          , "workflowSemanticsCoreClaimNames"
+          , "workflowSemanticsEvidenceClaimNames"
           , "workflowSemanticsEvidencePayloadPassed"
           ]
     )
@@ -884,6 +886,7 @@ trustBaseFacade =
           , "renderRuntimeConcurrencyEvidencePayloadsJson"
           , "renderRuntimeConcurrencyEvidenceStatus"
           , "runtimeConcurrencyEvidenceArtifactSummary"
+          , "runtimeConcurrencyEvidenceClaimNames"
           , "runtimeConcurrencyEvidencePayloadPassed"
           , "runtimeConcurrencyEvidencePayloads"
           , "renderRuntimeEvidencePayload"
@@ -937,6 +940,8 @@ trustBaseFacade =
           , "trustBaseManifestRequiredJsonSchemas"
           , "renderWorkflowSemanticsEvidencePayload"
           , "renderWorkflowSemanticsEvidencePayloadsJson"
+          , "workflowSemanticsCoreClaimNames"
+          , "workflowSemanticsEvidenceClaimNames"
           , "workflowSemanticsEvidencePayloadPassed"
           ]
     )
@@ -1501,6 +1506,7 @@ runtimeConcurrencyFacade =
           , "renderRuntimeConcurrencyEvidencePayloadsJson"
           , "renderRuntimeConcurrencyEvidenceStatus"
           , "runtimeConcurrencyEvidenceArtifactSummary"
+          , "runtimeConcurrencyEvidenceClaimNames"
           , "runtimeConcurrencyEvidencePayloadPassed"
           , "runtimeConcurrencyEvidencePayloads"
           ]

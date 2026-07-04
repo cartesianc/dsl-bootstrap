@@ -36,13 +36,18 @@ import Framework.Workflow.Semantics
   , WorkflowSemanticsEvidenceStatus (..)
   , renderWorkflowSemanticsEvidencePayload
   , renderWorkflowSemanticsEvidencePayloadsJson
+  , workflowSemanticsCoreClaimNames
   , workflowSemanticsEvidencePayloadPassed
   )
 
 main :: IO ()
 main = do
   args <- getArgs
-  payloads <- mapM runWorkflowSemanticsClaim workflowSemanticsClaims
+  corePayloads <- mapM runWorkflowSemanticsClaim workflowSemanticsClaims
+  let manifestPayload =
+        workflowSemanticsClaimManifestPayload corePayloads
+      payloads =
+        corePayloads ++ [manifestPayload]
   let concurrencyPayloads =
         runtimeConcurrencyEvidencePayloads payloads
       concurrencyFailures =
@@ -229,6 +234,26 @@ workflowFailuresFromConcurrency (_ : _) =
       , workflowSemanticsEvidenceArtifact = "RuntimeConcurrencyEvidenceArtifact"
       }
   ]
+
+workflowSemanticsClaimManifestPayload :: [WorkflowSemanticsEvidencePayload] -> WorkflowSemanticsEvidencePayload
+workflowSemanticsClaimManifestPayload payloads =
+  WorkflowSemanticsEvidencePayload
+    { workflowSemanticsEvidenceClaim = "workflow-semantics-claim-manifest"
+    , workflowSemanticsEvidenceStatus =
+        if actualClaimNames == workflowSemanticsCoreClaimNames
+          then WorkflowSemanticsEvidencePassed
+          else WorkflowSemanticsEvidenceFailed
+    , workflowSemanticsEvidenceExpected =
+        "workflow semantics executable claims match exported core claim manifest"
+    , workflowSemanticsEvidenceObserved =
+        if actualClaimNames == workflowSemanticsCoreClaimNames
+          then "claim manifest synced: " ++ show (length actualClaimNames) ++ " core claims"
+          else "expected " ++ show workflowSemanticsCoreClaimNames ++ "; actual " ++ show actualClaimNames
+    , workflowSemanticsEvidenceArtifact = "WorkflowSemanticsClaimManifestArtifact"
+    }
+  where
+    actualClaimNames =
+      map workflowSemanticsEvidenceClaim payloads
 
 parallelConcurrencyWitness :: IO ()
 parallelConcurrencyWitness = do

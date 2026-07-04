@@ -161,9 +161,9 @@ bootstrap-report: status passed
 fixed-point-smoke: diffs: 0
 runtime-evidence-witness: ok runtime evidence 6 payload claims
 trust-base-manifest-witness: ok trust base manifest trust-base-manifest.v2
-workflow-semantics-witness: ok workflow semantics evidence 14 payload claims
+workflow-semantics-witness: ok workflow semantics evidence 17 payload claims
 business-syntax-witness: ok business syntax evidence 17 payload claims
-architecture-concern-witness: ok architecture concern evidence 11 payload claims
+architecture-concern-witness: ok architecture concern evidence 12 payload claims
 self-artifact-witness: passed (仅高危 artifact gate 轮次需要)
 ```
 
