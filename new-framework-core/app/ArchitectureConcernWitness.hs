@@ -12,6 +12,12 @@ import Bootstrap.CoreSurface
   , CoreSurfaceModule (..)
   , coreSurfaceModules
   )
+import Framework.Architecture.Concern
+  ( architectureSemanticRiskItemNames
+  , architectureSemanticRiskItems
+  , architectureSemanticRiskReviewClaimName
+  , renderArchitectureSemanticRisk
+  )
 import Framework.Business.Evidence
   ( businessSyntaxClaimManifestEvidenceClaimName
   , businessSyntaxCoreClaimNames
@@ -401,15 +407,27 @@ schemaCatalogCoveragePayload =
 semanticRiskReviewPayload :: ArchitectureConcernEvidencePayload
 semanticRiskReviewPayload =
   concernEvidence
-    "session123-semantic-risk-review"
-    True
-    "architecture-changing follow-up tasks are explicitly classified before implementation"
-    ( "semantic review required for EffectSystem boundary semantics, capability lowering semantics, "
-        ++ "runtime diagnosis root-cause propagation, runtime policy algebra, and typed runtime hot-path dependencies"
-    )
+    architectureSemanticRiskReviewClaimName
+    (null missing)
+    "architecture-changing follow-up tasks are explicitly classified in the semantic risk manifest"
+    observed
     "ArchitectureSemanticRiskReviewArtifact"
     "high:semantic-review-required"
     "pause for review before editing any listed semantic boundary; evidence/schema-only changes can proceed as low-risk work"
+  where
+    requiredRiskItems =
+      [ "effect-system-boundary-semantics"
+      , "capability-lowering-semantics"
+      , "runtime-diagnosis-root-cause-semantics"
+      , "runtime-policy-algebra"
+      , "typed-runtime-hot-path-dependencies"
+      ]
+    missing =
+      missingItems architectureSemanticRiskItemNames requiredRiskItems
+    observed =
+      if null missing
+        then "semantic risk items: " ++ joinWith "; " (map renderArchitectureSemanticRisk architectureSemanticRiskItems)
+        else observedList missing
 
 expectedClaimsPresent :: [String] -> [String] -> [String]
 expectedClaimsPresent expected actual =

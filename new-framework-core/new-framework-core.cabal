@@ -69,6 +69,7 @@ library
                      , Domain.Interpreter
                      , Domain.Registry
                      , Domain.Vocabulary
+                     , Framework.Architecture.Concern
                      , Framework.Background
                      , Framework.Background.ConstraintProof
                      , Framework.Background.RuntimeDiagnosis

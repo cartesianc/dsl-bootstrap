@@ -87,6 +87,7 @@ explicitCoreSurfaceModules =
   , trustBaseManifestFacade
   , fixedPointFacade
   , frontendEvidenceFacade
+  , architectureConcernFacade
   , hyloFacade
   , backgroundAppBuild
   , backgroundBootstrapBoundary
@@ -1035,6 +1036,23 @@ frontendEvidenceFacade =
           , "frameworkCoreFrontendEvidenceClaimNames"
           , "frontendClaimModuleLinkEvidenceClaimName"
           , "frontendClaimModuleLinks"
+          ]
+    )
+
+architectureConcernFacade :: CoreSurfaceModule
+architectureConcernFacade =
+  moduleSurface
+    "Framework.Architecture.Concern"
+    "architecture concern and semantic risk evidence manifest"
+    ( map typeCapability
+        [ "ArchitectureSemanticRisk"
+        ]
+        ++ map valueCapability
+          [ "architectureSemanticRiskArtifactSummary"
+          , "architectureSemanticRiskItemNames"
+          , "architectureSemanticRiskItems"
+          , "architectureSemanticRiskReviewClaimName"
+          , "renderArchitectureSemanticRisk"
           ]
     )
 
