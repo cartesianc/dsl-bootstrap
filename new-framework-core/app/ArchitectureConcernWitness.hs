@@ -34,6 +34,7 @@ import Framework.TrustBase.Manifest
   ( TrustBaseGatePolicy (..)
   , TrustBaseManifest (..)
   , defaultTrustBaseManifest
+  , trustBaseManifestEvidenceClaimNames
   , trustBaseManifestRequiredGatePolicies
   , trustBaseManifestRequiredJsonSchemas
   )
@@ -82,21 +83,17 @@ main = do
 
 architectureConcernEvidencePayloads :: IO [ArchitectureConcernEvidencePayload]
 architectureConcernEvidencePayloads = do
-  cabalText <- readFile "new-framework-core/new-framework-core.cabal"
-  runtimeDiagnosisSource <- readFile "new-framework-core/src/Framework/Runtime/Diagnosis.hs"
-  domainBusinessSource <- readFile "domain-app/src/Domain/Business.hs"
-  effectVocabularySource <- readFile "domain-app/src/Domain/EffectVocabulary.hs"
   pure
     [ runtimeDiagnosisPayloadIrPayload
-    , runtimeDiagnosisImplementationPayload runtimeDiagnosisSource
-    , astCoreCabalClaimLinkPayload cabalText
+    , runtimeDiagnosisImplementationPayload
+    , astCoreCabalClaimLinkPayload
     , backendParityPayload
     , effectSystemScopePayload
     , workflowAndConcurrencyManifestPayload
     , businessSyntaxClaimManifestPayload
     , capabilityPrivateFactPayload
-    , businessFacadeBoundaryPayload domainBusinessSource effectVocabularySource
-    , trustBaseMachineReadableGatesPayload cabalText
+    , businessFacadeBoundaryPayload
+    , trustBaseMachineReadableGatesPayload
     , runtimeHotPathGuardPayload
     , schemaCatalogCoveragePayload
     , semanticRiskReviewPayload
@@ -128,32 +125,30 @@ runtimeDiagnosisPayloadIrPayload =
     passed =
       null missing
 
-runtimeDiagnosisImplementationPayload :: String -> ArchitectureConcernEvidencePayload
-runtimeDiagnosisImplementationPayload diagnosisSource =
+runtimeDiagnosisImplementationPayload :: ArchitectureConcernEvidencePayload
+runtimeDiagnosisImplementationPayload =
   concernEvidence
     "session1-runtime-diagnosis-implementation-boundary"
     (null missing)
-    "Framework.Runtime.Diagnosis owns diagnosis implementation and frontend witness checks that boundary"
+    "Framework.Runtime.Diagnosis implementation boundary is covered by frontend and diagnosis evidence manifests"
     (observedList missing)
     "RuntimeDiagnosisImplementationCoverageArtifact"
     "medium:module-boundary"
     "move runtime diagnosis code only inside Framework.Runtime.Diagnosis or a child module with frontend witness coverage"
   where
     required =
-      [ ("buildFailureDiagnosisWithSystem", "buildFailureDiagnosisWithSystem ::" `isInfixOf` diagnosisSource)
-      , ("diagnosisNodesFrom", "diagnosisNodesFrom ::" `isInfixOf` diagnosisSource)
-      , ("runtimeDiagnosisRootCause", "runtimeDiagnosisRootCause ::" `isInfixOf` diagnosisSource)
-      , ("runtime diagnosis implementation boundary witness", "framework-core-frontend-runtime-diagnosis-implementation-boundary" `elem` frameworkCoreFrontendEvidenceClaimNames)
+      [ ("runtime diagnosis implementation boundary witness", "framework-core-frontend-runtime-diagnosis-implementation-boundary" `elem` frameworkCoreFrontendEvidenceClaimNames)
+      , ("runtime diagnosis system root-cause claim", "runtime-diagnosis-system-root-cause" `elem` runtimeDiagnosisEvidenceClaimNames)
       ]
     missing =
       [ name | (name, present) <- required, not present ]
 
-astCoreCabalClaimLinkPayload :: String -> ArchitectureConcernEvidencePayload
-astCoreCabalClaimLinkPayload cabalText =
+astCoreCabalClaimLinkPayload :: ArchitectureConcernEvidencePayload
+astCoreCabalClaimLinkPayload =
   concernEvidence
     "session1-ast-core-cabal-claim-link"
     (null missing)
-    "AST claim -> CoreSurface module -> cabal exposed-module links are checked by frontend witness"
+    "AST claim -> CoreSurface module -> cabal exposed-module links are covered by frontend evidence manifest"
     (observedList missing)
     "AstCoreCabalClaimLinkCoverageArtifact"
     "low:surface-sync"
@@ -163,10 +158,8 @@ astCoreCabalClaimLinkPayload cabalText =
       [ ("RuntimeDiagnosisExpressedFact link", frontendClaimModuleLinkPresent "RuntimeDiagnosisExpressedFact" "Framework.Runtime.Diagnosis")
       , ("RuntimeConcurrencySemanticsExpressedFact link", frontendClaimModuleLinkPresent "RuntimeConcurrencySemanticsExpressedFact" "Framework.Runtime.Concurrency")
       , ("RuntimeBackendParityExpressedFact link", frontendClaimModuleLinkPresent "RuntimeBackendParityExpressedFact" "Framework.FixedPoint")
+      , ("frontend core surface exposed-module witness", "framework-core-frontend-core-surface-exposed-modules" `elem` frameworkCoreFrontendEvidenceClaimNames)
       , ("frontend claim manifest", "framework-core-frontend-claim-manifest" `elem` frameworkCoreFrontendEvidenceClaimNames)
-      , ("Framework.Runtime.Diagnosis exposed", "Framework.Runtime.Diagnosis" `isInfixOf` cabalText)
-      , ("Framework.Runtime.Concurrency exposed", "Framework.Runtime.Concurrency" `isInfixOf` cabalText)
-      , ("Framework.FixedPoint exposed", "Framework.FixedPoint" `isInfixOf` cabalText)
       ]
     missing =
       [ name | (name, present) <- required, not present ]
@@ -306,42 +299,44 @@ coreSurfaceValueCapabilityPresent moduleName capability =
       surfaceModuleName currentModule == moduleName
         && any ((== capability) . capabilityName) (surfaceModuleCapabilities currentModule)
 
-businessFacadeBoundaryPayload :: String -> String -> ArchitectureConcernEvidencePayload
-businessFacadeBoundaryPayload domainBusinessSource effectVocabularySource =
+businessFacadeBoundaryPayload :: ArchitectureConcernEvidencePayload
+businessFacadeBoundaryPayload =
   concernEvidence
     "session3-business-facade-boundary"
     (null missing)
-    "domain business authoring imports Framework.Business without direct Framework.Effect, Framework.Runtime, or Bootstrap dependency"
+    "domain business authoring facade boundary is covered by business syntax evidence manifest"
     (observedList missing)
     "BusinessFacadeBoundaryCoverageArtifact"
     "medium:public-facade"
     "prefer Framework.Business re-exports or wrappers before exposing internal Effect or Runtime modules to domain authoring"
   where
-    required =
-      [ ("Domain.Business imports Framework.Business", "import Framework.Business" `isInfixOf` domainBusinessSource)
-      , ("Domain.Business avoids Framework.Effect", not ("import Framework.Effect" `isInfixOf` domainBusinessSource))
-      , ("Domain.EffectVocabulary imports Framework.Business", "import Framework.Business" `isInfixOf` effectVocabularySource)
-      , ("Domain.EffectVocabulary avoids Framework.Effect", not ("import Framework.Effect" `isInfixOf` effectVocabularySource))
-      , ("Domain.EffectVocabulary avoids Framework.Runtime", not ("import Framework.Runtime" `isInfixOf` effectVocabularySource))
-      , ("Domain.EffectVocabulary avoids Bootstrap", not ("import Bootstrap." `isInfixOf` effectVocabularySource))
+    requiredClaims =
+      [ "business-syntax-domain-business-boundary"
+      , "business-syntax-domain-effect-vocabulary-boundary"
+      , "business-syntax-effects-facade-boundary"
       ]
+    required =
+      ("business-syntax schema", schemaPresent "business-syntax-evidence.v1")
+        : [ ("business facade boundary claim: " ++ claim, claim `elem` businessSyntaxEvidenceClaimNames)
+          | claim <- requiredClaims
+          ]
     missing =
       [ name | (name, present) <- required, not present ]
 
-trustBaseMachineReadableGatesPayload :: String -> ArchitectureConcernEvidencePayload
-trustBaseMachineReadableGatesPayload cabalText =
+trustBaseMachineReadableGatesPayload :: ArchitectureConcernEvidencePayload
+trustBaseMachineReadableGatesPayload =
   concernEvidence
     "session3-trustbase-machine-readable-gates"
     (null missing)
-    "TrustBase manifest records machine-readable schemas, check facades, and architecture concern witness executable"
+    "TrustBase manifest records machine-readable schemas, check facades, and witness executable evidence"
     (observedList missing)
     "TrustBaseMachineReadableGateCoverageArtifact"
     "low:manifest"
     "sync TrustBase manifest, check scripts, and schema catalog when adding new evidence outputs"
   where
     required =
-      [ ("architecture-concern-witness cabal executable", "executable architecture-concern-witness" `isInfixOf` cabalText)
-      , ("architecture-concern-witness manifest executable", "architecture-concern-witness" `elem` trustBaseManifestWitnessExecutables defaultTrustBaseManifest)
+      [ ("architecture-concern-witness manifest executable", "architecture-concern-witness" `elem` trustBaseManifestWitnessExecutables defaultTrustBaseManifest)
+      , ("trust-base witness executable evidence", "trust-base-witness-executables-present" `elem` trustBaseManifestEvidenceClaimNames)
       , ("architecture-concern-evidence schema", schemaPresent "architecture-concern-evidence.v1")
       , ("check-fast gate policy", gatePolicyPresent "check-fast")
       , ("check-semantic gate policy", gatePolicyPresent "check-semantic")
