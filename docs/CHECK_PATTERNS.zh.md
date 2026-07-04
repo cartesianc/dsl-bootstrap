@@ -128,6 +128,7 @@ business-syntax-witness -- --json: business-syntax-evidence.v1
 trust-base-manifest-witness: trust-base-manifest.v2
 trust-base-manifest-witness -- --evidence-json: trust-base-manifest-evidence.v1
 schema-catalog-witness -- --json: schema-catalog-evidence.v1
+constraint-proof-witness -- --smt=off --json: constraint-proof-evidence.v1
 registry-codegen-witness -- --json: registry-codegen-evidence.v1
 architecture-concern-witness -- --json: architecture-concern-evidence.v1
 fixed-point-smoke: fixed-point diff evidence 15 payload claims
@@ -221,6 +222,7 @@ runtime-hot-path-evidence.v1
 runtime-policy-evidence.v1
 framework-core-frontend-evidence.v1
 schema-catalog-evidence.v1
+constraint-proof-evidence.v1
 runtime-diagnosis-evidence.v1
 registry-codegen-evidence.v1
 workflow-semantics-evidence.v1
@@ -238,6 +240,7 @@ schema-catalog-output:framework-core-frontend-evidence.v1
 schema-catalog-output:trust-base-manifest.v2
 schema-catalog-output:trust-base-manifest-evidence.v1
 schema-catalog-output:schema-catalog-evidence.v1
+schema-catalog-output:constraint-proof-evidence.v1
 schema-catalog-output:business-syntax-evidence.v1
 schema-catalog-output:runtime-evidence.v1
 schema-catalog-output:runtime-hot-path-evidence.v1

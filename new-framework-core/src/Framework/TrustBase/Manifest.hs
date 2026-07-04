@@ -272,6 +272,7 @@ trustBaseManifestRequiredJsonSchemas =
   , "trust-base-manifest.v2 <- trust-base-manifest-witness -- --json"
   , "trust-base-manifest-evidence.v1 <- trust-base-manifest-witness -- --evidence-json"
   , "schema-catalog-evidence.v1 <- schema-catalog-witness -- --json"
+  , "constraint-proof-evidence.v1 <- constraint-proof-witness -- --smt=off --json"
   , "business-syntax-evidence.v1 <- business-syntax-witness -- --json"
   , "runtime-evidence.v1 <- runtime-evidence-witness -- --json"
   , "runtime-hot-path-evidence.v1 <- runtime-hot-path-witness -- --json"

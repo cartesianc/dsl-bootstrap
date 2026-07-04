@@ -7,21 +7,31 @@ import Bootstrap.Blueprint
 import Bootstrap.Effects
   ( coreBootstrapEffects )
 import Framework.Background.ConstraintProof
-  ( SmtResult (..)
+  ( ConstraintProofEvidencePayload
+  , SmtResult (..)
   , SmtMode (..)
   , SmtSolver
   , SmtStatus (..)
   , availableSmtSolver
+  , constraintProofClaimManifestPayload
+  , constraintProofDomainClaimNames
+  , constraintProofEvidence
+  , constraintProofEvidenceClaimNames
+  , constraintProofEvidencePayloadPassed
   , constraintsFromAppPlan
   , parseSmtMode
   , proveMinimalCoreWithMode
+  , renderConstraintProofEvidencePayload
+  , renderConstraintProofEvidencePayloadsJson
   , renderSmtMode
+  , renderSmtResult
   , renderSmtSolver
   , smtModeFromEnvironment
   )
 import Framework.Domain
   ( DomainReport (..)
   , DomainSemanticEvidence (..)
+  , DomainSemanticEvidencePayload (..)
   , buildDomainReport
   , domainSemanticEvidencePassed
   , frameworkCoreDomain
@@ -31,39 +41,27 @@ import System.Environment
 
 main :: IO ()
 main = do
-  mode <- selectedSmtMode
+  args <- getArgs
+  mode <- selectedSmtMode args
   report <- buildDomainReport frameworkCoreDomain
-  let missing =
-        [ name
-        | name <- expectedEvidence
-        , not (evidencePresent name report)
-        ]
-      failed =
-        [ evidence
-        | evidence <- domainReportSemanticEvidence report
-        , domainSemanticEvidenceName evidence `elem` expectedEvidence
-        , not (domainSemanticEvidencePassed evidence)
-        ]
   (maybeSolver, solverResults) <- solverResultsForMode mode
-  let solverFailed =
-        [ result
-        | result <- solverResults
-        , smtResultStatus result == SmtFailed
-        ]
-      solverSkippedInRequiredMode =
-        case mode of
-          SmtRequired ->
-            [ result
-            | result <- solverResults
-            , smtResultStatus result == SmtSkipped
-            ]
-          _ ->
-            []
-  case (missing, failed, solverFailed, solverSkippedInRequiredMode) of
-    ([], [], [], []) ->
+  let domainPayloads =
+        map (`domainEvidencePayload` report) constraintProofDomainClaimNames
+      smtPayload =
+        smtResultsPayload mode maybeSolver solverResults
+      corePayloads =
+        domainPayloads ++ [smtPayload]
+      payloads =
+        corePayloads ++ [constraintProofClaimManifestPayload corePayloads]
+      failedPayloads =
+        filter (not . constraintProofEvidencePayloadPassed) payloads
+  case args of
+    _ | "--json" `elem` args ->
+      putStrLn (renderConstraintProofEvidencePayloadsJson payloads)
+    _ | null failedPayloads ->
       putStrLn
         ( "[witness] ok constraint proof evidence "
-            ++ show (length expectedEvidence)
+            ++ show (length constraintProofEvidenceClaimNames)
             ++ " claims"
             ++ solverSuffix mode maybeSolver
         )
@@ -71,29 +69,85 @@ main = do
       ioError
         ( userError
             ( "[witness] constraint proof evidence failed\n"
-                ++ "missing: "
-                ++ show missing
-                ++ "\nfailed: "
-                ++ show (map domainSemanticEvidenceName failed)
-                ++ "\nsolver failed: "
-                ++ show solverFailed
-                ++ "\nsolver skipped in required mode: "
-                ++ show solverSkippedInRequiredMode
+                ++ unlines (concatMap renderPayloadBlock failedPayloads)
             )
         )
+  failWhenEvidenceFailed failedPayloads
 
-expectedEvidence :: [String]
-expectedEvidence =
-  [ "constraint-ir-built"
-  , "constraint-proof-passed"
-  , "constraint-negative-check"
-  ]
+domainEvidencePayload :: String -> DomainReport -> ConstraintProofEvidencePayload
+domainEvidencePayload name report =
+  case evidenceFor name report of
+    Nothing ->
+      constraintProofEvidence
+        name
+        False
+        "domain report contains constraint proof semantic evidence"
+        "missing domain semantic evidence"
+        "ConstraintProofDomainEvidenceArtifact"
+    Just evidence ->
+      case domainSemanticEvidencePayload evidence of
+        Just payload ->
+          constraintProofEvidence
+            (domainSemanticEvidencePayloadClaim payload)
+            (domainSemanticEvidencePayloadStatus payload == "passed")
+            (domainSemanticEvidencePayloadExpected payload)
+            (domainSemanticEvidencePayloadObserved payload)
+            (domainSemanticEvidencePayloadArtifact payload)
+        Nothing ->
+          constraintProofEvidence
+            name
+            (domainSemanticEvidencePassed evidence)
+            "domain semantic evidence has structured payload"
+            ("details: " ++ show (domainSemanticEvidenceDetails evidence))
+            "ConstraintProofDomainEvidencePayloadArtifact"
 
-evidencePresent :: String -> DomainReport -> Bool
-evidencePresent name report =
-  any
-    (\evidence -> domainSemanticEvidenceName evidence == name)
-    (domainReportSemanticEvidence report)
+evidenceFor :: String -> DomainReport -> Maybe DomainSemanticEvidence
+evidenceFor name report =
+  firstMatching (domainReportSemanticEvidence report)
+  where
+    firstMatching [] =
+      Nothing
+    firstMatching (evidence : rest)
+      | domainSemanticEvidenceName evidence == name =
+          Just evidence
+      | otherwise =
+          firstMatching rest
+
+smtResultsPayload :: SmtMode -> Maybe SmtSolver -> [SmtResult] -> ConstraintProofEvidencePayload
+smtResultsPayload mode maybeSolver solverResults =
+  constraintProofEvidence
+    "constraint-proof-smt-results"
+    passed
+    "SMT results respect selected constraint proof mode"
+    observed
+    "ConstraintProofSmtResultsArtifact"
+  where
+    solverFailed =
+      [ result
+      | result <- solverResults
+      , smtResultStatus result == SmtFailed
+      ]
+    solverSkippedInRequiredMode =
+      case mode of
+        SmtRequired ->
+          [ result
+          | result <- solverResults
+          , smtResultStatus result == SmtSkipped
+          ]
+        _ ->
+          []
+    passed =
+      null solverFailed && null solverSkippedInRequiredMode
+    observed =
+      "mode "
+        ++ renderSmtMode mode
+        ++ solverObservedText mode maybeSolver
+        ++ "; results "
+        ++ show (length solverResults)
+        ++ "; failed "
+        ++ show (map renderSmtResult solverFailed)
+        ++ "; skipped in required mode "
+        ++ show (map renderSmtResult solverSkippedInRequiredMode)
 
 solverResultsForMode :: SmtMode -> IO (Maybe SmtSolver, [SmtResult])
 solverResultsForMode mode = do
@@ -109,9 +163,8 @@ solverResultsForMode mode = do
     Right constraints ->
       (,) maybeSolver <$> proveMinimalCoreWithMode mode constraints
 
-selectedSmtMode :: IO SmtMode
-selectedSmtMode = do
-  args <- getArgs
+selectedSmtMode :: [String] -> IO SmtMode
+selectedSmtMode args = do
   case cliSmtMode args of
     Left message ->
       ioError (userError message)
@@ -161,3 +214,29 @@ solverSuffix mode maybeSolver =
           "; external solver " ++ renderSmtSolver solver
         (_, Nothing) ->
           "; external solver not found"
+
+solverObservedText :: SmtMode -> Maybe SmtSolver -> String
+solverObservedText mode maybeSolver =
+  case (mode, maybeSolver) of
+    (SmtDisabled, _) ->
+      "; external solver disabled"
+    (_, Just solver) ->
+      "; external solver " ++ renderSmtSolver solver
+    (_, Nothing) ->
+      "; external solver not found"
+
+renderPayloadBlock :: ConstraintProofEvidencePayload -> [String]
+renderPayloadBlock payload =
+  map ("  " ++) (renderConstraintProofEvidencePayload payload)
+    ++ [""]
+
+failWhenEvidenceFailed :: [ConstraintProofEvidencePayload] -> IO ()
+failWhenEvidenceFailed [] =
+  pure ()
+failWhenEvidenceFailed failedPayloads =
+  ioError
+    ( userError
+        ( "[witness] constraint proof evidence failed\n"
+            ++ unlines (concatMap renderPayloadBlock failedPayloads)
+        )
+    )

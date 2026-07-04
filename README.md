@@ -597,6 +597,7 @@ framework-core-frontend-evidence.v1
 trust-base-manifest.v2
 trust-base-manifest-evidence.v1
 schema-catalog-evidence.v1
+constraint-proof-evidence.v1
 business-syntax-evidence.v1
 runtime-evidence.v1
 runtime-hot-path-evidence.v1

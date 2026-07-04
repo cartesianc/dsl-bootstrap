@@ -1,5 +1,7 @@
 module Framework.Background.ConstraintProof
-  ( ConstraintError (..)
+  ( ConstraintProofEvidencePayload (..)
+  , ConstraintProofEvidenceStatus (..)
+  , ConstraintError (..)
   , ConstraintFact (..)
   , RuleId (..)
   , SmtBackend (..)
@@ -12,6 +14,13 @@ module Framework.Background.ConstraintProof
   , WorkflowScope (..)
   , availableSmtSolver
   , checkConstraintFacts
+  , constraintProofClaimManifestPayload
+  , constraintProofCoreClaimNames
+  , constraintProofDomainClaimNames
+  , constraintProofEvidence
+  , constraintProofEvidenceArtifactSummary
+  , constraintProofEvidenceClaimNames
+  , constraintProofEvidencePayloadPassed
   , constraintsFromAppPlan
   , constraintsFromNativeAppPlan
   , cvc5Solver
@@ -24,6 +33,9 @@ module Framework.Background.ConstraintProof
   , proveMinimalCoreWithMode
   , proveMinimalCoreWithSolver
   , renderConstraintError
+  , renderConstraintProofEvidencePayload
+  , renderConstraintProofEvidencePayloadsJson
+  , renderConstraintProofEvidenceStatus
   , renderConstraintFacts
   , renderSmtEvidence
   , renderSmtMode
@@ -132,6 +144,20 @@ data SmtStatus
   = SmtPassed
   | SmtFailed
   | SmtSkipped
+  deriving (Eq, Show)
+
+data ConstraintProofEvidencePayload = ConstraintProofEvidencePayload
+  { constraintProofEvidenceClaim :: String
+  , constraintProofEvidenceStatus :: ConstraintProofEvidenceStatus
+  , constraintProofEvidenceExpected :: String
+  , constraintProofEvidenceObserved :: String
+  , constraintProofEvidenceArtifact :: String
+  }
+  deriving (Eq, Show)
+
+data ConstraintProofEvidenceStatus
+  = ConstraintProofEvidencePassed
+  | ConstraintProofEvidenceFailed
   deriving (Eq, Show)
 
 data SmtMode
@@ -814,6 +840,108 @@ smtPassed :: [SmtResult] -> Bool
 smtPassed =
   all ((== SmtPassed) . smtResultStatus)
 
+constraintProofDomainClaimNames :: [String]
+constraintProofDomainClaimNames =
+  [ "constraint-ir-built"
+  , "constraint-proof-passed"
+  , "constraint-negative-check"
+  ]
+
+constraintProofCoreClaimNames :: [String]
+constraintProofCoreClaimNames =
+  constraintProofDomainClaimNames ++ ["constraint-proof-smt-results"]
+
+constraintProofEvidenceClaimNames :: [String]
+constraintProofEvidenceClaimNames =
+  constraintProofCoreClaimNames ++ ["constraint-proof-claim-manifest"]
+
+constraintProofEvidenceArtifactSummary :: String
+constraintProofEvidenceArtifactSummary =
+  "constraint proof evidence payload claims: "
+    ++ joinWith ", " constraintProofEvidenceClaimNames
+
+constraintProofEvidence ::
+  String ->
+  Bool ->
+  String ->
+  String ->
+  String ->
+  ConstraintProofEvidencePayload
+constraintProofEvidence claim passed expected observed artifact =
+  ConstraintProofEvidencePayload
+    { constraintProofEvidenceClaim = claim
+    , constraintProofEvidenceStatus =
+        if passed
+          then ConstraintProofEvidencePassed
+          else ConstraintProofEvidenceFailed
+    , constraintProofEvidenceExpected = expected
+    , constraintProofEvidenceObserved = observed
+    , constraintProofEvidenceArtifact = artifact
+    }
+
+constraintProofEvidencePayloadPassed :: ConstraintProofEvidencePayload -> Bool
+constraintProofEvidencePayloadPassed payload =
+  constraintProofEvidenceStatus payload == ConstraintProofEvidencePassed
+
+constraintProofClaimManifestPayload :: [ConstraintProofEvidencePayload] -> ConstraintProofEvidencePayload
+constraintProofClaimManifestPayload payloads =
+  constraintProofEvidence
+    "constraint-proof-claim-manifest"
+    manifestSynced
+    "constraint proof payload claims match exported claim manifest"
+    observed
+    "ConstraintProofClaimManifestArtifact"
+  where
+    actualCoreClaimNames =
+      map constraintProofEvidenceClaim payloads
+    actualEvidenceClaimNames =
+      actualCoreClaimNames ++ ["constraint-proof-claim-manifest"]
+    manifestSynced =
+      actualCoreClaimNames == constraintProofCoreClaimNames
+        && actualEvidenceClaimNames == constraintProofEvidenceClaimNames
+    observed =
+      if manifestSynced
+        then "claim manifest synced: " ++ show (length actualCoreClaimNames) ++ " core claims"
+        else "expected " ++ show constraintProofEvidenceClaimNames ++ "; actual " ++ show actualEvidenceClaimNames
+
+renderConstraintProofEvidencePayload :: ConstraintProofEvidencePayload -> [String]
+renderConstraintProofEvidencePayload payload =
+  [ "claim: " ++ constraintProofEvidenceClaim payload
+  , "status: " ++ renderConstraintProofEvidenceStatus (constraintProofEvidenceStatus payload)
+  , "expected: " ++ constraintProofEvidenceExpected payload
+  , "observed: " ++ constraintProofEvidenceObserved payload
+  , "artifact: " ++ constraintProofEvidenceArtifact payload
+  ]
+
+renderConstraintProofEvidenceStatus :: ConstraintProofEvidenceStatus -> String
+renderConstraintProofEvidenceStatus ConstraintProofEvidencePassed =
+  "passed"
+renderConstraintProofEvidenceStatus ConstraintProofEvidenceFailed =
+  "failed"
+
+renderConstraintProofEvidencePayloadsJson :: [ConstraintProofEvidencePayload] -> String
+renderConstraintProofEvidencePayloadsJson payloads =
+  jsonObject
+    [ jsonField "schema" (jsonString "constraint-proof-evidence.v1")
+    , jsonField "status" (jsonString statusText)
+    , jsonField "payloads" (jsonArray (map constraintProofEvidencePayloadJson payloads))
+    ]
+  where
+    statusText =
+      if all constraintProofEvidencePayloadPassed payloads
+        then "passed"
+        else "failed"
+
+constraintProofEvidencePayloadJson :: ConstraintProofEvidencePayload -> String
+constraintProofEvidencePayloadJson payload =
+  jsonObject
+    [ jsonField "claim" (jsonString (constraintProofEvidenceClaim payload))
+    , jsonField "status" (jsonString (renderConstraintProofEvidenceStatus (constraintProofEvidenceStatus payload)))
+    , jsonField "expected" (jsonString (constraintProofEvidenceExpected payload))
+    , jsonField "observed" (jsonString (constraintProofEvidenceObserved payload))
+    , jsonField "artifact" (jsonString (constraintProofEvidenceArtifact payload))
+    ]
+
 renderConstraintFacts :: [ConstraintFact] -> String
 renderConstraintFacts =
   joinWith "\n" . map renderConstraintFact
@@ -968,6 +1096,38 @@ joinWith _ [item] =
   item
 joinWith separator (item : rest) =
   item ++ separator ++ joinWith separator rest
+
+jsonObject :: [String] -> String
+jsonObject fields =
+  "{" ++ joinWith "," fields ++ "}"
+
+jsonField :: String -> String -> String
+jsonField name value =
+  jsonString name ++ ":" ++ value
+
+jsonArray :: [String] -> String
+jsonArray values =
+  "[" ++ joinWith "," values ++ "]"
+
+jsonString :: String -> String
+jsonString value =
+  "\"" ++ concatMap jsonChar value ++ "\""
+
+jsonChar :: Char -> String
+jsonChar currentChar =
+  case currentChar of
+    '"' ->
+      "\\\""
+    '\\' ->
+      "\\\\"
+    '\n' ->
+      "\\n"
+    '\r' ->
+      "\\r"
+    '\t' ->
+      "\\t"
+    _ ->
+      [currentChar]
 
 indentLines :: Int -> String -> String
 indentLines count text =

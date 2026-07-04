@@ -32,6 +32,10 @@ import Framework.Business.Evidence
   , businessSyntaxCoreClaimNames
   , businessSyntaxEvidenceClaimNames
   )
+import Framework.Background.ConstraintProof
+  ( constraintProofCoreClaimNames
+  , constraintProofEvidenceClaimNames
+  )
 import Framework.FixedPoint
   ( fixedPointDiffCoreClaimNames
   , fixedPointDiffEvidenceClaimNames
@@ -683,6 +687,7 @@ schemaCatalogCoveragePayload =
       , "trust-base-manifest.v2"
       , "trust-base-manifest-evidence.v1"
       , "schema-catalog-evidence.v1"
+      , "constraint-proof-evidence.v1"
       , "business-syntax-evidence.v1"
       , "runtime-evidence.v1"
       , "runtime-hot-path-evidence.v1"
@@ -708,8 +713,17 @@ schemaCatalogCoveragePayload =
       , ("Framework.TrustBase.Manifest schemaCatalogEvidencePayloadPassed value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "schemaCatalogEvidencePayloadPassed")
       , ("Framework.TrustBase.Manifest renderSchemaCatalogEvidencePayloadsJson value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "renderSchemaCatalogEvidencePayloadsJson")
       , ("schema catalog framework-core report claim", "schema-catalog-output:framework-core-report.v1" `elem` schemaCatalogCoreClaimNames)
+      , ("schema catalog constraint proof claim", "schema-catalog-output:constraint-proof-evidence.v1" `elem` schemaCatalogCoreClaimNames)
       , ("schema catalog registry codegen claim", "schema-catalog-output:registry-codegen-evidence.v1" `elem` schemaCatalogCoreClaimNames)
       , ("schema catalog claim manifest", "schema-catalog-claim-manifest" `elem` schemaCatalogEvidenceClaimNames)
+      , ("Framework.Background.ConstraintProof ConstraintProofEvidencePayload type", coreSurfaceTypeCapabilityPresent "Framework.Background.ConstraintProof" "ConstraintProofEvidencePayload")
+      , ("Framework.Background.ConstraintProof ConstraintProofEvidenceStatus type", coreSurfaceTypeCapabilityPresent "Framework.Background.ConstraintProof" "ConstraintProofEvidenceStatus")
+      , ("Framework.Background.ConstraintProof constraintProofCoreClaimNames value", coreSurfaceValueCapabilityPresent "Framework.Background.ConstraintProof" "constraintProofCoreClaimNames")
+      , ("Framework.Background.ConstraintProof constraintProofEvidenceClaimNames value", coreSurfaceValueCapabilityPresent "Framework.Background.ConstraintProof" "constraintProofEvidenceClaimNames")
+      , ("Framework.Background.ConstraintProof renderConstraintProofEvidencePayloadsJson value", coreSurfaceValueCapabilityPresent "Framework.Background.ConstraintProof" "renderConstraintProofEvidencePayloadsJson")
+      , ("constraint proof IR claim", "constraint-ir-built" `elem` constraintProofCoreClaimNames)
+      , ("constraint proof SMT claim", "constraint-proof-smt-results" `elem` constraintProofCoreClaimNames)
+      , ("constraint proof claim manifest", "constraint-proof-claim-manifest" `elem` constraintProofEvidenceClaimNames)
       , ("Framework.Runtime.Evidence runtimeEvidenceCoreClaimNames value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Evidence" "runtimeEvidenceCoreClaimNames")
       , ("Framework.Runtime.Evidence runtimeEvidenceClaimNames value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Evidence" "runtimeEvidenceClaimNames")
       , ("runtime evidence plan build claim", "runtime-plan-build-evidence" `elem` runtimeEvidenceCoreClaimNames)
