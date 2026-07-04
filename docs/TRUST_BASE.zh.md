@@ -120,7 +120,7 @@ RuntimeBackendParityEvidencePassedFact
 RuntimeEvidencePassedFact
 ```
 
-`RuntimeEvidencePassedFact` 是兼容 rollup fact，由 6 条 `RuntimeEvidencePayload` 支撑：
+`RuntimeEvidencePassedFact` 是兼容 rollup fact，由 7 条 `RuntimeEvidencePayload` 支撑：
 
 ```text
 runtime-plan-build-evidence
@@ -129,6 +129,7 @@ runtime-execution-evidence
 runtime-concurrency-evidence
 runtime-diagnosis-evidence
 runtime-backend-parity-evidence
+runtime-evidence-claim-manifest
 ```
 
 细粒度事实用于定位哪一片 runtime 语义没有闭合。

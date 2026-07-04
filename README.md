@@ -159,7 +159,7 @@ Domain 侧验收应用
 domain-app-report: status passed
 bootstrap-report: status passed
 fixed-point-smoke: diffs: 0
-runtime-evidence-witness: ok runtime evidence 6 payload claims
+runtime-evidence-witness: ok runtime evidence 7 payload claims
 trust-base-manifest-witness: ok trust base manifest trust-base-manifest.v2
 workflow-semantics-witness: ok workflow semantics evidence 17 payload claims
 business-syntax-witness: ok business syntax evidence 18 payload claims
@@ -617,7 +617,7 @@ Stage 1: Framework.* facade/domain framework-core report
 fixed-point-smoke: fixed-point diff evidence 15 payload claims
 fixed-point-smoke: runtime backend parity evidence 4 payload claims
 fixed-point-smoke: diffs: 0
-runtime-evidence-witness: ok runtime evidence 6 payload claims
+runtime-evidence-witness: ok runtime evidence 7 payload claims
 ```
 
 runtime evidence payload claims：
@@ -629,6 +629,7 @@ runtime-execution-evidence
 runtime-concurrency-evidence
 runtime-diagnosis-evidence
 runtime-backend-parity-evidence
+runtime-evidence-claim-manifest
 ```
 
 backend parity payload claims：

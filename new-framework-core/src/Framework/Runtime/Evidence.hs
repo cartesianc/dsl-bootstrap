@@ -7,6 +7,7 @@ module Framework.Runtime.Evidence
   , renderRuntimeEvidencePayloadsJson
   , renderRuntimeEvidenceStatus
   , runtimeEvidenceArtifactSummary
+  , runtimeEvidenceCoreClaimNames
   , runtimeEvidenceClaimNames
   , runtimeEvidencePayloadPassed
   , runtimeEvidencePayloads
@@ -61,11 +62,18 @@ data RuntimeEvidenceSpec = RuntimeEvidenceSpec
 
 runtimeEvidencePayloads :: FrameworkCoreReport -> [RuntimeEvidencePayload]
 runtimeEvidencePayloads report =
-  map (`runtimeEvidencePayload` report) runtimeEvidenceSpecs
+  corePayloads ++ [runtimeEvidenceClaimManifestPayload corePayloads]
+  where
+    corePayloads =
+      map (`runtimeEvidencePayload` report) runtimeEvidenceSpecs
+
+runtimeEvidenceCoreClaimNames :: [String]
+runtimeEvidenceCoreClaimNames =
+  map runtimeEvidenceSpecClaim runtimeEvidenceSpecs
 
 runtimeEvidenceClaimNames :: [String]
 runtimeEvidenceClaimNames =
-  map runtimeEvidenceSpecClaim runtimeEvidenceSpecs
+  runtimeEvidenceCoreClaimNames ++ ["runtime-evidence-claim-manifest"]
 
 runtimeEvidenceArtifactSummary :: String
 runtimeEvidenceArtifactSummary =
@@ -168,6 +176,31 @@ runtimeEvidencePayload spec report =
           "missing fact: " ++ show (runtimeEvidenceSpecFact spec)
             ++ "; missing artifact: "
             ++ show (runtimeEvidenceSpecArtifact spec)
+
+runtimeEvidenceClaimManifestPayload :: [RuntimeEvidencePayload] -> RuntimeEvidencePayload
+runtimeEvidenceClaimManifestPayload payloads =
+  RuntimeEvidencePayload
+    { runtimeEvidenceClaim = "runtime-evidence-claim-manifest"
+    , runtimeEvidenceStatus =
+        if manifestSynced
+          then RuntimeEvidencePassed
+          else RuntimeEvidenceFailed
+    , runtimeEvidenceExpected =
+        "runtime evidence payload claims match exported claim manifest"
+    , runtimeEvidenceObserved =
+        if manifestSynced
+          then "claim manifest synced: " ++ show (length actualCoreClaimNames) ++ " core claims"
+          else "expected " ++ show runtimeEvidenceClaimNames ++ "; actual " ++ show actualEvidenceClaimNames
+    , runtimeEvidenceArtifact = "RuntimeEvidenceClaimManifestArtifact"
+    }
+  where
+    actualCoreClaimNames =
+      map runtimeEvidenceClaim payloads
+    actualEvidenceClaimNames =
+      actualCoreClaimNames ++ ["runtime-evidence-claim-manifest"]
+    manifestSynced =
+      actualCoreClaimNames == runtimeEvidenceCoreClaimNames
+        && actualEvidenceClaimNames == runtimeEvidenceClaimNames
 
 runtimeEvidencePayloadJson :: RuntimeEvidencePayload -> String
 runtimeEvidencePayloadJson payload =

@@ -55,6 +55,10 @@ import Framework.Runtime.HotPath
   ( runtimeHotPathCoreClaimNames
   , runtimeHotPathEvidenceClaimNames
   )
+import Framework.Runtime.Evidence
+  ( runtimeEvidenceCoreClaimNames
+  , runtimeEvidenceClaimNames
+  )
 import Framework.Runtime.Policy
   ( runtimePolicyCoreClaimNames
   , runtimePolicyEvidenceClaimNames
@@ -693,6 +697,10 @@ schemaCatalogCoveragePayload =
       , ("Framework.TrustBase.Manifest schemaCatalogEvidence value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "schemaCatalogEvidence")
       , ("Framework.TrustBase.Manifest schemaCatalogEvidencePayloadPassed value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "schemaCatalogEvidencePayloadPassed")
       , ("Framework.TrustBase.Manifest renderSchemaCatalogEvidencePayloadsJson value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "renderSchemaCatalogEvidencePayloadsJson")
+      , ("Framework.Runtime.Evidence runtimeEvidenceCoreClaimNames value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Evidence" "runtimeEvidenceCoreClaimNames")
+      , ("Framework.Runtime.Evidence runtimeEvidenceClaimNames value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Evidence" "runtimeEvidenceClaimNames")
+      , ("runtime evidence plan build claim", "runtime-plan-build-evidence" `elem` runtimeEvidenceCoreClaimNames)
+      , ("runtime evidence claim manifest", "runtime-evidence-claim-manifest" `elem` runtimeEvidenceClaimNames)
       , ("Framework.RegistryCodegen registryCodegenEvidenceClaimNames value", coreSurfaceValueCapabilityPresent "Framework.RegistryCodegen" "registryCodegenEvidenceClaimNames")
       , ("Framework.RegistryCodegen renderRegistryCodegenEvidencePayload value", coreSurfaceValueCapabilityPresent "Framework.RegistryCodegen" "renderRegistryCodegenEvidencePayload")
       , ("Framework.RegistryCodegen renderRegistryCodegenEvidencePayloadsJson value", coreSurfaceValueCapabilityPresent "Framework.RegistryCodegen" "renderRegistryCodegenEvidencePayloadsJson")
