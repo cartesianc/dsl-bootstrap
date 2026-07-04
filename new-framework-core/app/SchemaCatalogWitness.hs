@@ -23,21 +23,13 @@ import System.Exit
 import qualified System.Process as Process
 
 import Framework.TrustBase
-  ( trustBaseManifestRequiredJsonSchemas )
-
-data SchemaCatalogEvidencePayload = SchemaCatalogEvidencePayload
-  { schemaCatalogEvidenceClaim :: String
-  , schemaCatalogEvidenceStatus :: SchemaCatalogEvidenceStatus
-  , schemaCatalogEvidenceExpected :: String
-  , schemaCatalogEvidenceObserved :: String
-  , schemaCatalogEvidenceArtifact :: String
-  }
-  deriving (Eq, Show)
-
-data SchemaCatalogEvidenceStatus
-  = SchemaCatalogEvidencePassed
-  | SchemaCatalogEvidenceFailed
-  deriving (Eq, Show)
+  ( SchemaCatalogEvidencePayload
+  , renderSchemaCatalogEvidencePayload
+  , renderSchemaCatalogEvidencePayloadsJson
+  , schemaCatalogEvidence
+  , schemaCatalogEvidencePayloadPassed
+  , trustBaseManifestRequiredJsonSchemas
+  )
 
 data SchemaCatalogEntry = SchemaCatalogEntry
   { schemaCatalogEntrySchema :: String
@@ -225,65 +217,10 @@ observedSchemaOutput entry exitCode stdoutText stderrText =
         ++ " stderr="
         ++ compactPrefix stderrText
 
-schemaCatalogEvidence :: String -> Bool -> String -> String -> String -> SchemaCatalogEvidencePayload
-schemaCatalogEvidence claim passed expected observed artifact =
-  SchemaCatalogEvidencePayload
-    { schemaCatalogEvidenceClaim = claim
-    , schemaCatalogEvidenceStatus =
-        if passed
-          then SchemaCatalogEvidencePassed
-          else SchemaCatalogEvidenceFailed
-    , schemaCatalogEvidenceExpected = expected
-    , schemaCatalogEvidenceObserved = observed
-    , schemaCatalogEvidenceArtifact = artifact
-    }
-
-schemaCatalogEvidencePayloadPassed :: SchemaCatalogEvidencePayload -> Bool
-schemaCatalogEvidencePayloadPassed payload =
-  schemaCatalogEvidenceStatus payload == SchemaCatalogEvidencePassed
-
 renderPayloadBlock :: SchemaCatalogEvidencePayload -> [String]
 renderPayloadBlock payload =
   map ("  " ++) (renderSchemaCatalogEvidencePayload payload)
     ++ [""]
-
-renderSchemaCatalogEvidencePayload :: SchemaCatalogEvidencePayload -> [String]
-renderSchemaCatalogEvidencePayload payload =
-  [ "claim: " ++ schemaCatalogEvidenceClaim payload
-  , "status: " ++ renderSchemaCatalogEvidenceStatus (schemaCatalogEvidenceStatus payload)
-  , "expected: " ++ schemaCatalogEvidenceExpected payload
-  , "observed: " ++ schemaCatalogEvidenceObserved payload
-  , "artifact: " ++ schemaCatalogEvidenceArtifact payload
-  ]
-
-renderSchemaCatalogEvidenceStatus :: SchemaCatalogEvidenceStatus -> String
-renderSchemaCatalogEvidenceStatus SchemaCatalogEvidencePassed =
-  "passed"
-renderSchemaCatalogEvidenceStatus SchemaCatalogEvidenceFailed =
-  "failed"
-
-renderSchemaCatalogEvidencePayloadsJson :: [SchemaCatalogEvidencePayload] -> String
-renderSchemaCatalogEvidencePayloadsJson payloads =
-  jsonObject
-    [ jsonField "schema" (jsonString "schema-catalog-evidence.v1")
-    , jsonField "status" (jsonString status)
-    , jsonField "payloads" (jsonArray (map schemaCatalogEvidencePayloadJson payloads))
-    ]
-  where
-    status =
-      if all schemaCatalogEvidencePayloadPassed payloads
-        then "passed"
-        else "failed"
-
-schemaCatalogEvidencePayloadJson :: SchemaCatalogEvidencePayload -> String
-schemaCatalogEvidencePayloadJson payload =
-  jsonObject
-    [ jsonField "claim" (jsonString (schemaCatalogEvidenceClaim payload))
-    , jsonField "status" (jsonString (renderSchemaCatalogEvidenceStatus (schemaCatalogEvidenceStatus payload)))
-    , jsonField "expected" (jsonString (schemaCatalogEvidenceExpected payload))
-    , jsonField "observed" (jsonString (schemaCatalogEvidenceObserved payload))
-    , jsonField "artifact" (jsonString (schemaCatalogEvidenceArtifact payload))
-    ]
 
 failWhenEvidenceFailed :: [SchemaCatalogEvidencePayload] -> IO ()
 failWhenEvidenceFailed [] =
@@ -325,43 +262,3 @@ isPrefixOfLocal (left : leftRest) (right : rightRest)
       isPrefixOfLocal leftRest rightRest
   | otherwise =
       False
-
-jsonObject :: [String] -> String
-jsonObject fields =
-  "{" ++ joinWith "," fields ++ "}"
-
-jsonField :: String -> String -> String
-jsonField name value =
-  jsonString name ++ ":" ++ value
-
-jsonArray :: [String] -> String
-jsonArray values =
-  "[" ++ joinWith "," values ++ "]"
-
-jsonString :: String -> String
-jsonString value =
-  "\"" ++ concatMap jsonChar value ++ "\""
-
-jsonChar :: Char -> String
-jsonChar currentChar =
-  case currentChar of
-    '"' ->
-      "\\\""
-    '\\' ->
-      "\\\\"
-    '\n' ->
-      "\\n"
-    '\r' ->
-      "\\r"
-    '\t' ->
-      "\\t"
-    _ ->
-      [currentChar]
-
-joinWith :: String -> [String] -> String
-joinWith _ [] =
-  ""
-joinWith _ [item] =
-  item
-joinWith separator (item : rest) =
-  item ++ separator ++ joinWith separator rest

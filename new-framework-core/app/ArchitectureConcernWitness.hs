@@ -9,6 +9,7 @@ import System.Environment
 
 import Bootstrap.CoreSurface
   ( CoreCapability (..)
+  , CoreCapabilityKind (..)
   , CoreSurfaceModule (..)
   , coreSurfaceModules
   )
@@ -293,11 +294,22 @@ capabilityPrivateFactPayload =
 
 coreSurfaceValueCapabilityPresent :: String -> String -> Bool
 coreSurfaceValueCapabilityPresent moduleName capability =
+  coreSurfaceCapabilityPresent moduleName ValueCapability capability
+
+coreSurfaceTypeCapabilityPresent :: String -> String -> Bool
+coreSurfaceTypeCapabilityPresent moduleName capability =
+  coreSurfaceCapabilityPresent moduleName TypeCapability capability
+
+coreSurfaceCapabilityPresent :: String -> CoreCapabilityKind -> String -> Bool
+coreSurfaceCapabilityPresent moduleName kind capability =
   any moduleMatches coreSurfaceModules
   where
     moduleMatches currentModule =
       surfaceModuleName currentModule == moduleName
-        && any ((== capability) . capabilityName) (surfaceModuleCapabilities currentModule)
+        && any capabilityMatches (surfaceModuleCapabilities currentModule)
+    capabilityMatches currentCapability =
+      capabilityName currentCapability == capability
+        && capabilityKind currentCapability == kind
 
 businessFacadeBoundaryPayload :: ArchitectureConcernEvidencePayload
 businessFacadeBoundaryPayload =
@@ -395,8 +407,19 @@ schemaCatalogCoveragePayload =
       , "runtime-concurrency-evidence.v1"
       , "architecture-concern-evidence.v1"
       ]
+    required =
+      [ ("schema catalog entry: " ++ schemaName, schemaPresent schemaName)
+      | schemaName <- requiredSchemas
+      ]
+        ++
+      [ ("Framework.TrustBase.Manifest SchemaCatalogEvidencePayload type", coreSurfaceTypeCapabilityPresent "Framework.TrustBase.Manifest" "SchemaCatalogEvidencePayload")
+      , ("Framework.TrustBase.Manifest SchemaCatalogEvidenceStatus type", coreSurfaceTypeCapabilityPresent "Framework.TrustBase.Manifest" "SchemaCatalogEvidenceStatus")
+      , ("Framework.TrustBase.Manifest schemaCatalogEvidence value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "schemaCatalogEvidence")
+      , ("Framework.TrustBase.Manifest schemaCatalogEvidencePayloadPassed value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "schemaCatalogEvidencePayloadPassed")
+      , ("Framework.TrustBase.Manifest renderSchemaCatalogEvidencePayloadsJson value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "renderSchemaCatalogEvidencePayloadsJson")
+      ]
     missing =
-      [ schemaName | schemaName <- requiredSchemas, not (schemaPresent schemaName) ]
+      [ name | (name, present) <- required, not present ]
 
 semanticRiskReviewPayload :: ArchitectureConcernEvidencePayload
 semanticRiskReviewPayload =

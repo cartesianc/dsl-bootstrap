@@ -1,14 +1,21 @@
 module Framework.TrustBase.Manifest
-  ( TrustBaseManifest (..)
+  ( SchemaCatalogEvidencePayload (..)
+  , SchemaCatalogEvidenceStatus (..)
+  , TrustBaseManifest (..)
   , TrustBaseManifestEvidencePayload (..)
   , TrustBaseManifestEvidenceStatus (..)
   , TrustBaseGatePolicy (..)
   , defaultTrustBaseManifest
+  , renderSchemaCatalogEvidencePayload
+  , renderSchemaCatalogEvidencePayloadsJson
+  , renderSchemaCatalogEvidenceStatus
   , renderTrustBaseManifest
   , renderTrustBaseManifestEvidencePayload
   , renderTrustBaseManifestEvidencePayloadsJson
   , renderTrustBaseManifestEvidenceStatus
   , renderTrustBaseManifestJson
+  , schemaCatalogEvidence
+  , schemaCatalogEvidencePayloadPassed
   , trustBaseManifestEvidenceArtifactSummary
   , trustBaseManifestEvidenceClaimNames
   , trustBaseManifestEvidencePayloadPassed
@@ -129,9 +136,27 @@ data TrustBaseManifestEvidenceStatus
   | TrustBaseManifestEvidenceFailed
   deriving (Eq, Show)
 
+data SchemaCatalogEvidencePayload = SchemaCatalogEvidencePayload
+  { schemaCatalogEvidenceClaim :: String
+  , schemaCatalogEvidenceStatus :: SchemaCatalogEvidenceStatus
+  , schemaCatalogEvidenceExpected :: String
+  , schemaCatalogEvidenceObserved :: String
+  , schemaCatalogEvidenceArtifact :: String
+  }
+  deriving (Eq, Show)
+
+data SchemaCatalogEvidenceStatus
+  = SchemaCatalogEvidencePassed
+  | SchemaCatalogEvidenceFailed
+  deriving (Eq, Show)
+
 trustBaseManifestEvidencePayloadPassed :: TrustBaseManifestEvidencePayload -> Bool
 trustBaseManifestEvidencePayloadPassed payload =
   trustBaseManifestEvidenceStatus payload == TrustBaseManifestEvidencePassed
+
+schemaCatalogEvidencePayloadPassed :: SchemaCatalogEvidencePayload -> Bool
+schemaCatalogEvidencePayloadPassed payload =
+  schemaCatalogEvidenceStatus payload == SchemaCatalogEvidencePassed
 
 trustBaseManifestEvidenceClaimNames :: [String]
 trustBaseManifestEvidenceClaimNames =
@@ -151,6 +176,19 @@ trustBaseManifestEvidenceArtifactSummary :: String
 trustBaseManifestEvidenceArtifactSummary =
   "trust base manifest evidence payload claims: "
     ++ joinWith ", " trustBaseManifestEvidenceClaimNames
+
+schemaCatalogEvidence :: String -> Bool -> String -> String -> String -> SchemaCatalogEvidencePayload
+schemaCatalogEvidence claim passed expected observed artifact =
+  SchemaCatalogEvidencePayload
+    { schemaCatalogEvidenceClaim = claim
+    , schemaCatalogEvidenceStatus =
+        if passed
+          then SchemaCatalogEvidencePassed
+          else SchemaCatalogEvidenceFailed
+    , schemaCatalogEvidenceExpected = expected
+    , schemaCatalogEvidenceObserved = observed
+    , schemaCatalogEvidenceArtifact = artifact
+    }
 
 trustBaseManifestRequiredCoreSurfaceModules :: [String]
 trustBaseManifestRequiredCoreSurfaceModules =
@@ -347,6 +385,44 @@ trustBaseManifestEvidencePayloadJson payload =
     , jsonField "expected" (jsonString (trustBaseManifestEvidenceExpected payload))
     , jsonField "observed" (jsonString (trustBaseManifestEvidenceObserved payload))
     , jsonField "artifact" (jsonString (trustBaseManifestEvidenceArtifact payload))
+    ]
+
+renderSchemaCatalogEvidencePayload :: SchemaCatalogEvidencePayload -> [String]
+renderSchemaCatalogEvidencePayload payload =
+  [ "claim: " ++ schemaCatalogEvidenceClaim payload
+  , "status: " ++ renderSchemaCatalogEvidenceStatus (schemaCatalogEvidenceStatus payload)
+  , "expected: " ++ schemaCatalogEvidenceExpected payload
+  , "observed: " ++ schemaCatalogEvidenceObserved payload
+  , "artifact: " ++ schemaCatalogEvidenceArtifact payload
+  ]
+
+renderSchemaCatalogEvidenceStatus :: SchemaCatalogEvidenceStatus -> String
+renderSchemaCatalogEvidenceStatus SchemaCatalogEvidencePassed =
+  "passed"
+renderSchemaCatalogEvidenceStatus SchemaCatalogEvidenceFailed =
+  "failed"
+
+renderSchemaCatalogEvidencePayloadsJson :: [SchemaCatalogEvidencePayload] -> String
+renderSchemaCatalogEvidencePayloadsJson payloads =
+  jsonObject
+    [ jsonField "schema" (jsonString "schema-catalog-evidence.v1")
+    , jsonField "status" (jsonString statusText)
+    , jsonField "payloads" (jsonArray (map schemaCatalogEvidencePayloadJson payloads))
+    ]
+  where
+    statusText =
+      if all schemaCatalogEvidencePayloadPassed payloads
+        then "passed"
+        else "failed"
+
+schemaCatalogEvidencePayloadJson :: SchemaCatalogEvidencePayload -> String
+schemaCatalogEvidencePayloadJson payload =
+  jsonObject
+    [ jsonField "claim" (jsonString (schemaCatalogEvidenceClaim payload))
+    , jsonField "status" (jsonString (renderSchemaCatalogEvidenceStatus (schemaCatalogEvidenceStatus payload)))
+    , jsonField "expected" (jsonString (schemaCatalogEvidenceExpected payload))
+    , jsonField "observed" (jsonString (schemaCatalogEvidenceObserved payload))
+    , jsonField "artifact" (jsonString (schemaCatalogEvidenceArtifact payload))
     ]
 
 renderTrustBaseManifestJson :: TrustBaseManifest -> String
