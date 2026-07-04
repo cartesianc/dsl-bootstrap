@@ -45,8 +45,12 @@ import Framework.Ast
   )
 import FrameworkCore.CurrentAst
   ( currentAst )
+import Control.Monad
+  ( filterM )
 import Data.Char
   ( isSpace )
+import System.Directory
+  ( doesFileExist )
 import System.Environment
   ( getArgs )
 
@@ -60,6 +64,8 @@ main = do
         length frameworkCoreFrontendSources
       claimLinkCount =
         length claimModuleLinks
+      coreSurfaceModuleCount =
+        length coreSurfaceModuleNames
   case args of
     ["--json"] -> do
       putStrLn (renderFrameworkCoreFrontendEvidencePayloadsJson payloads)
@@ -72,6 +78,8 @@ main = do
                 ++ show generatedSourceCount
                 ++ " modules; claim-module links "
                 ++ show claimLinkCount
+                ++ "; core-surface modules "
+                ++ show coreSurfaceModuleCount
             )
         currentFailures ->
           ioError
@@ -85,9 +93,12 @@ frameworkCoreFrontendEvidencePayloads :: IO [FrameworkCoreFrontendEvidencePayloa
 frameworkCoreFrontendEvidencePayloads = do
   generatedPayloads <- mapM generatedSourceEvidencePayload frameworkCoreFrontendSources
   cabalText <- readFile "new-framework-core/new-framework-core.cabal"
+  sourceBackedModules <- coreSurfaceSourceBackedModuleNames
   let claimPayloads =
         map (claimModuleLinkEvidencePayload currentAst cabalText) claimModuleLinks
-  pure (generatedPayloads ++ claimPayloads)
+      exposurePayload =
+        coreSurfaceExposedModulesEvidencePayload cabalText sourceBackedModules
+  pure (generatedPayloads ++ claimPayloads ++ [exposurePayload])
 
 data FrameworkCoreFrontendEvidencePayload = FrameworkCoreFrontendEvidencePayload
   { frameworkCoreFrontendEvidenceClaim :: String
@@ -186,6 +197,28 @@ claimModuleLinkEvidencePayload blueprint cabalText link =
       | otherwise =
           joinWith "; " failures
 
+coreSurfaceExposedModulesEvidencePayload :: String -> [String] -> FrameworkCoreFrontendEvidencePayload
+coreSurfaceExposedModulesEvidencePayload cabalText sourceBackedModules =
+  frontendEvidence
+    "framework-core-frontend-core-surface-exposed-modules"
+    (null missing)
+    "every source-backed CoreSurface module is a cabal exposed-module"
+    observed
+    "FrameworkCoreSurfaceExposedModulesArtifact"
+  where
+    exposed =
+      cabalExposedModules cabalText
+    missing =
+      [ moduleName
+      | moduleName <- sourceBackedModules
+      , moduleName `notElem` exposed
+      ]
+    observed
+      | null missing =
+          "all source-backed CoreSurface modules exposed: " ++ show (length sourceBackedModules)
+      | otherwise =
+          "missing exposed modules: " ++ joinWith ", " missing
+
 frontendEvidence :: String -> Bool -> String -> String -> String -> FrameworkCoreFrontendEvidencePayload
 frontendEvidence claim passed expected observed artifact =
   FrameworkCoreFrontendEvidencePayload
@@ -256,6 +289,24 @@ failWhenEvidenceFailed failedPayloads =
 coreSurfaceModuleNames :: [String]
 coreSurfaceModuleNames =
   map surfaceModuleName coreSurfaceModules
+
+coreSurfaceSourceBackedModuleNames :: IO [String]
+coreSurfaceSourceBackedModuleNames =
+  filterM moduleSourceExists coreSurfaceModuleNames
+
+moduleSourceExists :: String -> IO Bool
+moduleSourceExists moduleName =
+  doesFileExist (moduleSourcePath moduleName)
+
+moduleSourcePath :: String -> FilePath
+moduleSourcePath moduleName =
+  "new-framework-core/src/" ++ map modulePathChar moduleName ++ ".hs"
+
+modulePathChar :: Char -> Char
+modulePathChar '.' =
+  '/'
+modulePathChar currentChar =
+  currentChar
 
 appBlueprintFacts :: AppBlueprint -> [WorkflowFact]
 appBlueprintFacts blueprint =

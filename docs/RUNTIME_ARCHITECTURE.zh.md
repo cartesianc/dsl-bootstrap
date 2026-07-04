@@ -151,7 +151,7 @@ RegistryCodegenExpressedFact -> Framework.RegistryCodegen
 SelfArtifactManifestExpressedFact -> Framework.SelfArtifact
 ```
 
-`framework-core-frontend-witness -- --json` 输出 `framework-core-frontend-evidence.v1`，把 generated source 和 claim-module link 检查写成 payload。
+`framework-core-frontend-witness -- --json` 输出 `framework-core-frontend-evidence.v1`，把 generated source、claim-module link 和 source-backed CoreSurface module exposed coverage 检查写成 payload。
 
 ## 4. Runtime 模块边界
 
