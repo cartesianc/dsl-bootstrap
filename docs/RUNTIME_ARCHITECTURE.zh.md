@@ -162,10 +162,10 @@ Framework.Runtime.Interpreter
   typed RuntimeM interpreter implementation and app execution entrypoints
 
 Framework.Runtime.Types
-  shared runtime records, fact claims, typed values, events, and diagnosis data types
+  shared runtime records, RuntimeError, fact claims, typed values, events, and diagnosis data types
 
 Framework.Runtime.Diagnosis
-  diagnosis builder, probe completion, payload rendering, and failure diagnosis rendering
+  diagnosis builder, RuntimeError attribution, probe completion, payload rendering, and failure diagnosis rendering
 
 Framework.Runtime.Evidence
   top-level runtime evidence payloads over framework-core report facts and artifacts

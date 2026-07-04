@@ -15,6 +15,8 @@ module Framework.Runtime.Diagnosis
   , buildFailureDiagnosisWithSystem
   , completeDiagnosisProbe
   , diagnosisProbePairs
+  , runtimeDiagnosisRootCause
+  , runtimeDiagnosisStep
   , renderRuntimeDiagnosisEvidencePayload
   , renderRuntimeDiagnosisEvidencePayloadsJson
   , renderRuntimeDiagnosisEvidenceStatus
@@ -51,6 +53,7 @@ import Framework.Runtime.Types
   , RuntimeDiagnosisRootCause (..)
   , RuntimeDiagnosisStep (..)
   , RuntimeFactClaim (..)
+  , RuntimeError (..)
   , RuntimeFactStatus
   , RuntimeFailureDiagnosis (..)
   )
@@ -274,6 +277,74 @@ diagnosisProbePairs diagnosis =
   | currentProbe <- diagnosisProbes diagnosis
   , diagnosisProbeStatus currentProbe == DiagnosisProbePending
   ]
+
+runtimeDiagnosisStep :: WorkflowFact -> RuntimeError -> Maybe RuntimeDiagnosisStep
+runtimeDiagnosisStep currentFact errorReport =
+  case errorReport of
+    RuntimeMissingFactRule fact ->
+      Just (DiagnosisFactStep fact)
+    RuntimeMissingSendBoundary currentSend ->
+      Just (DiagnosisSendStep currentSend)
+    RuntimeMissingHandler currentSend ->
+      Just (DiagnosisSendStep currentSend)
+    RuntimeMissingHandlerInput currentSend _ ->
+      Just (DiagnosisSendStep currentSend)
+    RuntimeHandlerOutputMismatch currentSend _ _ ->
+      Just (DiagnosisSendStep currentSend)
+    RuntimeHandlerFailed currentSend _ ->
+      Just (DiagnosisSendStep currentSend)
+    RuntimeMissingTransform transformName ->
+      Just (DiagnosisTransformStep (show transformName))
+    RuntimeMissingTransformInput transformName _ ->
+      Just (DiagnosisTransformStep (show transformName))
+    RuntimeTransformInputMismatch transformName _ _ ->
+      Just (DiagnosisTransformStep (show transformName))
+    RuntimeTransformSignatureMismatch transformName _ _ _ _ ->
+      Just (DiagnosisTransformStep (show transformName))
+    _ ->
+      Just (DiagnosisFactStep currentFact)
+
+runtimeDiagnosisRootCause :: RuntimeError -> RuntimeDiagnosisRootCause
+runtimeDiagnosisRootCause errorReport =
+  case errorReport of
+    RuntimeMissingFactRule fact ->
+      DiagnosisMissingFactRuleCause fact
+    RuntimeMissingSendBoundary currentSend ->
+      DiagnosisMissingSendBoundaryCause currentSend
+    RuntimeMissingHandler currentSend ->
+      DiagnosisMissingHandlerCause currentSend
+    RuntimeMissingHandlerInput currentSend currentType ->
+      DiagnosisMissingHandlerInputCause currentSend currentType
+    RuntimeHandlerOutputMismatch currentSend expected actual ->
+      DiagnosisHandlerOutputMismatchCause currentSend expected actual
+    RuntimeHandlerFailed currentSend message ->
+      DiagnosisHandlerFailedCause currentSend message
+    RuntimeMissingTransform transformName ->
+      DiagnosisMissingTransformCause (show transformName)
+    RuntimeMissingTransformInput transformName currentType ->
+      DiagnosisMissingTransformInputCause (show transformName) currentType
+    RuntimeTransformInputMismatch transformName _ _ ->
+      DiagnosisTransformMismatchCause (show transformName)
+    RuntimeTransformSignatureMismatch transformName _ _ _ _ ->
+      DiagnosisTransformMismatchCause (show transformName)
+    RuntimeWaitBlocked message ->
+      DiagnosisWaitBlockedCause message
+    RuntimeChoiceMissingBranch message ->
+      DiagnosisChoiceMissingBranchCause message
+    RuntimeParallelBranchFailed index _ ->
+      DiagnosisParallelBranchFailedCause index
+    RuntimeParallelMergeConflict message ->
+      DiagnosisParallelMergeConflictCause message
+    RuntimeFallbackExhausted ->
+      DiagnosisFallbackExhaustedCause
+    RuntimeRaceEmpty ->
+      DiagnosisRaceExhaustedCause
+    RuntimeRaceExhausted ->
+      DiagnosisRaceExhaustedCause
+    RuntimeLoopExceeded count ->
+      DiagnosisLoopExceededCause count
+    RuntimeIoException message ->
+      DiagnosisIoExceptionCause message
 
 completeDiagnosisProbe ::
   WorkflowFact ->

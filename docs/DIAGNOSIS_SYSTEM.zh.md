@@ -107,10 +107,10 @@ Framework.Runtime
   typed runtime backend facade and interpreter entry
 
 Framework.Runtime.Types
-  shared runtime records, fact claims, typed values, events, and diagnosis data types
+  shared runtime records, RuntimeError, fact claims, typed values, events, and diagnosis data types
 
 Framework.Runtime.Diagnosis
-  diagnosis builder, probe completion, evidence payload rendering, and failure diagnosis rendering
+  diagnosis builder, RuntimeError attribution, probe completion, evidence payload rendering, and failure diagnosis rendering
 
 Framework.Background.RuntimeDiagnosis
   public diagnosis facade

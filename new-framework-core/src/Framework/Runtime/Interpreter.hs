@@ -153,6 +153,8 @@ import Framework.Runtime.Diagnosis
   , diagnosisProbePairs
   , recordRuntimeDiagnosis
   , renderRuntimeFailureDiagnosis
+  , runtimeDiagnosisRootCause
+  , runtimeDiagnosisStep
   )
 import Framework.Runtime.Handlers
 import Framework.Runtime.Types
@@ -168,28 +170,6 @@ data RuntimeCallback = RuntimeCallback
   { runtimeCallbackTarget :: EffectSystemName
   , runtimeCallbackBody :: Workflow WorkflowFact Interceptor
   }
-
-data RuntimeError
-  = RuntimeMissingFactRule WorkflowFact
-  | RuntimeMissingSendBoundary SendName
-  | RuntimeMissingHandler SendName
-  | RuntimeMissingHandlerInput SendName TypeName
-  | RuntimeHandlerOutputMismatch SendName TypeName [TypeName]
-  | RuntimeHandlerFailed SendName String
-  | RuntimeMissingTransform TransformName
-  | RuntimeMissingTransformInput TransformName TypeName
-  | RuntimeTransformInputMismatch TransformName TypeName TypeName
-  | RuntimeTransformSignatureMismatch TransformName TypeName TypeName TypeName TypeName
-  | RuntimeWaitBlocked String
-  | RuntimeChoiceMissingBranch String
-  | RuntimeParallelBranchFailed Int RuntimeError
-  | RuntimeParallelMergeConflict String
-  | RuntimeFallbackExhausted
-  | RuntimeRaceEmpty
-  | RuntimeRaceExhausted
-  | RuntimeLoopExceeded Int
-  | RuntimeIoException String
-  deriving (Eq, Show)
 
 data WorkflowBranchResult
   = WorkflowBranchSucceeded Int Runtime
@@ -1291,74 +1271,6 @@ currentRootSystem runtime =
       Just currentSystem
     [] ->
       Nothing
-
-runtimeDiagnosisStep :: WorkflowFact -> RuntimeError -> Maybe RuntimeDiagnosisStep
-runtimeDiagnosisStep currentFact errorReport =
-  case errorReport of
-    RuntimeMissingFactRule fact ->
-      Just (DiagnosisFactStep fact)
-    RuntimeMissingSendBoundary currentSend ->
-      Just (DiagnosisSendStep currentSend)
-    RuntimeMissingHandler currentSend ->
-      Just (DiagnosisSendStep currentSend)
-    RuntimeMissingHandlerInput currentSend _ ->
-      Just (DiagnosisSendStep currentSend)
-    RuntimeHandlerOutputMismatch currentSend _ _ ->
-      Just (DiagnosisSendStep currentSend)
-    RuntimeHandlerFailed currentSend _ ->
-      Just (DiagnosisSendStep currentSend)
-    RuntimeMissingTransform transformName ->
-      Just (DiagnosisTransformStep (show transformName))
-    RuntimeMissingTransformInput transformName _ ->
-      Just (DiagnosisTransformStep (show transformName))
-    RuntimeTransformInputMismatch transformName _ _ ->
-      Just (DiagnosisTransformStep (show transformName))
-    RuntimeTransformSignatureMismatch transformName _ _ _ _ ->
-      Just (DiagnosisTransformStep (show transformName))
-    _ ->
-      Just (DiagnosisFactStep currentFact)
-
-runtimeDiagnosisRootCause :: RuntimeError -> RuntimeDiagnosisRootCause
-runtimeDiagnosisRootCause errorReport =
-  case errorReport of
-    RuntimeMissingFactRule fact ->
-      DiagnosisMissingFactRuleCause fact
-    RuntimeMissingSendBoundary currentSend ->
-      DiagnosisMissingSendBoundaryCause currentSend
-    RuntimeMissingHandler currentSend ->
-      DiagnosisMissingHandlerCause currentSend
-    RuntimeMissingHandlerInput currentSend currentType ->
-      DiagnosisMissingHandlerInputCause currentSend currentType
-    RuntimeHandlerOutputMismatch currentSend expected actual ->
-      DiagnosisHandlerOutputMismatchCause currentSend expected actual
-    RuntimeHandlerFailed currentSend message ->
-      DiagnosisHandlerFailedCause currentSend message
-    RuntimeMissingTransform transformName ->
-      DiagnosisMissingTransformCause (show transformName)
-    RuntimeMissingTransformInput transformName currentType ->
-      DiagnosisMissingTransformInputCause (show transformName) currentType
-    RuntimeTransformInputMismatch transformName _ _ ->
-      DiagnosisTransformMismatchCause (show transformName)
-    RuntimeTransformSignatureMismatch transformName _ _ _ _ ->
-      DiagnosisTransformMismatchCause (show transformName)
-    RuntimeWaitBlocked message ->
-      DiagnosisWaitBlockedCause message
-    RuntimeChoiceMissingBranch message ->
-      DiagnosisChoiceMissingBranchCause message
-    RuntimeParallelBranchFailed index _ ->
-      DiagnosisParallelBranchFailedCause index
-    RuntimeParallelMergeConflict message ->
-      DiagnosisParallelMergeConflictCause message
-    RuntimeFallbackExhausted ->
-      DiagnosisFallbackExhaustedCause
-    RuntimeRaceEmpty ->
-      DiagnosisRaceExhaustedCause
-    RuntimeRaceExhausted ->
-      DiagnosisRaceExhaustedCause
-    RuntimeLoopExceeded count ->
-      DiagnosisLoopExceededCause count
-    RuntimeIoException message ->
-      DiagnosisIoExceptionCause message
 
 sendRetryAllowed :: SendName -> RuntimeM Bool
 sendRetryAllowed currentSend = do

@@ -14,6 +14,7 @@ module Framework.Runtime.Types
   , RuntimeDiagnosisProbeStatus (..)
   , RuntimeDiagnosisRootCause (..)
   , RuntimeDiagnosisStep (..)
+  , RuntimeError (..)
   , RuntimeFactClaim (..)
   , RuntimeFactFailure (..)
   , RuntimeFactStatus (..)
@@ -40,6 +41,7 @@ import Data.Typeable
 
 import Bootstrap.Effect
   ( SendName
+  , TransformName
   , TypeName
   )
 import Bootstrap.Workflow
@@ -106,6 +108,28 @@ data RuntimeFactFailure
   | RuntimeExternalMakeFailed SendName String
   | RuntimeErrorHandlerFailed SendName String
   | RuntimeLocalFactFailed String
+  deriving (Eq, Show)
+
+data RuntimeError
+  = RuntimeMissingFactRule WorkflowFact
+  | RuntimeMissingSendBoundary SendName
+  | RuntimeMissingHandler SendName
+  | RuntimeMissingHandlerInput SendName TypeName
+  | RuntimeHandlerOutputMismatch SendName TypeName [TypeName]
+  | RuntimeHandlerFailed SendName String
+  | RuntimeMissingTransform TransformName
+  | RuntimeMissingTransformInput TransformName TypeName
+  | RuntimeTransformInputMismatch TransformName TypeName TypeName
+  | RuntimeTransformSignatureMismatch TransformName TypeName TypeName TypeName TypeName
+  | RuntimeWaitBlocked String
+  | RuntimeChoiceMissingBranch String
+  | RuntimeParallelBranchFailed Int RuntimeError
+  | RuntimeParallelMergeConflict String
+  | RuntimeFallbackExhausted
+  | RuntimeRaceEmpty
+  | RuntimeRaceExhausted
+  | RuntimeLoopExceeded Int
+  | RuntimeIoException String
   deriving (Eq, Show)
 
 data RuntimeFailureDiagnosis = RuntimeFailureDiagnosis
