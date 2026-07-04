@@ -23,6 +23,7 @@ import Framework.Handler
   , HandlerResult (..)
   , RuntimeEffectEnvironment
   , RuntimeHandler (..)
+  , SendName
   , RuntimeTypedValue (..)
   , RuntimeTransform (..)
   , SomeRuntimeValue (..)
@@ -31,8 +32,6 @@ import Framework.Handler
   , ValueTag (..)
   , runtimeEffectEnvironmentWithTransforms
   )
-import Framework.Effect
-  ( SendName )
 
 newtype UserNameValue = UserNameValue String
   deriving (Eq, Show)

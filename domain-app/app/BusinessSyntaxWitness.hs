@@ -98,12 +98,14 @@ main = do
   domainBusinessBoundaryPassed <- domainBusinessAuthoringBoundaryPassed
   domainVocabularyBoundaryPassed <- domainEffectVocabularyBoundaryPassed
   effectFacadeBoundaryPassed <- effectsFacadeBoundaryPassed
+  domainRuntimeBoundaryPassed <- domainRuntimeHandlerBoundaryPassed
   let payloads =
         businessSyntaxEvidencePayloadsWithManifest
           runtimePipelinePassed
           domainBusinessBoundaryPassed
           domainVocabularyBoundaryPassed
           effectFacadeBoundaryPassed
+          domainRuntimeBoundaryPassed
       failures =
         evidenceFailures payloads
   case args of
@@ -117,8 +119,8 @@ main = do
         currentFailures ->
           ioError (userError (unlines currentFailures))
 
-businessSyntaxEvidencePayloadsWithManifest :: Bool -> Bool -> Bool -> Bool -> [BusinessSyntaxEvidencePayload]
-businessSyntaxEvidencePayloadsWithManifest runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed effectFacadeBoundaryPassed =
+businessSyntaxEvidencePayloadsWithManifest :: Bool -> Bool -> Bool -> Bool -> Bool -> [BusinessSyntaxEvidencePayload]
+businessSyntaxEvidencePayloadsWithManifest runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed effectFacadeBoundaryPassed domainRuntimeBoundaryPassed =
   corePayloads ++ [businessSyntaxClaimManifestPayload corePayloads]
   where
     corePayloads =
@@ -127,9 +129,10 @@ businessSyntaxEvidencePayloadsWithManifest runtimePipelinePassed domainBusinessB
         domainBusinessBoundaryPassed
         domainVocabularyBoundaryPassed
         effectFacadeBoundaryPassed
+        domainRuntimeBoundaryPassed
 
-businessSyntaxEvidencePayloads :: Bool -> Bool -> Bool -> Bool -> [BusinessSyntaxEvidencePayload]
-businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed effectFacadeBoundaryPassed =
+businessSyntaxEvidencePayloads :: Bool -> Bool -> Bool -> Bool -> Bool -> [BusinessSyntaxEvidencePayload]
+businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPassed domainVocabularyBoundaryPassed effectFacadeBoundaryPassed domainRuntimeBoundaryPassed =
   [ businessEvidence
       "business-syntax-needs-lowering"
       needsLoweringPassed
@@ -190,6 +193,12 @@ businessSyntaxEvidencePayloads runtimePipelinePassed domainBusinessBoundaryPasse
       "Effects.* lowering facade imports Framework.Business without Framework.Effect"
       (observedBool effectFacadeBoundaryPassed)
       "BusinessEffectsFacadeBoundaryArtifact"
+  , businessEvidence
+      "business-syntax-domain-runtime-handler-boundary"
+      domainRuntimeBoundaryPassed
+      "Domain.Runtime imports Framework.Handler without Framework.Effect"
+      (observedBool domainRuntimeBoundaryPassed)
+      "DomainRuntimeHandlerBoundaryArtifact"
   , businessEvidence
       "business-syntax-handler-binding-alignment"
       (null businessShapeIssues)
@@ -588,6 +597,16 @@ effectsFacadeBoundaryPassed = do
       , "domain-app/src/Effects/Logging.hs"
       ]
   pure (all effectFacadeSourcePassed sources)
+
+domainRuntimeHandlerBoundaryPassed :: IO Bool
+domainRuntimeHandlerBoundaryPassed = do
+  source <- readFile "domain-app/src/Domain/Runtime.hs"
+  pure
+    ( "import Framework.Handler" `isInfixOf` source
+        && not ("import Framework.Effect" `isInfixOf` source)
+        && not ("import Framework.Runtime" `isInfixOf` source)
+        && not ("import Bootstrap." `isInfixOf` source)
+    )
 
 effectFacadeSourcePassed :: String -> Bool
 effectFacadeSourcePassed source =

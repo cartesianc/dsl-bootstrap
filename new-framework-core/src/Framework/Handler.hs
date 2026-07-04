@@ -1,6 +1,7 @@
 module Framework.Handler
   ( ErrorInputValue (..)
   , HandlerBinding (..)
+  , HandlerName (..)
   , HandlerInput (..)
   , HandlerRegistry (..)
   , HandlerResult (..)
@@ -11,9 +12,12 @@ module Framework.Handler
   , RuntimeTransform (..)
   , RuntimeTypedValue (..)
   , RuntimeValue (..)
+  , SendName (..)
   , SomeRuntimeValue (..)
   , TransformBinding (..)
+  , TransformName (..)
   , TransformRegistry (..)
+  , TypeName (..)
   , UnitValue (..)
   , ValueTag (..)
   , emptyHandlerRegistry
@@ -39,6 +43,12 @@ module Framework.Handler
   , valueTagTypeName
   ) where
 
+import Bootstrap.Effect
+  ( HandlerName (..)
+  , SendName (..)
+  , TransformName (..)
+  , TypeName (..)
+  )
 import Framework.Runtime.Handlers
   ( HandlerBinding (..)
   , HandlerInput (..)

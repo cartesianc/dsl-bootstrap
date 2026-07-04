@@ -804,6 +804,7 @@ handlerFacade =
     ( map typeCapability
         [ "ErrorInputValue"
         , "HandlerBinding"
+        , "HandlerName"
         , "HandlerInput"
         , "HandlerRegistry"
         , "HandlerResult"
@@ -814,9 +815,12 @@ handlerFacade =
         , "RuntimeTransform"
         , "RuntimeTypedValue"
         , "RuntimeValue"
+        , "SendName"
         , "SomeRuntimeValue"
         , "TransformBinding"
+        , "TransformName"
         , "TransformRegistry"
+        , "TypeName"
         , "UnitValue"
         , "ValueTag"
         ]

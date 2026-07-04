@@ -512,12 +512,18 @@ businessFacadeBoundaryPayload =
       [ "business-syntax-domain-business-boundary"
       , "business-syntax-domain-effect-vocabulary-boundary"
       , "business-syntax-effects-facade-boundary"
+      , "business-syntax-domain-runtime-handler-boundary"
       ]
     required =
       ("business-syntax schema", schemaPresent "business-syntax-evidence.v1")
         : [ ("business facade boundary claim: " ++ claim, claim `elem` businessSyntaxEvidenceClaimNames)
           | claim <- requiredClaims
           ]
+        ++ [ ("Framework.Handler SendName type", coreSurfaceTypeCapabilityPresent "Framework.Handler" "SendName")
+           , ("Framework.Handler HandlerName type", coreSurfaceTypeCapabilityPresent "Framework.Handler" "HandlerName")
+           , ("Framework.Handler TransformName type", coreSurfaceTypeCapabilityPresent "Framework.Handler" "TransformName")
+           , ("Framework.Handler TypeName type", coreSurfaceTypeCapabilityPresent "Framework.Handler" "TypeName")
+           ]
     missing =
       [ name | (name, present) <- required, not present ]
 

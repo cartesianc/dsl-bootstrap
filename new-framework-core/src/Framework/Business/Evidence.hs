@@ -37,6 +37,7 @@ businessSyntaxCoreClaimNames =
   , "business-syntax-domain-business-boundary"
   , "business-syntax-domain-effect-vocabulary-boundary"
   , "business-syntax-effects-facade-boundary"
+  , "business-syntax-domain-runtime-handler-boundary"
   , "business-syntax-handler-binding-alignment"
   , "business-syntax-pipeline-adjacent-transform"
   , "business-syntax-runtime-pipeline-adapter"
