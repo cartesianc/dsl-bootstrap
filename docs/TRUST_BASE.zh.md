@@ -178,6 +178,8 @@ domain-app-report
 trust-base-manifest.v2
 trust-base-manifest-evidence.v1
 schema-catalog-evidence.v1
+ast-tree.v1
+domain-registry.v1
 domain-map.v1
 constraint-proof-evidence.v1
 registry-codegen-evidence.v1

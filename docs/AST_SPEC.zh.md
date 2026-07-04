@@ -151,9 +151,20 @@ AST 渲染入口：
 
 ```powershell
 stack exec ast-tree -- all
+stack exec ast-tree -- json all
 ```
 
-输出必须只显示 `framework-core` AST。
+文本输出和 `ast-tree.v1` JSON 输出都必须只显示 `framework-core` AST。
+
+`ast-tree.v1` 是现有 AST 语义的只读 projection：
+
+```text
+tree            结构化整树，节点带 kind/name/path/metadata/children
+executionPaths  扁平路径表，用来索引每个可运行或控制节点
+textTree        兼容人工阅读的文本树
+```
+
+动态运行位置不写入 AST 本体。后续如果要监听“当前运行到哪个节点”，应在 runtime interpreter 外侧挂 observer/trace event，并用 `executionPaths` 里的 path 对齐节点。
 
 负向规则：
 

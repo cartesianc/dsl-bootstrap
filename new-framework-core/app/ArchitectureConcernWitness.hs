@@ -681,6 +681,8 @@ schemaCatalogCoveragePayload =
     requiredSchemas =
       [ "framework-core-report.v1"
       , "domain-report.v1"
+      , "ast-tree.v1"
+      , "domain-registry.v1"
       , "domain-map.v1"
       , "fixed-point-report.v1"
       , "fixed-point-summary.v1"
@@ -714,6 +716,8 @@ schemaCatalogCoveragePayload =
       , ("Framework.TrustBase.Manifest schemaCatalogEvidencePayloadPassed value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "schemaCatalogEvidencePayloadPassed")
       , ("Framework.TrustBase.Manifest renderSchemaCatalogEvidencePayloadsJson value", coreSurfaceValueCapabilityPresent "Framework.TrustBase.Manifest" "renderSchemaCatalogEvidencePayloadsJson")
       , ("schema catalog framework-core report claim", "schema-catalog-output:framework-core-report.v1" `elem` schemaCatalogCoreClaimNames)
+      , ("schema catalog ast tree claim", "schema-catalog-output:ast-tree.v1" `elem` schemaCatalogCoreClaimNames)
+      , ("schema catalog domain registry claim", "schema-catalog-output:domain-registry.v1" `elem` schemaCatalogCoreClaimNames)
       , ("schema catalog domain map claim", "schema-catalog-output:domain-map.v1" `elem` schemaCatalogCoreClaimNames)
       , ("schema catalog constraint proof claim", "schema-catalog-output:constraint-proof-evidence.v1" `elem` schemaCatalogCoreClaimNames)
       , ("schema catalog registry codegen claim", "schema-catalog-output:registry-codegen-evidence.v1" `elem` schemaCatalogCoreClaimNames)

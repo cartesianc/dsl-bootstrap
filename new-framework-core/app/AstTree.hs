@@ -9,6 +9,9 @@ import Domain.Registry
   ( printAstRegistration
   , printRegisteredAstTrees
   , renderDomainRegistry
+  , renderDomainRegistryJson
+  , renderFrameworkCoreAstTreeJson
+  , renderRegisteredAstTreesJson
   )
 import System.Environment
   ( getArgs
@@ -24,5 +27,13 @@ main = do
       printAstRegistration frameworkCoreAstRegistration
     ["registry"] ->
       mapM_ putStrLn renderDomainRegistry
+    ["json"] ->
+      putStrLn renderRegisteredAstTreesJson
+    ["json", "all"] ->
+      putStrLn renderRegisteredAstTreesJson
+    ["json", "framework-core"] ->
+      putStrLn renderFrameworkCoreAstTreeJson
+    ["json", "registry"] ->
+      putStrLn renderDomainRegistryJson
     _ ->
       printRegisteredAstTrees

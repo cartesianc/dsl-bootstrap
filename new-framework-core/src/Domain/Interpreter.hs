@@ -1,5 +1,7 @@
 module Domain.Interpreter
-  ( InterpreterRegistration (..)
+  ( AstTreeNode (..)
+  , InterpreterRegistration (..)
+  , astTreeStructure
   , astTreeInterpreter
   , frameworkCoreInterpreterRegistration
   , interpreterRegistrationNames
@@ -36,6 +38,14 @@ import qualified Bootstrap.Workflow
 data InterpreterRegistration = InterpreterRegistration
   { interpreterRegistrationName :: String
   , interpreterAction :: RuntimeEffectEnvironment -> AppBlueprint -> EffectTheory -> IO ()
+  }
+
+data AstTreeNode = AstTreeNode
+  { astTreeNodeKind :: String
+  , astTreeNodeName :: String
+  , astTreeNodePath :: [String]
+  , astTreeNodeMetadata :: [(String, [String])]
+  , astTreeNodeChildren :: [AstTreeNode]
   }
 
 runtimeInterpreter :: InterpreterRegistration
@@ -81,6 +91,34 @@ renderAstTree blueprint =
     ++ indentLines 2 ("app" : renderWorkflow (blueprintApp blueprint))
     ++ indentLines 2 ("hanging" : concatMap renderHangingAction (hangingItems (blueprintHanging blueprint)))
 
+astTreeStructure :: AppBlueprint -> AstTreeNode
+astTreeStructure blueprint =
+  AstTreeNode
+    { astTreeNodeKind = "blueprint"
+    , astTreeNodeName = "blueprint"
+    , astTreeNodePath = ["blueprint"]
+    , astTreeNodeMetadata = []
+    , astTreeNodeChildren =
+        [ AstTreeNode
+            { astTreeNodeKind = "app"
+            , astTreeNodeName = "app"
+            , astTreeNodePath = ["blueprint", "app"]
+            , astTreeNodeMetadata = []
+            , astTreeNodeChildren = [workflowTreeNode ["blueprint", "app", "root"] (blueprintApp blueprint)]
+            }
+        , AstTreeNode
+            { astTreeNodeKind = "hanging"
+            , astTreeNodeName = "hanging"
+            , astTreeNodePath = ["blueprint", "hanging"]
+            , astTreeNodeMetadata = []
+            , astTreeNodeChildren =
+                indexedMap
+                  (hangingActionTreeNode ["blueprint", "hanging"])
+                  (hangingItems (blueprintHanging blueprint))
+            }
+        ]
+    }
+
 printAstTree :: AppBlueprint -> IO ()
 printAstTree =
   mapM_ putStrLn . renderAstTree
@@ -92,6 +130,129 @@ runRuntime handlers ast effects =
 runAstTree :: RuntimeEffectEnvironment -> AppBlueprint -> EffectTheory -> IO ()
 runAstTree _ ast _ =
   printAstTree ast
+
+workflowTreeNode :: (Show fact) => [String] -> Workflow fact hook -> AstTreeNode
+workflowTreeNode path workflow =
+  case workflow of
+    RunWorkflow system ->
+      effectSystemTreeNode path system
+    ChainWorkflow steps ->
+      branchContainerTreeNode "chain" "step" path (chainItems steps)
+    ParallelWorkflow branches ->
+      branchContainerTreeNode "parallel" "branch" path (parallelItems branches)
+    FallbackWorkflow branches ->
+      branchContainerTreeNode "fallback" "branch" path (fallbackItems branches)
+    RaceWorkflow branches ->
+      branchContainerTreeNode "race" "branch" path (raceItems branches)
+    ChoiceWorkflow key branches ->
+      AstTreeNode
+        { astTreeNodeKind = "choice"
+        , astTreeNodeName = choiceKeyText key
+        , astTreeNodePath = path
+        , astTreeNodeMetadata = [("selected", [choiceKeyText key])]
+        , astTreeNodeChildren =
+            map (choiceBranchTreeNode path) (choiceItems branches)
+        }
+    WaitWorkflow wait body ->
+      AstTreeNode
+        { astTreeNodeKind = "wait"
+        , astTreeNodeName = "wait"
+        , astTreeNodePath = path
+        , astTreeNodeMetadata = [("waitFacts", [renderFactExpr (Bootstrap.Workflow.waitFacts wait)])]
+        , astTreeNodeChildren = [workflowTreeNode (path ++ ["body"]) body]
+        }
+
+branchContainerTreeNode :: (Show fact) => String -> String -> [String] -> [Workflow fact hook] -> AstTreeNode
+branchContainerTreeNode kind childPrefix path children =
+  AstTreeNode
+    { astTreeNodeKind = kind
+    , astTreeNodeName = kind
+    , astTreeNodePath = path
+    , astTreeNodeMetadata = [("children", [show (length children)])]
+    , astTreeNodeChildren =
+        indexedMap
+          (\index child -> workflowTreeNode (path ++ [childPrefix ++ ":" ++ show index]) child)
+          children
+    }
+
+choiceBranchTreeNode :: (Show fact) => [String] -> (ChoiceKey, Workflow fact hook) -> AstTreeNode
+choiceBranchTreeNode path (key, branch) =
+  AstTreeNode
+    { astTreeNodeKind = "choice-branch"
+    , astTreeNodeName = choiceKeyText key
+    , astTreeNodePath = path ++ ["branch:" ++ choiceKeyText key]
+    , astTreeNodeMetadata = [("choiceKey", [choiceKeyText key])]
+    , astTreeNodeChildren =
+        [workflowTreeNode (path ++ ["branch:" ++ choiceKeyText key, "body"]) branch]
+    }
+
+effectSystemTreeNode :: (Show fact) => [String] -> Bootstrap.Workflow.EffectSystem fact -> AstTreeNode
+effectSystemTreeNode path system =
+  AstTreeNode
+    { astTreeNodeKind = "run"
+    , astTreeNodeName = show (Bootstrap.Workflow.effectSystemName system)
+    , astTreeNodePath = path
+    , astTreeNodeMetadata =
+        [ ("success", [renderFactExpr (Bootstrap.Workflow.effectSystemSuccess system)])
+        , ("imports", map show (Bootstrap.Workflow.effectSystemBoundaryImports boundary))
+        , ("privateFacts", map show (Bootstrap.Workflow.effectSystemBoundaryPrivateFacts boundary))
+        , ("exports", map show (Bootstrap.Workflow.effectSystemBoundaryExports boundary))
+        , ("sends", map show (Bootstrap.Workflow.effectSystemBoundarySends boundary))
+        , ("transforms", map show (Bootstrap.Workflow.effectSystemBoundaryTransforms boundary))
+        , ("policies", map show (Bootstrap.Workflow.effectSystemBoundaryPolicies boundary))
+        , ("pipelines", map show (Bootstrap.Workflow.effectSystemBoundaryPipelines boundary))
+        , ("handlers", map show (Bootstrap.Workflow.effectSystemBoundaryHandlers boundary))
+        , ("boundaryExplicit", [if Bootstrap.Workflow.effectSystemBoundaryExplicit system then "true" else "false"])
+        ]
+    , astTreeNodeChildren = []
+    }
+  where
+    boundary =
+      Bootstrap.Workflow.effectSystemBoundary system
+
+hangingActionTreeNode ::
+  (Show fact, Show hook) =>
+  [String] ->
+  Int ->
+  HangingAction fact hook (Workflow fact hook) ->
+  AstTreeNode
+hangingActionTreeNode path index action =
+  case action of
+    HangingCallback callback ->
+      AstTreeNode
+        { astTreeNodeKind = "callback"
+        , astTreeNodeName = show (Bootstrap.Workflow.callbackTarget callback)
+        , astTreeNodePath = path ++ ["callback:" ++ show index]
+        , astTreeNodeMetadata = [("target", [show (Bootstrap.Workflow.callbackTarget callback)])]
+        , astTreeNodeChildren =
+            [workflowTreeNode (path ++ ["callback:" ++ show index, "body"]) (Bootstrap.Workflow.callbackBody callback)]
+        }
+    HangingSuspense suspense ->
+      AstTreeNode
+        { astTreeNodeKind = "suspense"
+        , astTreeNodeName = show (Bootstrap.Workflow.suspenseTarget suspense)
+        , astTreeNodePath = path ++ ["suspense:" ++ show index]
+        , astTreeNodeMetadata = [("target", [show (Bootstrap.Workflow.suspenseTarget suspense)])]
+        , astTreeNodeChildren = []
+        }
+    HangingLoop loop ->
+      AstTreeNode
+        { astTreeNodeKind = "loop"
+        , astTreeNodeName = "loop"
+        , astTreeNodePath = path ++ ["loop:" ++ show index]
+        , astTreeNodeMetadata = []
+        , astTreeNodeChildren =
+            [workflowTreeNode (path ++ ["loop:" ++ show index, "body"]) (Bootstrap.Workflow.loopBody loop)]
+        }
+    HangingMiddleware middleware body ->
+      AstTreeNode
+        { astTreeNodeKind = "middleware"
+        , astTreeNodeName = show (Bootstrap.Workflow.middlewareHook middleware)
+        , astTreeNodePath = path ++ ["middleware:" ++ show index]
+        , astTreeNodeMetadata = [("hook", [show (Bootstrap.Workflow.middlewareHook middleware)])]
+        , astTreeNodeChildren =
+            [workflowTreeNode (path ++ ["middleware:" ++ show index, "body"]) body]
+        }
 
 renderWorkflow :: (Show fact) => Workflow fact hook -> [String]
 renderWorkflow workflow =
@@ -178,3 +339,12 @@ renderFactExpr expression =
 indentLines :: Int -> [String] -> [String]
 indentLines count =
   map (replicate count ' ' ++)
+
+indexedMap :: (Int -> item -> result) -> [item] -> [result]
+indexedMap mapper =
+  go (0 :: Int)
+  where
+    go _ [] =
+      []
+    go index (item : rest) =
+      mapper index item : go (index + 1) rest
