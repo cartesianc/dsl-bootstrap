@@ -119,7 +119,7 @@ bootstrap-report: status passed
 bootstrap-report --json: framework-core-report.v1
 runtime-evidence-witness: ok runtime evidence 6 payload claims
 runtime-evidence-witness --json: runtime-evidence.v1
-runtime-hot-path-witness: ok runtime hot-path evidence 2 payload claims
+runtime-hot-path-witness: ok runtime hot-path evidence 3 payload claims
 runtime-hot-path-witness --json: runtime-hot-path-evidence.v1
 runtime-policy-witness: ok runtime policy evidence 4 payload claims
 runtime-policy-witness --json: runtime-policy-evidence.v1

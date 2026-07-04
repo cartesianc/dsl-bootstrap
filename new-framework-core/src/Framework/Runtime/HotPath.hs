@@ -7,6 +7,7 @@ module Framework.Runtime.HotPath
   , renderRuntimeHotPathEvidencePayloadsJson
   , renderRuntimeHotPathEvidenceStatus
   , runtimeHotPathEvidenceArtifactSummary
+  , runtimeHotPathCoreClaimNames
   , runtimeHotPathEvidenceClaimNames
   , runtimeHotPathEvidencePayloadPassed
   , runtimeHotPathEvidencePayloads
@@ -72,16 +73,22 @@ runtimeHotPathEvidencePayloads = do
       hotPathEnvironment
       hotPathTheory
       hotPathBlueprint
+  let corePayloads =
+        [ importBoundaryPayload interpreterSource
+        , behaviorPayload runtimeResult
+        ]
   pure
-    [ importBoundaryPayload interpreterSource
-    , behaviorPayload runtimeResult
-    ]
+    (corePayloads ++ [runtimeHotPathClaimManifestPayload corePayloads])
 
-runtimeHotPathEvidenceClaimNames :: [String]
-runtimeHotPathEvidenceClaimNames =
+runtimeHotPathCoreClaimNames :: [String]
+runtimeHotPathCoreClaimNames =
   [ "runtime-hot-path-import-boundary"
   , "runtime-hot-path-executes-minimal-workflow"
   ]
+
+runtimeHotPathEvidenceClaimNames :: [String]
+runtimeHotPathEvidenceClaimNames =
+  runtimeHotPathCoreClaimNames ++ ["runtime-hot-path-claim-manifest"]
 
 runtimeHotPathEvidenceArtifactSummary :: String
 runtimeHotPathEvidenceArtifactSummary =
@@ -200,6 +207,27 @@ hotPathEvidence claim passed expected observed artifact =
     , runtimeHotPathEvidenceObserved = observed
     , runtimeHotPathEvidenceArtifact = artifact
     }
+
+runtimeHotPathClaimManifestPayload :: [RuntimeHotPathEvidencePayload] -> RuntimeHotPathEvidencePayload
+runtimeHotPathClaimManifestPayload payloads =
+  hotPathEvidence
+    "runtime-hot-path-claim-manifest"
+    manifestSynced
+    "runtime hot-path payload claims match exported claim manifest"
+    observed
+    "RuntimeHotPathClaimManifestArtifact"
+  where
+    actualCoreClaimNames =
+      map runtimeHotPathEvidenceClaim payloads
+    actualEvidenceClaimNames =
+      actualCoreClaimNames ++ ["runtime-hot-path-claim-manifest"]
+    manifestSynced =
+      actualCoreClaimNames == runtimeHotPathCoreClaimNames
+        && actualEvidenceClaimNames == runtimeHotPathEvidenceClaimNames
+    observed =
+      if manifestSynced
+        then "claim manifest synced: " ++ show (length actualCoreClaimNames) ++ " core claims"
+        else "expected " ++ show runtimeHotPathEvidenceClaimNames ++ "; actual " ++ show actualEvidenceClaimNames
 
 hotPathBlueprint :: AppBlueprint
 hotPathBlueprint =

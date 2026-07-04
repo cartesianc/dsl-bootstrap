@@ -50,7 +50,9 @@ import Framework.Runtime.Diagnosis
   , runtimeDiagnosisEvidenceClaimNames
   )
 import Framework.Runtime.HotPath
-  ( runtimeHotPathEvidenceClaimNames )
+  ( runtimeHotPathCoreClaimNames
+  , runtimeHotPathEvidenceClaimNames
+  )
 import Framework.Runtime.Policy
   ( runtimePolicyCoreClaimNames
   , runtimePolicyEvidenceClaimNames
@@ -607,8 +609,9 @@ runtimeHotPathGuardPayload =
   where
     required =
       [ ("runtime-hot-path-evidence schema", schemaPresent "runtime-hot-path-evidence.v1")
-      , ("hot-path import boundary claim", "runtime-hot-path-import-boundary" `elem` runtimeHotPathEvidenceClaimNames)
-      , ("hot-path behavior claim", "runtime-hot-path-executes-minimal-workflow" `elem` runtimeHotPathEvidenceClaimNames)
+      , ("hot-path import boundary claim", "runtime-hot-path-import-boundary" `elem` runtimeHotPathCoreClaimNames)
+      , ("hot-path behavior claim", "runtime-hot-path-executes-minimal-workflow" `elem` runtimeHotPathCoreClaimNames)
+      , ("hot-path claim manifest", "runtime-hot-path-claim-manifest" `elem` runtimeHotPathEvidenceClaimNames)
       ]
     missing =
       [ name | (name, present) <- required, not present ]
