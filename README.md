@@ -614,7 +614,7 @@ Stage 1: Framework.* facade/domain framework-core report
 通过结果：
 
 ```text
-fixed-point-smoke: fixed-point diff evidence 14 payload claims
+fixed-point-smoke: fixed-point diff evidence 15 payload claims
 fixed-point-smoke: runtime backend parity evidence 4 payload claims
 fixed-point-smoke: diffs: 0
 runtime-evidence-witness: ok runtime evidence 6 payload claims
@@ -638,6 +638,7 @@ runtime-backend-parity-plan
 runtime-backend-parity-fact-closure
 runtime-backend-parity-artifact
 runtime-backend-parity-report
+runtime-backend-parity-claim-manifest
 ```
 
 artifact gate 会物化 `.generated/stage1-framework`，只复制 framework/code artifact inputs，不复制 `docs`、`README.md`、`CHANGELOG.md`、`TODO.md` 等说明性文档，并在隔离包中运行：

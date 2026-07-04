@@ -113,6 +113,7 @@ fixed-point-smoke backend parity payloads
   runtime-backend-parity-fact-closure
   runtime-backend-parity-artifact
   runtime-backend-parity-report
+  runtime-backend-parity-claim-manifest
 
 fixed-point-smoke diff evidence payloads
   fixed-point-diff-status
@@ -129,6 +130,7 @@ fixed-point-smoke diff evidence payloads
   fixed-point-diff-handler-coverage
   fixed-point-diff-artifact-types
   fixed-point-diff-failures
+  fixed-point-diff-claim-manifest
 
 RuntimeFactClosureExpressedFact
   needs RuntimeArtifactClosureValidatedFact

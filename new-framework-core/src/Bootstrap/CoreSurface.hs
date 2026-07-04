@@ -1010,6 +1010,9 @@ trustBaseFacade =
           , "diffGeneratedLines"
           , "generatedLinesMatch"
           , "buildFixedPointReport"
+          , "fixedPointDiffCoreClaimNames"
+          , "fixedPointDiffEvidenceArtifactSummary"
+          , "fixedPointDiffEvidenceClaimNames"
           , "fixedPointDiffEvidencePayloadPassed"
           , "fixedPointDiffEvidencePayloads"
           , "renderFixedPointDiffEvidencePayload"
@@ -1100,6 +1103,9 @@ fixedPointFacade =
         ]
         ++ map valueCapability
           [ "buildFixedPointReport"
+          , "fixedPointDiffCoreClaimNames"
+          , "fixedPointDiffEvidenceArtifactSummary"
+          , "fixedPointDiffEvidenceClaimNames"
           , "fixedPointDiffEvidencePayloadPassed"
           , "fixedPointDiffEvidencePayloads"
           , "fixedPointPassed"

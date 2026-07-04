@@ -33,7 +33,9 @@ import Framework.Business.Evidence
   , businessSyntaxEvidenceClaimNames
   )
 import Framework.FixedPoint
-  ( runtimeBackendParityCoreClaimNames
+  ( fixedPointDiffCoreClaimNames
+  , fixedPointDiffEvidenceClaimNames
+  , runtimeBackendParityCoreClaimNames
   , runtimeBackendParityEvidenceClaimNames
   )
 import Framework.Frontend.Evidence
@@ -712,6 +714,10 @@ reportJsonRendererCoveragePayload =
       , ("Framework.FixedPoint renderFixedPointReportJson value", coreSurfaceValueCapabilityPresent "Framework.FixedPoint" "renderFixedPointReportJson")
       , ("Framework.FixedPoint renderFixedPointReportSummaryJson value", coreSurfaceValueCapabilityPresent "Framework.FixedPoint" "renderFixedPointReportSummaryJson")
       , ("Framework.FixedPoint buildFixedPointReport value", coreSurfaceValueCapabilityPresent "Framework.FixedPoint" "buildFixedPointReport")
+      , ("Framework.FixedPoint fixedPointDiffCoreClaimNames value", coreSurfaceValueCapabilityPresent "Framework.FixedPoint" "fixedPointDiffCoreClaimNames")
+      , ("Framework.FixedPoint fixedPointDiffEvidenceClaimNames value", coreSurfaceValueCapabilityPresent "Framework.FixedPoint" "fixedPointDiffEvidenceClaimNames")
+      , ("fixed-point diff status claim", "fixed-point-diff-status" `elem` fixedPointDiffCoreClaimNames)
+      , ("fixed-point diff claim manifest", "fixed-point-diff-claim-manifest" `elem` fixedPointDiffEvidenceClaimNames)
       ]
     missing =
       [ name | (name, present) <- required, not present ]

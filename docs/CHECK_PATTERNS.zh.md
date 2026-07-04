@@ -130,7 +130,7 @@ trust-base-manifest-witness -- --evidence-json: trust-base-manifest-evidence.v1
 schema-catalog-witness -- --json: schema-catalog-evidence.v1
 registry-codegen-witness -- --json: registry-codegen-evidence.v1
 architecture-concern-witness -- --json: architecture-concern-evidence.v1
-fixed-point-smoke: fixed-point diff evidence 14 payload claims
+fixed-point-smoke: fixed-point diff evidence 15 payload claims
 fixed-point-smoke: diffs: 0
 fixed-point-smoke --json: fixed-point-report.v1
 fixed-point-smoke --summary-json: fixed-point-summary.v1
@@ -281,6 +281,7 @@ runtime-backend-parity-plan
 runtime-backend-parity-fact-closure
 runtime-backend-parity-artifact
 runtime-backend-parity-report
+runtime-backend-parity-claim-manifest
 ```
 
 workflow semantics 已经由 `workflow-semantics-witness` 输出 14 条 payload。

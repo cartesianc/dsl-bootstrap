@@ -8,6 +8,9 @@ module Framework.FixedPoint
   , RuntimeBackendParityEvidenceStatus (..)
   , StageEvidence (..)
   , buildFixedPointReport
+  , fixedPointDiffCoreClaimNames
+  , fixedPointDiffEvidenceArtifactSummary
+  , fixedPointDiffEvidenceClaimNames
   , fixedPointDiffEvidencePayloadPassed
   , fixedPointDiffEvidencePayloads
   , fixedPointPassed
@@ -180,9 +183,25 @@ renderFixedPointReportSummaryJson report =
 
 fixedPointDiffEvidencePayloads :: FixedPointReport -> [FixedPointDiffEvidencePayload]
 fixedPointDiffEvidencePayloads report =
-  map
-    (fixedPointDiffEvidencePayload (fixedPointStage0 report) (fixedPointStage1 report))
-    fixedPointDiffFields
+  corePayloads ++ [fixedPointDiffClaimManifestPayload corePayloads]
+  where
+    corePayloads =
+      map
+        (fixedPointDiffEvidencePayload (fixedPointStage0 report) (fixedPointStage1 report))
+        fixedPointDiffFields
+
+fixedPointDiffCoreClaimNames :: [String]
+fixedPointDiffCoreClaimNames =
+  map fixedPointDiffFieldClaim fixedPointDiffFields
+
+fixedPointDiffEvidenceClaimNames :: [String]
+fixedPointDiffEvidenceClaimNames =
+  fixedPointDiffCoreClaimNames ++ ["fixed-point-diff-claim-manifest"]
+
+fixedPointDiffEvidenceArtifactSummary :: String
+fixedPointDiffEvidenceArtifactSummary =
+  "fixed-point diff evidence payload claims: "
+    ++ joinWith ", " fixedPointDiffEvidenceClaimNames
 
 fixedPointDiffEvidencePayloadPassed :: FixedPointDiffEvidencePayload -> Bool
 fixedPointDiffEvidencePayloadPassed payload =
@@ -391,6 +410,31 @@ fixedPointDiffEvidencePayload stage0 stage1 field =
       if left == right
         then "matched field: " ++ fixedPointDiffFieldName field
         else "stage0: " ++ left ++ "; stage1: " ++ right
+
+fixedPointDiffClaimManifestPayload :: [FixedPointDiffEvidencePayload] -> FixedPointDiffEvidencePayload
+fixedPointDiffClaimManifestPayload payloads =
+  FixedPointDiffEvidencePayload
+    { fixedPointDiffEvidenceClaim = "fixed-point-diff-claim-manifest"
+    , fixedPointDiffEvidenceStatus =
+        if manifestSynced
+          then FixedPointDiffEvidencePassed
+          else FixedPointDiffEvidenceFailed
+    , fixedPointDiffEvidenceExpected =
+        "fixed-point diff payload claims match exported claim manifest"
+    , fixedPointDiffEvidenceObserved =
+        if manifestSynced
+          then "claim manifest synced: " ++ show (length actualCoreClaimNames) ++ " core claims"
+          else "expected " ++ show fixedPointDiffEvidenceClaimNames ++ "; actual " ++ show actualEvidenceClaimNames
+    , fixedPointDiffEvidenceArtifact = "FixedPointDiffClaimManifestArtifact"
+    }
+  where
+    actualCoreClaimNames =
+      map fixedPointDiffEvidenceClaim payloads
+    actualEvidenceClaimNames =
+      actualCoreClaimNames ++ ["fixed-point-diff-claim-manifest"]
+    manifestSynced =
+      actualCoreClaimNames == fixedPointDiffCoreClaimNames
+        && actualEvidenceClaimNames == fixedPointDiffEvidenceClaimNames
 
 stageEvidenceFieldValue :: StageEvidence -> String -> String
 stageEvidenceFieldValue evidence field =
