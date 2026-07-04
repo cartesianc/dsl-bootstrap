@@ -89,10 +89,12 @@ Lowering 后的 effect IR 继续使用这些语义构件：
 
 ```text
 effect        effect theory 分组
-effectSystem  带 imports/privateFacts/exports 的 system-level effect 分组
+effectSystem  带 imports/privateFacts/exports/pipeline/handler 的 system-level effect 分组
 imports       system 需要外部已经导出的 fact
 privateFacts  system 内部 fact
 exports       system 对外承诺的 fact
+pipeline      system 内声明的 artifact flow
+handler       system 内 send 到 handler 的绑定声明
 fact          可观察 fact producer
 needs         fact 依赖
 take          artifact 输入类型
@@ -121,16 +123,19 @@ witness 或 test IR
 effect/fact/needs/take/make/uses/externalMake
 ```
 
-`effect name sections` 仍然兼容旧 IR：默认 exports 为本 unit 里声明的 producer fact，imports 和 private facts 为空。需要显式 system scope 时使用：
+`effect name sections` 仍然兼容旧 IR：默认 exports 为本 unit 里声明的 producer fact，imports、private facts、pipelines 和 handlers 为空。需要显式 system scope 时使用：
 
 ```haskell
 effectSystem Name
   [ imports [InputReadyFact]
   , privateFacts [InternalPreparedFact]
   , exports [OutputReadyFact]
+  , pipeline "OutputPipeline" [InputValue, OutputValue]
+  , handler BuildOutput RuntimeBuildOutput
   ]
   [ fact InternalPreparedFact [needs InputReadyFact]
-  , fact OutputReadyFact [needs InternalPreparedFact]
+  , fact OutputReadyFact [needs InternalPreparedFact, uses BuildOutput]
+  , externalMake BuildOutput InputValue OutputValue
   ]
 ```
 
@@ -229,7 +234,7 @@ Effects.* 等于对应 Domain.Business capability group lowering
 Domain.Business 导入 Framework.Business 且不导入 Framework.Effect
 allDomainCapabilities 通过 business-shape checker
 runtime pipeline adapter 可以执行 transform 链
-effectSystem/imports/privateFacts/exports lower 到 Workflow.EffectSystemBoundary
+effectSystem/imports/privateFacts/exports/pipeline/handler lower 到 Workflow.EffectSystemBoundary
 ```
 
 期望输出：

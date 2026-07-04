@@ -329,9 +329,20 @@ effectSystemBoundaryMetadataPassed =
         [ Effect.imports [pipelineSourceFact]
         , Effect.privateFacts [privateFact]
         , Effect.exports [pipelineAdapterFact]
+        , Effect.pipeline "BoundaryProbePipeline" [UserName, ReportInput, ReportOutput]
+        , Effect.handler GenerateReport RuntimeGenerateReport
         ]
-        [ Effect.fact privateFact [Effect.needs pipelineSourceFact]
-        , Effect.fact pipelineAdapterFact [Effect.needs privateFact]
+        [ Effect.fact privateFact
+            [ Effect.needs pipelineSourceFact
+            , Effect.take UserName
+            , Effect.transform UserName ReportInput UserNameToReportInput
+            ]
+        , Effect.fact pipelineAdapterFact
+            [ Effect.needs privateFact
+            , Effect.uses GenerateReport
+            , Effect.make ReportOutput
+            ]
+        , Effect.externalMake GenerateReport ReportInput ReportOutput
         ]
     explicitEffectUnitBoundary =
       Effect.effectUnitBoundary explicitEffectUnit
@@ -364,11 +375,18 @@ effectSystemBoundaryMetadataPassed =
         && effectUnitPrivateFacts explicitEffectUnit == [privateFact]
         && effectUnitExports explicitEffectUnit == [pipelineAdapterFact]
         && Effect.effectUnitProducedFacts explicitEffectUnit == [privateFact, pipelineAdapterFact]
+        && effectUnitPipelineArtifacts explicitEffectUnit == [show UserName, show ReportInput, show ReportOutput]
+        && map Effect.effectSystemHandlerName (effectUnitHandlers explicitEffectUnit) == [RuntimeGenerateReport]
+        && map Effect.effectSystemHandlerSend (effectUnitHandlers explicitEffectUnit) == [GenerateReport]
     explicitEffectUnitBoundaryMatches =
       Workflow.effectSystemBoundaryName explicitEffectUnitBoundary == Workflow.EffectSystemName "BoundaryProbe"
         && Workflow.effectSystemBoundaryImports explicitEffectUnitBoundary == [pipelineSourceFact]
         && Workflow.effectSystemBoundaryPrivateFacts explicitEffectUnitBoundary == [privateFact]
         && Workflow.effectSystemBoundaryExports explicitEffectUnitBoundary == [pipelineAdapterFact]
+        && boundaryPipelineArtifacts explicitEffectUnitBoundary == [show UserName, show ReportInput, show ReportOutput]
+        && map Workflow.effectSystemBoundaryHandlerName (Workflow.effectSystemBoundaryHandlers explicitEffectUnitBoundary) == [show RuntimeGenerateReport]
+        && map show (Workflow.effectSystemBoundarySends explicitEffectUnitBoundary) == [show GenerateReport]
+        && map show (Workflow.effectSystemBoundaryTransforms explicitEffectUnitBoundary) == [show UserNameToReportInput]
     explicitEffectUnitSystemMatches =
       Workflow.effectSystemBoundaryExplicit explicitEffectUnitSystem
         && case Workflow.effectSystemSuccess explicitEffectUnitSystem of
@@ -429,6 +447,12 @@ boundaryPipelineArtifacts boundary =
   concatMap
     (map show . Workflow.effectSystemBoundaryPipelineArtifacts)
     (Workflow.effectSystemBoundaryPipelines boundary)
+
+effectUnitPipelineArtifacts :: EffectUnit -> [String]
+effectUnitPipelineArtifacts unit =
+  concatMap
+    (map show . Effect.effectSystemPipelineTypes)
+    (effectUnitPipelines unit)
 
 domainBusinessAuthoringBoundaryPassed :: IO Bool
 domainBusinessAuthoringBoundaryPassed = do

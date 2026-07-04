@@ -5,6 +5,8 @@ module Bootstrap.Effect
   ( EffectName (..)
   , EffectSection (..)
   , EffectSystemClause (..)
+  , EffectSystemHandler (..)
+  , EffectSystemPipeline (..)
   , EffectTheory (..)
   , EffectUnit (..)
   , ExternalTakeBoundary (..)
@@ -30,6 +32,7 @@ module Bootstrap.Effect
   , effectUnitSystem
   , exports
   , externalMake
+  , handler
   , idempotent
   , imports
   , make
@@ -38,6 +41,7 @@ module Bootstrap.Effect
   , pattern ErrorInput
   , pattern NoInput
   , pattern Unit
+  , pipeline
   , privateFacts
   , retry
   , take
@@ -119,6 +123,8 @@ data EffectUnit = EffectUnit
   , effectUnitImports :: [WorkflowFact]
   , effectUnitPrivateFacts :: [WorkflowFact]
   , effectUnitExports :: [WorkflowFact]
+  , effectUnitPipelines :: [EffectSystemPipeline]
+  , effectUnitHandlers :: [EffectSystemHandler]
   , effectUnitSections :: [EffectSection]
   }
 
@@ -126,6 +132,20 @@ data EffectSystemClause
   = EffectSystemImports [WorkflowFact]
   | EffectSystemPrivateFacts [WorkflowFact]
   | EffectSystemExports [WorkflowFact]
+  | EffectSystemPipelines [EffectSystemPipeline]
+  | EffectSystemHandlers [EffectSystemHandler]
+
+data EffectSystemPipeline = EffectSystemPipeline
+  { effectSystemPipelineName :: String
+  , effectSystemPipelineTypes :: [TypeName]
+  }
+  deriving (Eq, Show)
+
+data EffectSystemHandler = EffectSystemHandler
+  { effectSystemHandlerSend :: SendName
+  , effectSystemHandlerName :: HandlerName
+  }
+  deriving (Eq, Show)
 
 data EffectSection
   = FactClaimSection FactProducer
@@ -190,6 +210,8 @@ effect name sections =
     , effectUnitImports = []
     , effectUnitPrivateFacts = []
     , effectUnitExports = effectUnitProducedFactsFromSections sections
+    , effectUnitPipelines = []
+    , effectUnitHandlers = []
     , effectUnitSections = sections
     }
 
@@ -200,6 +222,8 @@ effectSystem name clauses sections =
     , effectUnitImports = unique (concatMap clauseImports clauses)
     , effectUnitPrivateFacts = unique (concatMap clausePrivateFacts clauses)
     , effectUnitExports = explicitOrProducedExports
+    , effectUnitPipelines = unique (concatMap clausePipelines clauses)
+    , effectUnitHandlers = unique (concatMap clauseHandlers clauses)
     , effectUnitSections = sections
     }
   where
@@ -222,6 +246,14 @@ exports :: [WorkflowFact] -> EffectSystemClause
 exports =
   EffectSystemExports
 
+pipeline :: String -> [TypeName] -> EffectSystemClause
+pipeline name types =
+  EffectSystemPipelines [EffectSystemPipeline name types]
+
+handler :: SendName -> HandlerName -> EffectSystemClause
+handler send name =
+  EffectSystemHandlers [EffectSystemHandler send name]
+
 effectUnitBoundary :: EffectUnit -> Workflow.EffectSystemBoundary WorkflowFact
 effectUnitBoundary unit =
   Workflow.systemBoundaryWithHandlers
@@ -232,8 +264,8 @@ effectUnitBoundary unit =
     (effectUnitBoundarySends unit)
     (effectUnitBoundaryTransforms unit)
     (effectUnitBoundaryPolicies unit)
-    []
-    []
+    (map effectSystemPipelineBoundary (effectUnitPipelines unit))
+    (map effectSystemHandlerBoundary (effectUnitHandlers unit))
 
 effectUnitSystem :: EffectUnit -> Workflow.EffectSystem WorkflowFact
 effectUnitSystem =
@@ -331,6 +363,18 @@ effectUnitBoundaryPolicies :: EffectUnit -> [Workflow.EffectSystemBoundaryPolicy
 effectUnitBoundaryPolicies unit =
   concatMap sectionBoundaryPolicies (effectUnitSections unit)
 
+effectSystemPipelineBoundary :: EffectSystemPipeline -> Workflow.EffectSystemBoundaryPipeline
+effectSystemPipelineBoundary currentPipeline =
+  Workflow.boundaryPipeline
+    (effectSystemPipelineName currentPipeline)
+    (map (Workflow.boundaryArtifact . show) (effectSystemPipelineTypes currentPipeline))
+
+effectSystemHandlerBoundary :: EffectSystemHandler -> Workflow.EffectSystemBoundaryHandler
+effectSystemHandlerBoundary currentHandler =
+  Workflow.boundaryHandler
+    (show (effectSystemHandlerSend currentHandler))
+    (show (effectSystemHandlerName currentHandler))
+
 sectionBoundaryPolicies :: EffectSection -> [Workflow.EffectSystemBoundaryPolicy]
 sectionBoundaryPolicies (SendPolicySection policy) =
   idempotencyPolicy ++ retryPolicy
@@ -373,6 +417,22 @@ clauseExports clause =
   case clause of
     EffectSystemExports facts ->
       facts
+    _ ->
+      []
+
+clausePipelines :: EffectSystemClause -> [EffectSystemPipeline]
+clausePipelines clause =
+  case clause of
+    EffectSystemPipelines currentPipelines ->
+      currentPipelines
+    _ ->
+      []
+
+clauseHandlers :: EffectSystemClause -> [EffectSystemHandler]
+clauseHandlers clause =
+  case clause of
+    EffectSystemHandlers handlers ->
+      handlers
     _ ->
       []
 

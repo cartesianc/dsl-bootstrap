@@ -62,6 +62,8 @@ import Domain.Registry
   )
 import Bootstrap.Effect
   ( EffectSection (..)
+  , EffectSystemHandler (..)
+  , EffectSystemPipeline (..)
   , EffectTheory (..)
   , EffectUnit (..)
   , ExternalTakeBoundary (..)
@@ -241,9 +243,23 @@ renderEffectUnit currentUnit =
       ( [ "imports: " ++ formatList (map show (effectUnitImports currentUnit))
         , "private: " ++ formatList (map show (effectUnitPrivateFacts currentUnit))
         , "exports: " ++ formatList (map show (effectUnitExports currentUnit))
+        , "pipelines: " ++ formatList (map renderEffectSystemPipeline (effectUnitPipelines currentUnit))
+        , "handlers: " ++ formatList (map renderEffectSystemHandler (effectUnitHandlers currentUnit))
         ]
           ++ map renderEffectSection (effectUnitSections currentUnit)
       )
+
+renderEffectSystemPipeline :: EffectSystemPipeline -> String
+renderEffectSystemPipeline currentPipeline =
+  effectSystemPipelineName currentPipeline
+    ++ " "
+    ++ formatList (map show (effectSystemPipelineTypes currentPipeline))
+
+renderEffectSystemHandler :: EffectSystemHandler -> String
+renderEffectSystemHandler currentHandler =
+  show (effectSystemHandlerSend currentHandler)
+    ++ "->"
+    ++ show (effectSystemHandlerName currentHandler)
 
 renderEffectSection :: EffectSection -> String
 renderEffectSection (FactClaimSection producer) =
@@ -337,7 +353,23 @@ effectUnitJson currentUnit =
     , ("imports", jsonStringArray (map show (effectUnitImports currentUnit)))
     , ("privateFacts", jsonStringArray (map show (effectUnitPrivateFacts currentUnit)))
     , ("exports", jsonStringArray (map show (effectUnitExports currentUnit)))
+    , ("pipelines", jsonArray (map effectSystemPipelineJson (effectUnitPipelines currentUnit)))
+    , ("handlers", jsonArray (map effectSystemHandlerJson (effectUnitHandlers currentUnit)))
     , ("sections", jsonArray (map effectSectionJson (effectUnitSections currentUnit)))
+    ]
+
+effectSystemPipelineJson :: EffectSystemPipeline -> String
+effectSystemPipelineJson currentPipeline =
+  jsonObject
+    [ ("name", jsonString (effectSystemPipelineName currentPipeline))
+    , ("artifacts", jsonStringArray (map show (effectSystemPipelineTypes currentPipeline)))
+    ]
+
+effectSystemHandlerJson :: EffectSystemHandler -> String
+effectSystemHandlerJson currentHandler =
+  jsonObject
+    [ ("send", jsonString (show (effectSystemHandlerSend currentHandler)))
+    , ("handler", jsonString (show (effectSystemHandlerName currentHandler)))
     ]
 
 effectSectionJson :: EffectSection -> String
