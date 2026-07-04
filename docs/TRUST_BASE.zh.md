@@ -171,7 +171,7 @@ domain-app-report
 `Framework.TrustBase.Manifest` 输出当前 trust base 的结构化边界：
 
 ```text
-trust-base-manifest.v1
+trust-base-manifest.v2
 trust-base-manifest-evidence.v1
 host boundary
 kernel modules
@@ -182,6 +182,7 @@ artifact gate executable
 artifact sources
 artifact commands
 json schemas
+gate policies
 ```
 
 轻量 witness：
@@ -192,9 +193,9 @@ stack exec trust-base-manifest-witness -- --json
 stack exec trust-base-manifest-witness -- --evidence-json
 ```
 
-Manifest 里的 `json schemas` 记录当前发布快照承诺的 machine-readable schema catalog；`--evidence-json` 会检查它和 TrustBase schema catalog 同步。
+Manifest 里的 `json schemas` 记录当前发布快照承诺的 machine-readable schema catalog；`gate policies` 记录 check-fast / check-semantic / check-release / self-artifact high-risk gate 的命令清单；`--evidence-json` 会检查它们和 TrustBase catalog、脚本 `-List` 输出同步。
 
-`--json` 输出 `trust-base-manifest.v1` 清单本体；`--evidence-json` 输出 `trust-base-manifest-evidence.v1`，包含 module、executable、artifact 和 CoreSurface coverage 的 payload。
+`--json` 输出 `trust-base-manifest.v2` 清单本体；`--evidence-json` 输出 `trust-base-manifest-evidence.v1`，包含 module、executable、artifact、CoreSurface coverage、schema catalog 和 gate policy 的 payload。
 
 这条 witness 只读取当前 cabal、CoreSurface 和 `defaultSelfArtifactManifest`，检查 manifest 里声明的 module、executable、artifact sources、artifact commands 和 CoreSurface coverage 没有漂移。它不物化 Stage 1 artifact，也不执行 `self-artifact-witness`。
 
@@ -205,7 +206,6 @@ Manifest 里的 `json schemas` 记录当前发布快照承诺的 machine-readabl
 后续可以继续把以下能力移出 trust base：
 
 ```text
-JSON schema versioning after v1
 artifact runner manifest policy split
 ```
 

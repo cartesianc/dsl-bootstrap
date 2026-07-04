@@ -842,6 +842,7 @@ trustBaseFacade =
         , "TrustBaseManifest"
         , "TrustBaseManifestEvidencePayload"
         , "TrustBaseManifestEvidenceStatus"
+        , "TrustBaseGatePolicy"
         , "WorkflowSemanticsEvidencePayload"
         , "WorkflowSemanticsEvidenceStatus"
         , "GeneratedSource"
@@ -917,6 +918,7 @@ trustBaseFacade =
           , "trustBaseManifestEvidenceClaimNames"
           , "trustBaseManifestEvidencePayloadPassed"
           , "trustBaseManifestRequiredCoreSurfaceModules"
+          , "trustBaseManifestRequiredGatePolicies"
           , "trustBaseManifestRequiredJsonSchemas"
           , "renderWorkflowSemanticsEvidencePayload"
           , "renderWorkflowSemanticsEvidencePayloadsJson"
@@ -933,6 +935,7 @@ trustBaseManifestFacade =
         [ "TrustBaseManifest"
         , "TrustBaseManifestEvidencePayload"
         , "TrustBaseManifestEvidenceStatus"
+        , "TrustBaseGatePolicy"
         ]
         ++ map valueCapability
           [ "defaultTrustBaseManifest"
@@ -945,6 +948,7 @@ trustBaseManifestFacade =
           , "trustBaseManifestEvidenceClaimNames"
           , "trustBaseManifestEvidencePayloadPassed"
           , "trustBaseManifestRequiredCoreSurfaceModules"
+          , "trustBaseManifestRequiredGatePolicies"
           , "trustBaseManifestRequiredJsonSchemas"
           ]
     )

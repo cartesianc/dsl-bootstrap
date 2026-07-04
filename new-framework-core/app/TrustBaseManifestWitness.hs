@@ -6,6 +6,10 @@ import Data.Char
   ( isSpace )
 import Data.List
   ( isPrefixOf )
+import System.Exit
+  ( ExitCode (..)
+  )
+import qualified System.Process as Process
 import Bootstrap.CoreSurface
   ( CoreSurfaceModule (..)
   , coreSurfaceModules
@@ -16,6 +20,7 @@ import Framework.TrustBase
   , TrustBaseManifest (..)
   , TrustBaseManifestEvidencePayload (..)
   , TrustBaseManifestEvidenceStatus (..)
+  , TrustBaseGatePolicy (..)
   , defaultSelfArtifactManifest
   , defaultTrustBaseManifest
   , renderArtifactCommand
@@ -25,6 +30,7 @@ import Framework.TrustBase
   , renderTrustBaseManifestJson
   , trustBaseManifestEvidencePayloadPassed
   , trustBaseManifestRequiredCoreSurfaceModules
+  , trustBaseManifestRequiredGatePolicies
   , trustBaseManifestRequiredJsonSchemas
   )
 import System.Environment
@@ -66,6 +72,7 @@ trustBaseManifestEvidencePayloads manifest = do
         cabalExecutables coreCabal ++ cabalExecutables domainCabal
       manifestModules =
         trustBaseManifestKernelModules manifest ++ trustBaseManifestFacadeModules manifest
+  gatePolicyOutput <- observedGatePolicyOutput
   pure
     [ manifestEvidence
         "trust-base-kernel-modules-exposed"
@@ -123,6 +130,14 @@ trustBaseManifestEvidencePayloads manifest = do
         "TrustBase manifest lists every published machine-readable schema"
         (observedDrift "json schemas" (trustBaseManifestJsonSchemas manifest) trustBaseManifestRequiredJsonSchemas)
         "TrustBaseJsonSchemaCatalogArtifact"
+    , manifestEvidence
+        "trust-base-gate-policies-synced"
+        ( trustBaseManifestGatePolicies manifest == trustBaseManifestRequiredGatePolicies
+            && null (gatePolicyDrift gatePolicyOutput (trustBaseManifestGatePolicies manifest))
+        )
+        "TrustBase manifest gate policies match check script -List output"
+        (observedGatePolicyDrift gatePolicyOutput (trustBaseManifestGatePolicies manifest))
+        "TrustBaseGatePolicyCatalogArtifact"
     ]
 
 manifestEvidence :: String -> Bool -> String -> String -> String -> TrustBaseManifestEvidencePayload
@@ -176,6 +191,63 @@ observedCoreSurfaceCoverage manifestModules =
     ++ observedItems
       "missing manifest modules"
       (missingItems manifestModules trustBaseManifestRequiredCoreSurfaceModules)
+
+observedGatePolicyOutput :: IO [(String, [String])]
+observedGatePolicyOutput =
+  mapM readGatePolicyOutput trustBaseManifestRequiredGatePolicies
+
+readGatePolicyOutput :: TrustBaseGatePolicy -> IO (String, [String])
+readGatePolicyOutput policy = do
+  let command =
+        trustBaseGatePolicyCommand policy
+  (exitCode, stdoutText, stderrText) <-
+    Process.readCreateProcessWithExitCode
+      (Process.proc "cmd" ("/c" : words command))
+      ""
+  case exitCode of
+    ExitSuccess ->
+      pure (trustBaseGatePolicyName policy, nonEmptyLines stdoutText)
+    ExitFailure code ->
+      pure
+        ( trustBaseGatePolicyName policy
+        , [ "command failed "
+              ++ show code
+              ++ ": "
+              ++ command
+              ++ " stderr="
+              ++ trimLine stderrText
+          ]
+        )
+
+gatePolicyDrift :: [(String, [String])] -> [TrustBaseGatePolicy] -> [String]
+gatePolicyDrift outputs policies =
+  [ trustBaseGatePolicyName policy
+  | policy <- policies
+  , lookup (trustBaseGatePolicyName policy) outputs /= Just (trustBaseGatePolicyCommands policy)
+  ]
+
+observedGatePolicyDrift :: [(String, [String])] -> [TrustBaseGatePolicy] -> String
+observedGatePolicyDrift outputs policies
+  | trustBaseManifestRequiredGatePolicies /= policies =
+      "manifest gate policies drifted"
+  | null drift =
+      "gate policies synced"
+  | otherwise =
+      "gate policies drifted: " ++ joinWith ", " drift
+  where
+    drift =
+      gatePolicyDrift outputs policies
+
+nonEmptyLines :: String -> [String]
+nonEmptyLines text =
+  [ trimLine line
+  | line <- lines text
+  , trimLine line /= ""
+  ]
+
+trimLine :: String -> String
+trimLine =
+  reverse . dropWhile isSpace . reverse . dropWhile isSpace
 
 missingItems :: [String] -> [String] -> [String]
 missingItems available expected =

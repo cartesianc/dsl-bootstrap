@@ -124,7 +124,7 @@ runtime-hot-path-witness --json: runtime-hot-path-evidence.v1
 runtime-policy-witness: ok runtime policy evidence 3 payload claims
 runtime-policy-witness --json: runtime-policy-evidence.v1
 business-syntax-witness -- --json: business-syntax-evidence.v1
-trust-base-manifest-witness: trust-base-manifest.v1
+trust-base-manifest-witness: trust-base-manifest.v2
 trust-base-manifest-witness -- --evidence-json: trust-base-manifest-evidence.v1
 fixed-point-smoke: fixed-point diff evidence 14 payload claims
 fixed-point-smoke: diffs: 0
@@ -327,6 +327,7 @@ facade modules -> cabal exposed-modules
 report/witness/artifact gate executables -> cabal executable names
 artifact sources/commands -> defaultSelfArtifactManifest
 json schemas -> TrustBase schema catalog
+gate policies -> check script -List output
 ```
 
 其中关键导入边界是：
@@ -463,7 +464,7 @@ stack build
 后续还值得继续升级：
 
 ```text
-TrustBase manifest 的 schema versioning 和 gate policy 分层
+artifact runner manifest policy split
 ```
 
 这不会改变业务运行热路径；这些检查仍然属于 report/witness/gate 编译验证路径。

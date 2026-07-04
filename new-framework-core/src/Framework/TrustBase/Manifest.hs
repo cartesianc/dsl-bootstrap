@@ -2,6 +2,7 @@ module Framework.TrustBase.Manifest
   ( TrustBaseManifest (..)
   , TrustBaseManifestEvidencePayload (..)
   , TrustBaseManifestEvidenceStatus (..)
+  , TrustBaseGatePolicy (..)
   , defaultTrustBaseManifest
   , renderTrustBaseManifest
   , renderTrustBaseManifestEvidencePayload
@@ -12,6 +13,7 @@ module Framework.TrustBase.Manifest
   , trustBaseManifestEvidenceClaimNames
   , trustBaseManifestEvidencePayloadPassed
   , trustBaseManifestRequiredCoreSurfaceModules
+  , trustBaseManifestRequiredGatePolicies
   , trustBaseManifestRequiredJsonSchemas
   ) where
 
@@ -34,13 +36,22 @@ data TrustBaseManifest = TrustBaseManifest
   , trustBaseManifestArtifactSources :: [String]
   , trustBaseManifestArtifactCommands :: [String]
   , trustBaseManifestJsonSchemas :: [String]
+  , trustBaseManifestGatePolicies :: [TrustBaseGatePolicy]
+  }
+  deriving (Eq, Show)
+
+data TrustBaseGatePolicy = TrustBaseGatePolicy
+  { trustBaseGatePolicyName :: String
+  , trustBaseGatePolicyCommand :: String
+  , trustBaseGatePolicyHighRisk :: Bool
+  , trustBaseGatePolicyCommands :: [String]
   }
   deriving (Eq, Show)
 
 defaultTrustBaseManifest :: TrustBaseManifest
 defaultTrustBaseManifest =
   TrustBaseManifest
-    { trustBaseManifestSchema = "trust-base-manifest.v1"
+    { trustBaseManifestSchema = "trust-base-manifest.v2"
     , trustBaseManifestName = "bootstrap-kernel"
     , trustBaseManifestHostBoundary =
         [ "ghc"
@@ -98,6 +109,8 @@ defaultTrustBaseManifest =
         map renderArtifactCommand (artifactManifestCommands defaultSelfArtifactManifest)
     , trustBaseManifestJsonSchemas =
         trustBaseManifestRequiredJsonSchemas
+    , trustBaseManifestGatePolicies =
+        trustBaseManifestRequiredGatePolicies
     }
 
 data TrustBaseManifestEvidencePayload = TrustBaseManifestEvidencePayload
@@ -129,6 +142,7 @@ trustBaseManifestEvidenceClaimNames =
   , "trust-base-artifact-commands-synced"
   , "trust-base-core-surface-covered"
   , "trust-base-json-schemas-synced"
+  , "trust-base-gate-policies-synced"
   ]
 
 trustBaseManifestEvidenceArtifactSummary :: String
@@ -166,7 +180,7 @@ trustBaseManifestRequiredJsonSchemas =
   , "domain-report.v1 <- domain-app-report -- --json"
   , "fixed-point-report.v1 <- fixed-point-smoke -- --json"
   , "fixed-point-summary.v1 <- fixed-point-smoke -- --summary-json"
-  , "trust-base-manifest.v1 <- trust-base-manifest-witness -- --json"
+  , "trust-base-manifest.v2 <- trust-base-manifest-witness -- --json"
   , "trust-base-manifest-evidence.v1 <- trust-base-manifest-witness -- --evidence-json"
   , "business-syntax-evidence.v1 <- business-syntax-witness -- --json"
   , "runtime-evidence.v1 <- runtime-evidence-witness -- --json"
@@ -175,6 +189,80 @@ trustBaseManifestRequiredJsonSchemas =
   , "runtime-diagnosis-evidence.v1 <- runtime-diagnosis-witness -- --json"
   , "workflow-semantics-evidence.v1 <- workflow-semantics-witness -- --json"
   , "runtime-concurrency-evidence.v1 <- workflow-semantics-witness -- --runtime-concurrency-json"
+  ]
+
+trustBaseManifestRequiredGatePolicies :: [TrustBaseGatePolicy]
+trustBaseManifestRequiredGatePolicies =
+  [ TrustBaseGatePolicy
+      "check-fast"
+      ".\\scripts\\check-fast.cmd -List"
+      False
+      [ "stack --work-dir .stack-work-codex build"
+      , "stack --work-dir .stack-work-codex exec framework-core-frontend-witness"
+      , "stack --work-dir .stack-work-codex exec business-syntax-witness -- --json"
+      , "stack --work-dir .stack-work-codex exec runtime-hot-path-witness -- --json"
+      , "stack --work-dir .stack-work-codex exec runtime-policy-witness -- --json"
+      , "stack --work-dir .stack-work-codex exec runtime-diagnosis-witness -- --json"
+      , "stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json"
+      ]
+  , TrustBaseGatePolicy
+      "check-semantic"
+      ".\\scripts\\check-semantic.cmd -List"
+      False
+      [ "stack --work-dir .stack-work-codex build"
+      , "stack --work-dir .stack-work-codex exec framework-core-frontend-witness"
+      , "stack --work-dir .stack-work-codex exec business-syntax-witness -- --json"
+      , "stack --work-dir .stack-work-codex exec domain-app-report -- --json"
+      , "stack --work-dir .stack-work-codex exec runtime-hot-path-witness -- --json"
+      , "stack --work-dir .stack-work-codex exec runtime-policy-witness -- --json"
+      , "stack --work-dir .stack-work-codex exec runtime-diagnosis-witness -- --json"
+      , "stack --work-dir .stack-work-codex exec workflow-semantics-witness -- --json"
+      , "stack --work-dir .stack-work-codex exec workflow-semantics-witness -- --runtime-concurrency-json"
+      , "stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json"
+      ]
+  , TrustBaseGatePolicy
+      "check-release"
+      ".\\scripts\\check-release.cmd -List"
+      False
+      releaseGateCommands
+  , TrustBaseGatePolicy
+      "check-release-with-self-artifact"
+      ".\\scripts\\check-release.cmd -IncludeSelfArtifact -List"
+      True
+      ( releaseGateBaseCommands
+          ++ [ "# self-artifact-witness high-risk gate; same HEAD may run only once unless marker is reset"
+             , "stack --work-dir .stack-work-codex exec self-artifact-witness"
+             ]
+      )
+  ]
+
+releaseGateCommands :: [String]
+releaseGateCommands =
+  releaseGateBaseCommands
+    ++ ["# self-artifact-witness skipped; pass -IncludeSelfArtifact to run the high-risk artifact gate once"]
+
+releaseGateBaseCommands :: [String]
+releaseGateBaseCommands =
+  [ "stack --work-dir .stack-work-codex build"
+  , "stack --work-dir .stack-work-codex exec mytest"
+  , "stack --work-dir .stack-work-codex exec domain-app-report -- --json"
+  , "stack --work-dir .stack-work-codex exec domain-app-self-smoke"
+  , "stack --work-dir .stack-work-codex exec business-syntax-witness -- --json"
+  , "stack --work-dir .stack-work-codex exec framework-core-mytest"
+  , "stack --work-dir .stack-work-codex exec bootstrap-smoke"
+  , "stack --work-dir .stack-work-codex exec bootstrap-runtime-smoke"
+  , "stack --work-dir .stack-work-codex exec bootstrap-report -- --json"
+  , "stack --work-dir .stack-work-codex exec fixed-point-smoke -- --summary-json"
+  , "stack --work-dir .stack-work-codex exec runtime-evidence-witness -- --json"
+  , "stack --work-dir .stack-work-codex exec runtime-hot-path-witness -- --json"
+  , "stack --work-dir .stack-work-codex exec runtime-policy-witness -- --json"
+  , "stack --work-dir .stack-work-codex exec runtime-diagnosis-witness -- --json"
+  , "stack --work-dir .stack-work-codex exec workflow-semantics-witness -- --json"
+  , "stack --work-dir .stack-work-codex exec workflow-semantics-witness -- --runtime-concurrency-json"
+  , "stack --work-dir .stack-work-codex exec constraint-proof-witness -- --smt=auto"
+  , "stack --work-dir .stack-work-codex exec framework-core-frontend-witness"
+  , "stack --work-dir .stack-work-codex exec trust-base-manifest-witness -- --evidence-json"
+  , "stack --work-dir .stack-work-codex exec registry-codegen-witness"
   ]
 
 renderTrustBaseManifest :: TrustBaseManifest -> [String]
@@ -200,6 +288,18 @@ renderTrustBaseManifest manifest =
     ++ indentLines 2 (trustBaseManifestArtifactCommands manifest)
     ++ ["json schemas:"]
     ++ indentLines 2 (trustBaseManifestJsonSchemas manifest)
+    ++ ["gate policies:"]
+    ++ indentLines 2 (concatMap renderTrustBaseGatePolicy (trustBaseManifestGatePolicies manifest))
+
+renderTrustBaseGatePolicy :: TrustBaseGatePolicy -> [String]
+renderTrustBaseGatePolicy policy =
+  [ trustBaseGatePolicyName policy
+      ++ ": "
+      ++ trustBaseGatePolicyCommand policy
+      ++ " highRisk="
+      ++ show (trustBaseGatePolicyHighRisk policy)
+  ]
+    ++ indentLines 2 (trustBaseGatePolicyCommands policy)
 
 renderTrustBaseManifestEvidencePayload :: TrustBaseManifestEvidencePayload -> [String]
 renderTrustBaseManifestEvidencePayload payload =
@@ -253,6 +353,16 @@ renderTrustBaseManifestJson manifest =
     , jsonField "artifactSources" (jsonStringArray (trustBaseManifestArtifactSources manifest))
     , jsonField "artifactCommands" (jsonStringArray (trustBaseManifestArtifactCommands manifest))
     , jsonField "jsonSchemas" (jsonStringArray (trustBaseManifestJsonSchemas manifest))
+    , jsonField "gatePolicies" (jsonArray (map trustBaseGatePolicyJson (trustBaseManifestGatePolicies manifest)))
+    ]
+
+trustBaseGatePolicyJson :: TrustBaseGatePolicy -> String
+trustBaseGatePolicyJson policy =
+  jsonObject
+    [ jsonField "name" (jsonString (trustBaseGatePolicyName policy))
+    , jsonField "command" (jsonString (trustBaseGatePolicyCommand policy))
+    , jsonField "highRisk" (jsonBool (trustBaseGatePolicyHighRisk policy))
+    , jsonField "commands" (jsonStringArray (trustBaseGatePolicyCommands policy))
     ]
 
 renderArtifactSourceText :: ArtifactSource -> String
@@ -278,6 +388,12 @@ jsonArray values =
 jsonStringArray :: [String] -> String
 jsonStringArray values =
   "[" ++ joinWith "," (map jsonString values) ++ "]"
+
+jsonBool :: Bool -> String
+jsonBool True =
+  "true"
+jsonBool False =
+  "false"
 
 jsonString :: String -> String
 jsonString value =
