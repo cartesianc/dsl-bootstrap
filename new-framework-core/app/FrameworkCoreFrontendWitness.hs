@@ -16,10 +16,15 @@ import Bootstrap.CoreSurface
   )
 import Framework.Frontend.Evidence
   ( FrontendClaimModuleLink (..)
+  , FrameworkCoreFrontendEvidencePayload (..)
   , frameworkCoreFrontendCoreClaimNames
+  , frameworkCoreFrontendEvidence
   , frameworkCoreFrontendEvidenceClaimNames
+  , frameworkCoreFrontendEvidencePayloadPassed
   , frontendClaimModuleLinkEvidenceClaimName
   , frontendClaimModuleLinks
+  , renderFrameworkCoreFrontendEvidencePayload
+  , renderFrameworkCoreFrontendEvidencePayloadsJson
   )
 import Framework.Ast
   ( App
@@ -101,24 +106,6 @@ frameworkCoreFrontendEvidencePayloads = do
       corePayloads =
         generatedPayloads ++ claimPayloads ++ [exposurePayload, runtimeDiagnosisBoundaryPayload]
   pure (corePayloads ++ [frameworkCoreFrontendClaimManifestPayload corePayloads])
-
-data FrameworkCoreFrontendEvidencePayload = FrameworkCoreFrontendEvidencePayload
-  { frameworkCoreFrontendEvidenceClaim :: String
-  , frameworkCoreFrontendEvidenceStatus :: FrameworkCoreFrontendEvidenceStatus
-  , frameworkCoreFrontendEvidenceExpected :: String
-  , frameworkCoreFrontendEvidenceObserved :: String
-  , frameworkCoreFrontendEvidenceArtifact :: String
-  }
-  deriving (Eq, Show)
-
-data FrameworkCoreFrontendEvidenceStatus
-  = FrameworkCoreFrontendEvidencePassed
-  | FrameworkCoreFrontendEvidenceFailed
-  deriving (Eq, Show)
-
-frameworkCoreFrontendEvidencePayloadPassed :: FrameworkCoreFrontendEvidencePayload -> Bool
-frameworkCoreFrontendEvidencePayloadPassed payload =
-  frameworkCoreFrontendEvidenceStatus payload == FrameworkCoreFrontendEvidencePassed
 
 generatedSourceEvidencePayload :: GeneratedSource -> IO FrameworkCoreFrontendEvidencePayload
 generatedSourceEvidencePayload source = do
@@ -289,60 +276,13 @@ frameworkCoreFrontendClaimManifestPayload payloads =
             ++ show actualEvidenceClaimNames
 
 frontendEvidence :: String -> Bool -> String -> String -> String -> FrameworkCoreFrontendEvidencePayload
-frontendEvidence claim passed expected observed artifact =
-  FrameworkCoreFrontendEvidencePayload
-    { frameworkCoreFrontendEvidenceClaim = claim
-    , frameworkCoreFrontendEvidenceStatus =
-        if passed
-          then FrameworkCoreFrontendEvidencePassed
-          else FrameworkCoreFrontendEvidenceFailed
-    , frameworkCoreFrontendEvidenceExpected = expected
-    , frameworkCoreFrontendEvidenceObserved = observed
-    , frameworkCoreFrontendEvidenceArtifact = artifact
-    }
+frontendEvidence =
+  frameworkCoreFrontendEvidence
 
 renderPayloadBlock :: FrameworkCoreFrontendEvidencePayload -> [String]
 renderPayloadBlock payload =
   map ("  " ++) (renderFrameworkCoreFrontendEvidencePayload payload)
     ++ [""]
-
-renderFrameworkCoreFrontendEvidencePayload :: FrameworkCoreFrontendEvidencePayload -> [String]
-renderFrameworkCoreFrontendEvidencePayload payload =
-  [ "claim: " ++ frameworkCoreFrontendEvidenceClaim payload
-  , "status: " ++ renderFrameworkCoreFrontendEvidenceStatus (frameworkCoreFrontendEvidenceStatus payload)
-  , "expected: " ++ frameworkCoreFrontendEvidenceExpected payload
-  , "observed: " ++ frameworkCoreFrontendEvidenceObserved payload
-  , "artifact: " ++ frameworkCoreFrontendEvidenceArtifact payload
-  ]
-
-renderFrameworkCoreFrontendEvidenceStatus :: FrameworkCoreFrontendEvidenceStatus -> String
-renderFrameworkCoreFrontendEvidenceStatus FrameworkCoreFrontendEvidencePassed =
-  "passed"
-renderFrameworkCoreFrontendEvidenceStatus FrameworkCoreFrontendEvidenceFailed =
-  "failed"
-
-renderFrameworkCoreFrontendEvidencePayloadsJson :: [FrameworkCoreFrontendEvidencePayload] -> String
-renderFrameworkCoreFrontendEvidencePayloadsJson payloads =
-  jsonObject
-    [ jsonField "schema" (jsonString "framework-core-frontend-evidence.v1")
-    , jsonField "status" (jsonString statusText)
-    , jsonField "payloads" (jsonArray (map frameworkCoreFrontendEvidencePayloadJson payloads))
-    ]
-  where
-    statusText =
-      if all frameworkCoreFrontendEvidencePayloadPassed payloads
-        then "passed"
-        else "failed"
-
-frameworkCoreFrontendEvidencePayloadJson :: FrameworkCoreFrontendEvidencePayload -> String
-frameworkCoreFrontendEvidencePayloadJson payload =
-  jsonObject
-    [ jsonField "claim" (jsonString (frameworkCoreFrontendEvidenceClaim payload))
-    , jsonField "status" (jsonString (renderFrameworkCoreFrontendEvidenceStatus (frameworkCoreFrontendEvidenceStatus payload)))
-    , jsonField "expected" (jsonString (frameworkCoreFrontendEvidenceExpected payload))
-    , jsonField "observed" (jsonString (frameworkCoreFrontendEvidenceObserved payload))
-    , jsonField "artifact" (jsonString (frameworkCoreFrontendEvidenceArtifact payload))
-    ]
 
 failWhenEvidenceFailed :: [FrameworkCoreFrontendEvidencePayload] -> IO ()
 failWhenEvidenceFailed [] =
@@ -450,38 +390,6 @@ cabalModuleName line =
 dropModulePrefix :: String -> String
 dropModulePrefix =
   dropWhile isSpace . dropWhile (== ',') . dropWhile isSpace
-
-jsonObject :: [String] -> String
-jsonObject fields =
-  "{" ++ joinWith "," fields ++ "}"
-
-jsonField :: String -> String -> String
-jsonField name value =
-  jsonString name ++ ":" ++ value
-
-jsonArray :: [String] -> String
-jsonArray values =
-  "[" ++ joinWith "," values ++ "]"
-
-jsonString :: String -> String
-jsonString value =
-  "\"" ++ concatMap jsonChar value ++ "\""
-
-jsonChar :: Char -> String
-jsonChar currentChar =
-  case currentChar of
-    '"' ->
-      "\\\""
-    '\\' ->
-      "\\\\"
-    '\n' ->
-      "\\n"
-    '\r' ->
-      "\\r"
-    '\t' ->
-      "\\t"
-    _ ->
-      [currentChar]
 
 joinWith :: String -> [String] -> String
 joinWith _ [] =

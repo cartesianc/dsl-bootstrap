@@ -161,6 +161,10 @@ astCoreCabalClaimLinkPayload =
       , ("RuntimeBackendParityExpressedFact link", frontendClaimModuleLinkPresent "RuntimeBackendParityExpressedFact" "Framework.FixedPoint")
       , ("frontend core surface exposed-module witness", "framework-core-frontend-core-surface-exposed-modules" `elem` frameworkCoreFrontendEvidenceClaimNames)
       , ("frontend claim manifest", "framework-core-frontend-claim-manifest" `elem` frameworkCoreFrontendEvidenceClaimNames)
+      , ("Framework.Frontend.Evidence FrameworkCoreFrontendEvidencePayload type", coreSurfaceTypeCapabilityPresent "Framework.Frontend.Evidence" "FrameworkCoreFrontendEvidencePayload")
+      , ("Framework.Frontend.Evidence FrameworkCoreFrontendEvidenceStatus type", coreSurfaceTypeCapabilityPresent "Framework.Frontend.Evidence" "FrameworkCoreFrontendEvidenceStatus")
+      , ("Framework.Frontend.Evidence frameworkCoreFrontendEvidence value", coreSurfaceValueCapabilityPresent "Framework.Frontend.Evidence" "frameworkCoreFrontendEvidence")
+      , ("Framework.Frontend.Evidence renderFrameworkCoreFrontendEvidencePayloadsJson value", coreSurfaceValueCapabilityPresent "Framework.Frontend.Evidence" "renderFrameworkCoreFrontendEvidencePayloadsJson")
       ]
     missing =
       [ name | (name, present) <- required, not present ]

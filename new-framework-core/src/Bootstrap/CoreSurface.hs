@@ -1052,12 +1052,19 @@ frontendEvidenceFacade =
     "machine-readable frontend claim/module link manifest and evidence claim names"
     ( map typeCapability
         [ "FrontendClaimModuleLink"
+        , "FrameworkCoreFrontendEvidencePayload"
+        , "FrameworkCoreFrontendEvidenceStatus"
         ]
         ++ map valueCapability
           [ "frameworkCoreFrontendCoreClaimNames"
+          , "frameworkCoreFrontendEvidence"
           , "frameworkCoreFrontendEvidenceClaimNames"
+          , "frameworkCoreFrontendEvidencePayloadPassed"
           , "frontendClaimModuleLinkEvidenceClaimName"
           , "frontendClaimModuleLinks"
+          , "renderFrameworkCoreFrontendEvidencePayload"
+          , "renderFrameworkCoreFrontendEvidencePayloadsJson"
+          , "renderFrameworkCoreFrontendEvidenceStatus"
           ]
     )
 
