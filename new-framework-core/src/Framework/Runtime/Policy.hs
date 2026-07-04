@@ -7,6 +7,7 @@ module Framework.Runtime.Policy
   , renderRuntimePolicyEvidencePayloadsJson
   , renderRuntimePolicyEvidenceStatus
   , runtimePolicyEvidenceArtifactSummary
+  , runtimePolicyCoreClaimNames
   , runtimePolicyEvidenceClaimNames
   , runtimePolicyEvidencePayloadPassed
   , runtimePolicyEvidencePayloads
@@ -55,11 +56,18 @@ data RuntimePolicyEvidenceSpec = RuntimePolicyEvidenceSpec
 
 runtimePolicyEvidencePayloads :: FrameworkCoreReport -> [RuntimePolicyEvidencePayload]
 runtimePolicyEvidencePayloads report =
-  map (`runtimePolicyEvidencePayload` report) runtimePolicyEvidenceSpecs
+  corePayloads ++ [runtimePolicyClaimManifestPayload corePayloads]
+  where
+    corePayloads =
+      map (`runtimePolicyEvidencePayload` report) runtimePolicyEvidenceSpecs
+
+runtimePolicyCoreClaimNames :: [String]
+runtimePolicyCoreClaimNames =
+  map runtimePolicyEvidenceSpecClaim runtimePolicyEvidenceSpecs
 
 runtimePolicyEvidenceClaimNames :: [String]
 runtimePolicyEvidenceClaimNames =
-  map runtimePolicyEvidenceSpecClaim runtimePolicyEvidenceSpecs
+  runtimePolicyCoreClaimNames ++ ["runtime-policy-claim-manifest"]
 
 runtimePolicyEvidenceArtifactSummary :: String
 runtimePolicyEvidenceArtifactSummary =
@@ -147,6 +155,31 @@ runtimePolicyEvidencePayload spec report =
           "missing fact: " ++ show (runtimePolicyEvidenceSpecFact spec)
             ++ "; missing artifact: "
             ++ show (runtimePolicyEvidenceSpecArtifact spec)
+
+runtimePolicyClaimManifestPayload :: [RuntimePolicyEvidencePayload] -> RuntimePolicyEvidencePayload
+runtimePolicyClaimManifestPayload payloads =
+  RuntimePolicyEvidencePayload
+    { runtimePolicyEvidenceClaim = "runtime-policy-claim-manifest"
+    , runtimePolicyEvidenceStatus =
+        if manifestSynced
+          then RuntimePolicyEvidencePassed
+          else RuntimePolicyEvidenceFailed
+    , runtimePolicyEvidenceExpected =
+        "runtime policy payload claims match exported claim manifest"
+    , runtimePolicyEvidenceObserved =
+        if manifestSynced
+          then "claim manifest synced: " ++ show (length actualCoreClaimNames) ++ " core claims"
+          else "expected " ++ show runtimePolicyEvidenceClaimNames ++ "; actual " ++ show actualEvidenceClaimNames
+    , runtimePolicyEvidenceArtifact = "RuntimePolicyClaimManifestArtifact"
+    }
+  where
+    actualCoreClaimNames =
+      map runtimePolicyEvidenceClaim payloads
+    actualEvidenceClaimNames =
+      actualCoreClaimNames ++ ["runtime-policy-claim-manifest"]
+    manifestSynced =
+      actualCoreClaimNames == runtimePolicyCoreClaimNames
+        && actualEvidenceClaimNames == runtimePolicyEvidenceClaimNames
 
 runtimePolicyEvidencePayloadJson :: RuntimePolicyEvidencePayload -> String
 runtimePolicyEvidencePayloadJson payload =

@@ -52,7 +52,9 @@ import Framework.Runtime.Diagnosis
 import Framework.Runtime.HotPath
   ( runtimeHotPathEvidenceClaimNames )
 import Framework.Runtime.Policy
-  ( runtimePolicyEvidenceClaimNames )
+  ( runtimePolicyCoreClaimNames
+  , runtimePolicyEvidenceClaimNames
+  )
 import Framework.TrustBase.Manifest
   ( TrustBaseGatePolicy (..)
   , TrustBaseManifest (..)
@@ -631,11 +633,13 @@ runtimePolicyEvidencePayload =
       [ ("runtime-policy-evidence schema", schemaPresent "runtime-policy-evidence.v1")
       , ("Framework.Runtime.Policy RuntimePolicyEvidencePayload type", coreSurfaceTypeCapabilityPresent "Framework.Runtime.Policy" "RuntimePolicyEvidencePayload")
       , ("Framework.Runtime.Policy RuntimePolicyEvidenceStatus type", coreSurfaceTypeCapabilityPresent "Framework.Runtime.Policy" "RuntimePolicyEvidenceStatus")
+      , ("Framework.Runtime.Policy runtimePolicyCoreClaimNames value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Policy" "runtimePolicyCoreClaimNames")
       , ("Framework.Runtime.Policy runtimePolicyEvidenceClaimNames value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Policy" "runtimePolicyEvidenceClaimNames")
       , ("Framework.Runtime.Policy renderRuntimePolicyEvidencePayloadsJson value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Policy" "renderRuntimePolicyEvidencePayloadsJson")
       , ("Framework.Runtime.Policy runtimePolicyEvidencePayloads value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Policy" "runtimePolicyEvidencePayloads")
+      , ("runtime policy claim manifest", "runtime-policy-claim-manifest" `elem` runtimePolicyEvidenceClaimNames)
       ]
-        ++ [ ("runtime policy claim: " ++ claim, claim `elem` runtimePolicyEvidenceClaimNames)
+        ++ [ ("runtime policy claim: " ++ claim, claim `elem` runtimePolicyCoreClaimNames)
            | claim <- expectedClaims
            ]
     missing =
