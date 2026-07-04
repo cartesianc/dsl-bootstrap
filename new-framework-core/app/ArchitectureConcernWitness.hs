@@ -87,6 +87,7 @@ architectureConcernEvidencePayloads = do
     corePayloads =
       [ runtimeDiagnosisPayloadIrPayload
       , runtimeDiagnosisImplementationPayload
+      , runtimeImplementationModuleCoveragePayload
       , astCoreCabalClaimLinkPayload
       , backendParityPayload
       , effectSystemScopePayload
@@ -141,6 +142,35 @@ runtimeDiagnosisImplementationPayload =
     required =
       [ ("runtime diagnosis implementation boundary witness", "framework-core-frontend-runtime-diagnosis-implementation-boundary" `elem` frameworkCoreFrontendEvidenceClaimNames)
       , ("runtime diagnosis system root-cause claim", "runtime-diagnosis-system-root-cause" `elem` runtimeDiagnosisEvidenceClaimNames)
+      ]
+    missing =
+      [ name | (name, present) <- required, not present ]
+
+runtimeImplementationModuleCoveragePayload :: ArchitectureConcernEvidencePayload
+runtimeImplementationModuleCoveragePayload =
+  concernEvidence
+    "session1-runtime-implementation-module-coverage"
+    (null missing)
+    "runtime implementation split modules are indexed in CoreSurface with representative typed value, handler, state, interpreter, and diagnosis capabilities"
+    (observedList missing)
+    "RuntimeImplementationModuleCoverageArtifact"
+    "low:surface-sync"
+    "add runtime child modules to CoreSurface before relying on them as self-expressed architecture boundaries"
+  where
+    required =
+      [ ("Framework.Runtime.Values runtimeValueToSome value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Values" "runtimeValueToSome")
+      , ("Framework.Runtime.Values typedValueFor value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Values" "typedValueFor")
+      , ("Framework.Runtime.Values sameValueTag value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Values" "sameValueTag")
+      , ("Framework.Runtime.Handlers RuntimeEffectEnvironment type", coreSurfaceTypeCapabilityPresent "Framework.Runtime.Handlers" "RuntimeEffectEnvironment")
+      , ("Framework.Runtime.Handlers RuntimeHandler type", coreSurfaceTypeCapabilityPresent "Framework.Runtime.Handlers" "RuntimeHandler")
+      , ("Framework.Runtime.Handlers handlerFor value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Handlers" "handlerFor")
+      , ("Framework.Runtime.Handlers transformFor value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Handlers" "transformFor")
+      , ("Framework.Runtime.State emptyRuntime value", coreSurfaceValueCapabilityPresent "Framework.Runtime.State" "emptyRuntime")
+      , ("Framework.Runtime.State runtimeSnapshot value", coreSurfaceValueCapabilityPresent "Framework.Runtime.State" "runtimeSnapshot")
+      , ("Framework.Runtime.Types Runtime type", coreSurfaceTypeCapabilityPresent "Framework.Runtime.Types" "Runtime")
+      , ("Framework.Runtime.Types RuntimeValue type", coreSurfaceTypeCapabilityPresent "Framework.Runtime.Types" "RuntimeValue")
+      , ("Framework.Runtime.Interpreter runBlueprintWithEffectEnvironmentResult value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Interpreter" "runBlueprintWithEffectEnvironmentResult")
+      , ("Framework.Runtime.Diagnosis buildFailureDiagnosisWithSystem value", coreSurfaceValueCapabilityPresent "Framework.Runtime.Diagnosis" "buildFailureDiagnosisWithSystem")
       ]
     missing =
       [ name | (name, present) <- required, not present ]

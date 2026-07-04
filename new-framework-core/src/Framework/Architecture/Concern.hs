@@ -46,6 +46,7 @@ architectureConcernCoreClaimNames :: [String]
 architectureConcernCoreClaimNames =
   [ "session1-runtime-diagnosis-payload-ir"
   , "session1-runtime-diagnosis-implementation-boundary"
+  , "session1-runtime-implementation-module-coverage"
   , "session1-ast-core-cabal-claim-link"
   , "session1-runtime-backend-parity-payloads"
   , "session2-effect-system-scope-boundary"

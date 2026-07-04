@@ -101,6 +101,8 @@ explicitCoreSurfaceModules =
   , backgroundWorkflowEff
   , backgroundWorkflowRender
   , backgroundRuntime
+  , runtimeValuesFacade
+  , runtimeHandlersFacade
   , runtimeInterpreterFacade
   , runtimeConcurrencyFacade
   , runtimeDiagnosisFacade
@@ -1640,6 +1642,51 @@ runtimeInterpreterFacade =
           , "withRuntimeCallbacks"
           , "withRuntimeEnv"
           , "withRuntimeMiddleware"
+          ]
+    )
+
+runtimeValuesFacade :: CoreSurfaceModule
+runtimeValuesFacade =
+  moduleSurface
+    "Framework.Runtime.Values"
+    "typed runtime value conversion and lookup helpers"
+    ( map valueCapability
+        [ "runtimeTypedValueToRuntimeValue"
+        , "runtimeValueToSome"
+        , "sameValueTag"
+        , "someRuntimeValueToRuntimeValue"
+        , "typedValueFor"
+        , "typedValueFromSome"
+        ]
+    )
+
+runtimeHandlersFacade :: CoreSurfaceModule
+runtimeHandlersFacade =
+  moduleSurface
+    "Framework.Runtime.Handlers"
+    "typed runtime handler and transform registries"
+    ( map typeCapability
+        [ "HandlerBinding"
+        , "HandlerInput"
+        , "HandlerRegistry"
+        , "HandlerResult"
+        , "RuntimeEffectEnvironment"
+        , "RuntimeHandler"
+        , "RuntimeTransform"
+        , "TransformBinding"
+        , "TransformRegistry"
+        ]
+        ++ map valueCapability
+          [ "emptyHandlerRegistry"
+          , "emptyTransformRegistry"
+          , "handlerFor"
+          , "handlerInputFromTypedValues"
+          , "handlerInputFromValues"
+          , "runtimeEffectEnvironment"
+          , "runtimeEffectEnvironmentWithTransforms"
+          , "runtimeTransformInput"
+          , "runtimeTransformOutput"
+          , "transformFor"
           ]
     )
 
