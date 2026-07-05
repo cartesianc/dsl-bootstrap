@@ -261,68 +261,52 @@ transform =
 
 capabilitiesEffect :: EffectName -> [Capability] -> EffectUnit
 capabilitiesEffect name capabilities =
-  Effect.effectSystem
-    name
-    (capabilitiesEffectSystemClauses capabilities)
-    (concatMap capabilityEffectSections capabilities)
+  Effect.effectExprUnit name (capabilitiesExpr capabilities)
 
-capabilitiesEffectSystemClauses :: [Capability] -> [Effect.EffectSystemClause]
-capabilitiesEffectSystemClauses capabilities =
-  importsClause ++ privateFactsClause ++ exportsClause ++ pipelineClauses ++ handlerClauses
+capabilitiesExpr :: [Capability] -> Effect.EffectExpr
+capabilitiesExpr =
+  foldl Effect.effectExprAppend Effect.effectExprEmpty . map capabilityExpr
+
+capabilityExpr :: Capability -> Effect.EffectExpr
+capabilityExpr current =
+  foldl applyHandler
+    ( foldl applyPipeline
+        ( Effect.effectExprExport
+            (capabilityProduces current)
+            ( Effect.effectExprHide
+                (capabilityPrivateFacts current)
+                (Effect.effectExprRequire (capabilityRequires current) baseExpr)
+            )
+        )
+        (capabilityPipelines current)
+    )
+    (capabilityEffectHandlers current)
   where
-    importedFacts =
-      unique (concatMap capabilityRequires capabilities)
-    privateFacts =
-      unique (concatMap capabilityPrivateFacts capabilities)
-    exportedFacts =
-      unique (concatMap capabilityProduces capabilities)
-    importsClause =
-      [Effect.imports importedFacts | not (null importedFacts)]
-    privateFactsClause =
-      [Effect.privateFacts privateFacts | not (null privateFacts)]
-    exportsClause =
-      [Effect.exports exportedFacts | not (null exportedFacts)]
-    pipelineClauses =
-      map capabilityPipelineClause (unique (concatMap capabilityPipelines capabilities))
-    handlerClauses =
-      concatMap capabilityHandlerClauses capabilities
-
-capabilityPipelineClause :: Pipeline -> Effect.EffectSystemClause
-capabilityPipelineClause currentPipeline =
-  Effect.pipeline (pipelineName currentPipeline) (pipelineTypes currentPipeline)
-
-capabilityHandlerClauses :: Capability -> [Effect.EffectSystemClause]
-capabilityHandlerClauses current =
-  [ Effect.handler (capabilityUseSend currentUse) (handlerBindingSpecName binding)
-  | binding <- capabilityHandlers current
-  , currentUse <- capabilityUses current ++ capabilityErrors current
-  , handlerBindingMatchesUse binding currentUse
-  ]
-
-capabilityEffectSections :: Capability -> [EffectSection]
-capabilityEffectSections current =
-  privateFactSections current
-    ++ producerSections current
-    ++ useBoundarySections current
-    ++ errorBoundarySections current
-    ++ policySections current
-
-capabilityEffectSystem :: String -> Capability -> Workflow.EffectSystem WorkflowFact
-capabilityEffectSystem name =
-  Workflow.effectSystemFromBoundary . capabilityEffectSystemBoundary name
-
-capabilityEffectSystemBoundary :: String -> Capability -> Workflow.EffectSystemBoundary WorkflowFact
-capabilityEffectSystemBoundary name current =
-  Workflow.systemBoundaryWithHandlers
-    (Workflow.EffectSystemName name)
-    (capabilityRequires current)
-    (capabilityPrivateFacts current)
-    (capabilityProduces current)
-    (map sendBoundary (capabilityBoundarySends current))
-    (map transformBoundary (activeTransformBindings current))
-    (map policyBoundary (capabilityPolicy current))
-    (map pipelineBoundary (capabilityPipelines current))
-    (capabilityBoundaryHandlers current)
+    baseExpr =
+      Effect.effectExprPrimitive
+        Effect.EffectPayload
+          { Effect.payloadImports = []
+          , Effect.payloadPrivateFacts = []
+          , Effect.payloadExports = []
+          , Effect.payloadSends = map sendBoundary (capabilityBoundarySends current)
+          , Effect.payloadTransforms = map transformBoundary (activeTransformBindings current)
+          , Effect.payloadPolicies = map policyBoundary (capabilityPolicy current)
+          , Effect.payloadPipelines = []
+          , Effect.payloadHandlers = []
+          , Effect.payloadSections =
+              privateFactSections current
+                ++ producerSections current
+                ++ useBoundarySections current
+                ++ errorBoundarySections current
+                ++ policySections current
+          }
+    applyPipeline expr currentPipeline =
+      Effect.effectExprArtifactFlow (pipelineName currentPipeline) (pipelineTypes currentPipeline) expr
+    applyHandler expr currentHandler =
+      Effect.effectExprHandle
+        (Effect.effectSystemHandlerSend currentHandler)
+        (Effect.effectSystemHandlerName currentHandler)
+        expr
 
 capabilityBoundarySends :: Capability -> [SendName]
 capabilityBoundarySends current =
@@ -347,22 +331,24 @@ policyBoundary currentPolicy =
     CapabilityIdempotent send ->
       Workflow.boundaryIdempotent (show send)
 
-pipelineBoundary :: Pipeline -> Workflow.EffectSystemBoundaryPipeline
-pipelineBoundary currentPipeline =
-  Workflow.boundaryPipeline
-    (pipelineName currentPipeline)
-    (map artifactBoundary (pipelineTypes currentPipeline))
+capabilityEffectSections :: Capability -> [EffectSection]
+capabilityEffectSections current =
+  Effect.payloadSections (Effect.effectExprPayload (capabilityExpr current))
 
-artifactBoundary :: TypeName -> Workflow.EffectSystemBoundaryArtifact
-artifactBoundary =
-  Workflow.boundaryArtifact . show
+capabilityEffectSystem :: String -> Capability -> Workflow.EffectSystem WorkflowFact
+capabilityEffectSystem name =
+  Workflow.effectSystemFromBoundary . capabilityEffectSystemBoundary name
 
-capabilityBoundaryHandlers :: Capability -> [Workflow.EffectSystemBoundaryHandler]
-capabilityBoundaryHandlers current =
+capabilityEffectSystemBoundary :: String -> Capability -> Workflow.EffectSystemBoundary WorkflowFact
+capabilityEffectSystemBoundary name current =
+  Effect.effectExprBoundary (Workflow.EffectSystemName name) (capabilityExpr current)
+
+capabilityEffectHandlers :: Capability -> [Effect.EffectSystemHandler]
+capabilityEffectHandlers current =
   unique
-    [ Workflow.boundaryHandler
-        (show (capabilityUseSend currentUse))
-        (show (handlerBindingSpecName binding))
+    [ Effect.EffectSystemHandler
+        (capabilityUseSend currentUse)
+        (handlerBindingSpecName binding)
     | binding <- capabilityHandlers current
     , currentUse <- capabilityUses current ++ capabilityErrors current
     , handlerBindingMatchesUse binding currentUse

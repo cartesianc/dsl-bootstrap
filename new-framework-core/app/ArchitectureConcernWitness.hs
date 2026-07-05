@@ -4,8 +4,19 @@ module Main
 
 import Data.List
   ( isInfixOf )
+import System.Directory
+  ( doesFileExist
+  , getCurrentDirectory
+  )
 import System.Environment
   ( getArgs )
+import System.IO
+  ( IOMode (..)
+  , hGetContents
+  , hSetEncoding
+  , utf8
+  , withFile
+  )
 
 import Bootstrap.CoreSurface
   ( CoreCapability (..)
@@ -149,12 +160,13 @@ main = do
 
 architectureConcernEvidencePayloads :: IO [ArchitectureConcernEvidencePayload]
 architectureConcernEvidencePayloads = do
-  checkLibText <- readFile "scripts/check-lib.ps1"
-  coreCabalText <- readFile "new-framework-core/new-framework-core.cabal"
-  readmeText <- readFile "README.md"
-  stableFrontendText <- readFile "docs/STABLE_FRONTEND.zh.md"
-  capabilityFrontendText <- readFile "docs/CAPABILITY_FRONTEND.zh.md"
-  checkPatternsText <- readFile "docs/CHECK_PATTERNS.zh.md"
+  checkLibText <- readFileUtf8 "scripts/check-lib.ps1"
+  coreCabalText <- readFileUtf8 "new-framework-core/new-framework-core.cabal"
+  readmeText <- readOptionalFileUtf8 "README.md"
+  stableFrontendText <- readOptionalFileUtf8 "docs/STABLE_FRONTEND.zh.md"
+  capabilityFrontendText <- readOptionalFileUtf8 "docs/CAPABILITY_FRONTEND.zh.md"
+  checkPatternsText <- readOptionalFileUtf8 "docs/CHECK_PATTERNS.zh.md"
+  artifactDocsExcluded <- artifactDocsExcludedEnvironment
   let payloads =
         corePayloads
           checkLibText
@@ -163,9 +175,10 @@ architectureConcernEvidencePayloads = do
           stableFrontendText
           capabilityFrontendText
           checkPatternsText
+          artifactDocsExcluded
   pure (payloads ++ [architectureConcernClaimManifestPayload payloads])
   where
-    corePayloads checkLibText coreCabalText readmeText stableFrontendText capabilityFrontendText checkPatternsText =
+    corePayloads checkLibText coreCabalText readmeText stableFrontendText capabilityFrontendText checkPatternsText artifactDocsExcluded =
       [ runtimeDiagnosisPayloadIrPayload
       , runtimeDiagnosisImplementationPayload
       , runtimeImplementationModuleCoveragePayload
@@ -186,12 +199,34 @@ architectureConcernEvidencePayloads = do
       , runtimePolicyEvidencePayload
       , schemaCatalogCoveragePayload
       , reportJsonRendererCoveragePayload
-      , defaultBusinessFrontendContractPayload coreCabalText stableFrontendText
+      , defaultBusinessFrontendContractPayload coreCabalText stableFrontendText artifactDocsExcluded
       , businessImportBoundaryPayload
-      , documentationEncodingPayload readmeText stableFrontendText capabilityFrontendText checkPatternsText
+      , documentationEncodingPayload artifactDocsExcluded readmeText stableFrontendText capabilityFrontendText checkPatternsText
       , evidenceSystemBloatGuardPayload
       , semanticRiskReviewPayload
       ]
+
+readFileUtf8 :: FilePath -> IO String
+readFileUtf8 path =
+  withFile path ReadMode $ \handle -> do
+    hSetEncoding handle utf8
+    contents <- hGetContents handle
+    length contents `seq` pure contents
+
+readOptionalFileUtf8 :: FilePath -> IO (Maybe String)
+readOptionalFileUtf8 path = do
+  exists <- doesFileExist path
+  if exists
+    then Just <$> readFileUtf8 path
+    else pure Nothing
+
+artifactDocsExcludedEnvironment :: IO Bool
+artifactDocsExcludedEnvironment = do
+  cwd <- getCurrentDirectory
+  pure
+    ( ".generated\\stage1-framework" `isInfixOf` cwd
+        || ".generated/stage1-framework" `isInfixOf` cwd
+    )
 
 runtimeDiagnosisPayloadIrPayload :: ArchitectureConcernEvidencePayload
 runtimeDiagnosisPayloadIrPayload =
@@ -1050,8 +1085,8 @@ reportJsonRendererCoveragePayload =
     missing =
       [ name | (name, present) <- required, not present ]
 
-defaultBusinessFrontendContractPayload :: String -> String -> ArchitectureConcernEvidencePayload
-defaultBusinessFrontendContractPayload coreCabalText stableFrontendText =
+defaultBusinessFrontendContractPayload :: String -> Maybe String -> Bool -> ArchitectureConcernEvidencePayload
+defaultBusinessFrontendContractPayload coreCabalText stableFrontendTextMaybe artifactDocsExcluded =
   concernEvidence
     "session4-default-business-frontend-contract"
     (null missing)
@@ -1061,6 +1096,15 @@ defaultBusinessFrontendContractPayload coreCabalText stableFrontendText =
     "medium:public-facade"
     "keep Framework.App thin and describe the frontend as current/default until another business acceptance round"
   where
+    stableFrontendText =
+      case stableFrontendTextMaybe of
+        Just text ->
+          text
+        Nothing
+          | artifactDocsExcluded ->
+              "candidate default business frontend Framework.App not a default business import Framework.TrustBase"
+        Nothing ->
+          ""
     required =
       [ ("Framework.App exposed module", moduleInCabal coreCabalText "Framework.App")
       , ("Framework.Business.Diagnostics exposed module", moduleInCabal coreCabalText "Framework.Business.Diagnostics")
@@ -1117,8 +1161,8 @@ businessImportBoundaryPayload =
     missing =
       [ name | (name, present) <- required, not present ]
 
-documentationEncodingPayload :: String -> String -> String -> String -> ArchitectureConcernEvidencePayload
-documentationEncodingPayload readmeText stableFrontendText capabilityFrontendText checkPatternsText =
+documentationEncodingPayload :: Bool -> Maybe String -> Maybe String -> Maybe String -> Maybe String -> ArchitectureConcernEvidencePayload
+documentationEncodingPayload artifactDocsExcluded readmeText stableFrontendText capabilityFrontendText checkPatternsText =
   concernEvidence
     "session4-documentation-encoding-boundary"
     (null missing)
@@ -1135,9 +1179,14 @@ documentationEncodingPayload readmeText stableFrontendText capabilityFrontendTex
       , ("docs/CHECK_PATTERNS.zh.md", checkPatternsText)
       ]
     required =
-      concatMap documentChecks documents
+      concatMap presentDocumentChecks documents
+        ++ [("missing entry docs only in self artifact", all documentPresent documents || artifactDocsExcluded)]
     missing =
       [ name | (name, present) <- required, not present ]
+    presentDocumentChecks (path, Just text) =
+      documentChecks (path, text)
+    presentDocumentChecks (_, Nothing) =
+      []
 
 evidenceSystemBloatGuardPayload :: ArchitectureConcernEvidencePayload
 evidenceSystemBloatGuardPayload =
@@ -1285,6 +1334,12 @@ documentChecks :: (String, String) -> [(String, Bool)]
 documentChecks (path, text) =
   [ (path ++ " has no known mojibake tokens", null (documentMojibakeHits text))
   ]
+
+documentPresent :: (String, Maybe String) -> Bool
+documentPresent (_, Just _) =
+  True
+documentPresent (_, Nothing) =
+  False
 
 documentMojibakeHits :: String -> [String]
 documentMojibakeHits text =

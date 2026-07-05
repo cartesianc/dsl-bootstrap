@@ -3,6 +3,8 @@
 
 module Bootstrap.Effect
   ( EffectName (..)
+  , EffectExpr (..)
+  , EffectPayload (..)
   , EffectSection (..)
   , EffectSystemClause (..)
   , EffectSystemHandler (..)
@@ -25,6 +27,20 @@ module Bootstrap.Effect
   , TypeName (..)
   , WorkflowFact (..)
   , effect
+  , effectExprAppend
+  , effectExprArtifactFlow
+  , effectExprBoundary
+  , effectExprEmpty
+  , effectExprExport
+  , effectExprHandle
+  , effectExprHide
+  , effectExprPayload
+  , effectExprPrimitive
+  , effectExprRequire
+  , effectExprRow
+  , effectExprThen
+  , effectExprUnit
+  , effectPayloadClauses
   , error
   , effectSystem
   , effectUnitBoundary
@@ -146,6 +162,29 @@ data EffectSystemHandler = EffectSystemHandler
   , effectSystemHandlerName :: HandlerName
   }
   deriving (Eq, Show)
+
+data EffectExpr
+  = EffectEmpty
+  | EffectPrimitive EffectPayload
+  | EffectAppend EffectExpr EffectExpr
+  | EffectThen EffectExpr EffectExpr
+  | EffectHandle SendName HandlerName EffectExpr
+  | EffectHide [WorkflowFact] EffectExpr
+  | EffectExport [WorkflowFact] EffectExpr
+  | EffectRequire [WorkflowFact] EffectExpr
+  | EffectArtifactFlow String [TypeName] EffectExpr
+
+data EffectPayload = EffectPayload
+  { payloadImports :: [WorkflowFact]
+  , payloadPrivateFacts :: [WorkflowFact]
+  , payloadExports :: [WorkflowFact]
+  , payloadSends :: [Workflow.EffectSystemBoundarySend]
+  , payloadTransforms :: [Workflow.EffectSystemBoundaryTransform]
+  , payloadPolicies :: [Workflow.EffectSystemBoundaryPolicy]
+  , payloadPipelines :: [EffectSystemPipeline]
+  , payloadHandlers :: [EffectSystemHandler]
+  , payloadSections :: [EffectSection]
+  }
 
 data EffectSection
   = FactClaimSection FactProducer
@@ -375,6 +414,148 @@ effectSystemHandlerBoundary currentHandler =
     (show (effectSystemHandlerSend currentHandler))
     (show (effectSystemHandlerName currentHandler))
 
+effectExprEmpty :: EffectExpr
+effectExprEmpty =
+  EffectEmpty
+
+effectExprPrimitive :: EffectPayload -> EffectExpr
+effectExprPrimitive =
+  EffectPrimitive
+
+effectExprAppend :: EffectExpr -> EffectExpr -> EffectExpr
+effectExprAppend =
+  EffectAppend
+
+effectExprThen :: EffectExpr -> EffectExpr -> EffectExpr
+effectExprThen =
+  EffectThen
+
+effectExprHandle :: SendName -> HandlerName -> EffectExpr -> EffectExpr
+effectExprHandle =
+  EffectHandle
+
+effectExprHide :: [WorkflowFact] -> EffectExpr -> EffectExpr
+effectExprHide =
+  EffectHide
+
+effectExprExport :: [WorkflowFact] -> EffectExpr -> EffectExpr
+effectExprExport =
+  EffectExport
+
+effectExprRequire :: [WorkflowFact] -> EffectExpr -> EffectExpr
+effectExprRequire =
+  EffectRequire
+
+effectExprArtifactFlow :: String -> [TypeName] -> EffectExpr -> EffectExpr
+effectExprArtifactFlow =
+  EffectArtifactFlow
+
+effectExprPayload :: EffectExpr -> EffectPayload
+effectExprPayload expr =
+  case expr of
+    EffectEmpty ->
+      emptyEffectPayload
+    EffectPrimitive payload ->
+      payload
+    EffectAppend left right ->
+      combineEffectPayload (effectExprPayload left) (effectExprPayload right)
+    EffectThen left right ->
+      combineEffectPayload (effectExprPayload left) (effectExprPayload right)
+    EffectHandle send name inner ->
+      combineEffectPayload
+        (effectExprPayload inner)
+        emptyEffectPayload {payloadHandlers = [EffectSystemHandler send name]}
+    EffectHide facts inner ->
+      combineEffectPayload
+        (effectExprPayload inner)
+        emptyEffectPayload {payloadPrivateFacts = facts}
+    EffectExport facts inner ->
+      combineEffectPayload
+        (effectExprPayload inner)
+        emptyEffectPayload {payloadExports = facts}
+    EffectRequire facts inner ->
+      combineEffectPayload
+        (effectExprPayload inner)
+        emptyEffectPayload {payloadImports = facts}
+    EffectArtifactFlow name types inner ->
+      combineEffectPayload
+        (effectExprPayload inner)
+        emptyEffectPayload {payloadPipelines = [EffectSystemPipeline name types]}
+
+effectExprUnit :: EffectName -> EffectExpr -> EffectUnit
+effectExprUnit name expr =
+  effectSystem
+    name
+    (effectPayloadClauses payload)
+    (payloadSections payload)
+  where
+    payload =
+      effectExprPayload expr
+
+effectExprBoundary :: Workflow.EffectSystemName -> EffectExpr -> Workflow.EffectSystemBoundary WorkflowFact
+effectExprBoundary name expr =
+  unitBoundary
+    { Workflow.effectSystemBoundaryName = name
+    , Workflow.effectSystemBoundarySends =
+        unionItems (payloadSends payload) (Workflow.effectSystemBoundarySends unitBoundary)
+    , Workflow.effectSystemBoundaryTransforms =
+        unionItems (payloadTransforms payload) (Workflow.effectSystemBoundaryTransforms unitBoundary)
+    , Workflow.effectSystemBoundaryPolicies =
+        unionItems (payloadPolicies payload) (Workflow.effectSystemBoundaryPolicies unitBoundary)
+    }
+  where
+    payload =
+      effectExprPayload expr
+    unitBoundary =
+      effectUnitBoundary (effectExprUnit (EffectName (show name)) expr)
+
+effectExprRow :: Workflow.EffectSystemName -> EffectExpr -> Workflow.EffectRow WorkflowFact
+effectExprRow name =
+  Workflow.effectRowFromBoundary . effectExprBoundary name
+
+effectPayloadClauses :: EffectPayload -> [EffectSystemClause]
+effectPayloadClauses payload =
+  importsClause ++ privateFactsClause ++ exportsClause ++ pipelineClauses ++ handlerClauses
+  where
+    importsClause =
+      [EffectSystemImports (payloadImports payload) | not (null (payloadImports payload))]
+    privateFactsClause =
+      [EffectSystemPrivateFacts (payloadPrivateFacts payload) | not (null (payloadPrivateFacts payload))]
+    exportsClause =
+      [EffectSystemExports (payloadExports payload) | not (null (payloadExports payload))]
+    pipelineClauses =
+      [EffectSystemPipelines (payloadPipelines payload) | not (null (payloadPipelines payload))]
+    handlerClauses =
+      [EffectSystemHandlers (payloadHandlers payload) | not (null (payloadHandlers payload))]
+
+emptyEffectPayload :: EffectPayload
+emptyEffectPayload =
+  EffectPayload
+    { payloadImports = []
+    , payloadPrivateFacts = []
+    , payloadExports = []
+    , payloadSends = []
+    , payloadTransforms = []
+    , payloadPolicies = []
+    , payloadPipelines = []
+    , payloadHandlers = []
+    , payloadSections = []
+    }
+
+combineEffectPayload :: EffectPayload -> EffectPayload -> EffectPayload
+combineEffectPayload left right =
+  EffectPayload
+    { payloadImports = unionItems (payloadImports left) (payloadImports right)
+    , payloadPrivateFacts = unionItems (payloadPrivateFacts left) (payloadPrivateFacts right)
+    , payloadExports = unionItems (payloadExports left) (payloadExports right)
+    , payloadSends = unionItems (payloadSends left) (payloadSends right)
+    , payloadTransforms = unionItems (payloadTransforms left) (payloadTransforms right)
+    , payloadPolicies = unionItems (payloadPolicies left) (payloadPolicies right)
+    , payloadPipelines = unionItems (payloadPipelines left) (payloadPipelines right)
+    , payloadHandlers = unionItems (payloadHandlers left) (payloadHandlers right)
+    , payloadSections = payloadSections left ++ payloadSections right
+    }
+
 sectionBoundaryPolicies :: EffectSection -> [Workflow.EffectSystemBoundaryPolicy]
 sectionBoundaryPolicies (SendPolicySection policy) =
   idempotencyPolicy ++ retryPolicy
@@ -446,3 +627,7 @@ appendUnique items item
       items
   | otherwise =
       items ++ [item]
+
+unionItems :: Eq item => [item] -> [item] -> [item]
+unionItems left right =
+  foldl appendUnique left right
